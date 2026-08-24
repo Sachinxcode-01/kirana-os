@@ -41,9 +41,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       _error = null;
     });
 
-    final success = await ref
-        .read(authNotifierProvider.notifier)
-        .sendPasswordReset(email);
+    final success =
+        await ref.read(authNotifierProvider.notifier).sendPasswordReset(email);
 
     if (mounted) {
       setState(() {
@@ -78,7 +77,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       children: [
         Text(
           'Forgot Password?',
-          style: KiranaTypography.headlineMedium.copyWith(fontWeight: FontWeight.bold),
+          style: KiranaTypography.headlineMedium
+              .copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: KiranaSpacing.xs),
         const Text(
@@ -86,7 +86,6 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           style: KiranaTypography.bodyMedium,
         ),
         const SizedBox(height: KiranaSpacing.xl),
-
         if (_error != null) ...[
           Container(
             padding: const EdgeInsets.all(KiranaSpacing.md),
@@ -95,11 +94,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               borderRadius: KiranaRadius.borderMd,
               border: Border.all(color: KiranaColors.error),
             ),
-            child: Text(_error!, style: const TextStyle(fontSize: 13, color: KiranaColors.error)),
+            child: Text(_error!,
+                style:
+                    const TextStyle(fontSize: 13, color: KiranaColors.error)),
           ),
           const SizedBox(height: KiranaSpacing.lg),
         ],
-
         AppTextField(
           label: 'Registered Email',
           hint: 'owner@store.com',
@@ -108,14 +108,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           prefixIcon: const Icon(Icons.email_outlined),
         ),
         const SizedBox(height: KiranaSpacing.xl),
-
         AppButton(
           label: 'Send Password Reset Link',
           isLoading: _isLoading,
           onPressed: _isLoading ? null : _handleSendReset,
         ),
         const SizedBox(height: KiranaSpacing.lg),
-
         Center(
           child: TextButton(
             onPressed: () => context.pop(),
@@ -130,11 +128,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.mark_email_read, size: 64, color: KiranaColors.success),
+        const Icon(Icons.mark_email_read,
+            size: 64, color: KiranaColors.success),
         const SizedBox(height: KiranaSpacing.lg),
         Text(
           'Check Your Email',
-          style: KiranaTypography.headlineMedium.copyWith(fontWeight: FontWeight.bold),
+          style: KiranaTypography.headlineMedium
+              .copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: KiranaSpacing.sm),
         Text(

@@ -206,7 +206,8 @@ class _AppNavigationShell extends StatelessWidget {
     if (location.startsWith('/billing') || location.startsWith('/barcode')) {
       return 1;
     }
-    if (location.startsWith('/products') || location.startsWith('/categories')) {
+    if (location.startsWith('/products') ||
+        location.startsWith('/categories')) {
       return 2;
     }
     if (location.startsWith('/customers') || location.startsWith('/credit')) {

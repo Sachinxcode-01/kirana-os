@@ -17,7 +17,9 @@ class DashboardLocalDataSource {
 
     // 1. Today's sales and bills count
     final billsQuery = _db.select(_db.billsTable)
-      ..where((tbl) => tbl.shopId.equals(shopId) & tbl.createdAt.isBiggerOrEqualValue(startOfDay));
+      ..where((tbl) =>
+          tbl.shopId.equals(shopId) &
+          tbl.createdAt.isBiggerOrEqualValue(startOfDay));
     final todayBills = await billsQuery.get();
 
     BigInt todaySales = BigInt.zero;
@@ -38,7 +40,9 @@ class DashboardLocalDataSource {
 
     // 3. Low stock count
     final lowStockQuery = _db.select(_db.productsTable)
-      ..where((tbl) => tbl.shopId.equals(shopId) & tbl.currentStock.isSmallerOrEqualValue(5.0));
+      ..where((tbl) =>
+          tbl.shopId.equals(shopId) &
+          tbl.currentStock.isSmallerOrEqualValue(5.0));
     final lowStockItems = await lowStockQuery.get();
     final int lowStockCount = lowStockItems.length;
 

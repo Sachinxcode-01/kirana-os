@@ -125,10 +125,12 @@ void main() {
       );
 
       expect(result.isError, isTrue);
-      expect(result.failureOrNull?.message, 'Valid 10-digit phone number is required');
+      expect(result.failureOrNull?.message,
+          'Valid 10-digit phone number is required');
     });
 
-    test('Create shop persists to local database and returns valid ShopModel', () async {
+    test('Create shop persists to local database and returns valid ShopModel',
+        () async {
       final result = await repository.createShop(
         name: 'Mahadev Provision Store',
         phone: '9876543210',

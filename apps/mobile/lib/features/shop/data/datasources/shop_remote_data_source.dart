@@ -65,21 +65,20 @@ class ShopRemoteDataSource {
         createdAt: DateTime.now(),
       );
     } on supa.PostgrestException catch (e) {
-      AppLogger.e('RPC create_shop error: ${e.message}', tag: 'ShopRemoteDataSource');
+      AppLogger.e('RPC create_shop error: ${e.message}',
+          tag: 'ShopRemoteDataSource');
       throw DatabaseException(e.message, e.code);
     } catch (e) {
-      AppLogger.e('Unexpected createShop error: $e', tag: 'ShopRemoteDataSource');
+      AppLogger.e('Unexpected createShop error: $e',
+          tag: 'ShopRemoteDataSource');
       throw DatabaseException('Failed to create store profile: $e');
     }
   }
 
   Future<ShopModel> getShopDetails(String shopId) async {
     try {
-      final response = await _supabase
-          .from('shops')
-          .select()
-          .eq('id', shopId)
-          .single();
+      final response =
+          await _supabase.from('shops').select().eq('id', shopId).single();
 
       return _mapToShopModel(response);
     } on supa.PostgrestException catch (e) {

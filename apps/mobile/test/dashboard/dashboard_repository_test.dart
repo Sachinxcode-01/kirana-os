@@ -22,7 +22,9 @@ void main() {
   });
 
   group('Dashboard Real Aggregations Tests', () {
-    test('Calculates exact sales, bills count, udhaar debt, and low stock items', () async {
+    test(
+        'Calculates exact sales, bills count, udhaar debt, and low stock items',
+        () async {
       final now = DateTime.now();
       final earlier = now.subtract(const Duration(minutes: 15));
 

@@ -11,7 +11,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
   DashboardRepositoryImpl(this._localDataSource);
 
   @override
-  Future<Result<DashboardMetrics, Failure>> getDashboardMetrics(String shopId) async {
+  Future<Result<DashboardMetrics, Failure>> getDashboardMetrics(
+      String shopId) async {
     try {
       final metrics = await _localDataSource.getMetrics(shopId);
       return Success(metrics);

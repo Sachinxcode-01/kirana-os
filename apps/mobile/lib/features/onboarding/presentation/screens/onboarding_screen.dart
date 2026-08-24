@@ -100,7 +100,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             color: KiranaColors.primaryContainer,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: KiranaColors.primaryLight.withValues(alpha: 0.3),
+                              color: KiranaColors.primaryLight
+                                  .withValues(alpha: 0.3),
                               width: 2,
                             ),
                           ),

@@ -30,7 +30,8 @@ class ShopLocalDataSource {
   }
 
   Future<ShopModel?> getShopById(String shopId) async {
-    final query = _db.select(_db.shopsTable)..where((tbl) => tbl.id.equals(shopId));
+    final query = _db.select(_db.shopsTable)
+      ..where((tbl) => tbl.id.equals(shopId));
     final shop = await query.getSingleOrNull();
     if (shop == null) return null;
 

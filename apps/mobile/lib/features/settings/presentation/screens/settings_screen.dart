@@ -13,7 +13,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
-    final pendingSyncCount = ref.watch(pendingSyncCountProvider).valueOrNull ?? 0;
+    final pendingSyncCount =
+        ref.watch(pendingSyncCountProvider).valueOrNull ?? 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings & Configuration')),
@@ -21,15 +22,18 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(KiranaSpacing.md),
         children: [
           // Account & Store Profile
-          const Text('Account & Store Profile', style: KiranaTypography.titleMedium),
+          const Text('Account & Store Profile',
+              style: KiranaTypography.titleMedium),
           const SizedBox(height: KiranaSpacing.xs),
           Card(
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.storefront, color: KiranaColors.primary),
+                  leading:
+                      const Icon(Icons.storefront, color: KiranaColors.primary),
                   title: const Text('Store Profile'),
-                  subtitle: Text(authState.activeShopName ?? 'Configure store details'),
+                  subtitle: Text(
+                      authState.activeShopName ?? 'Configure store details'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/profile'),
                 ),
@@ -37,11 +41,14 @@ class SettingsScreen extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.pin, color: KiranaColors.primary),
                   title: const Text('Terminal Cashier Quick PIN'),
-                  subtitle: const Text('Setup 4-digit PIN for instant terminal unlock'),
+                  subtitle: const Text(
+                      'Setup 4-digit PIN for instant terminal unlock'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Quick PIN configuration available in terminal mode.')),
+                      const SnackBar(
+                          content: Text(
+                              'Quick PIN configuration available in terminal mode.')),
                     );
                   },
                 ),
@@ -51,7 +58,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: KiranaSpacing.lg),
 
           // Hardware Integrations
-          const Text('Hardware Integrations', style: KiranaTypography.titleMedium),
+          const Text('Hardware Integrations',
+              style: KiranaTypography.titleMedium),
           const SizedBox(height: KiranaSpacing.xs),
           Card(
             child: Column(
@@ -63,19 +71,24 @@ class SettingsScreen extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Bluetooth ESC/POS thermal printer setup ready.')),
+                      const SnackBar(
+                          content: Text(
+                              'Bluetooth ESC/POS thermal printer setup ready.')),
                     );
                   },
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.qr_code_scanner, color: KiranaColors.primary),
+                  leading: const Icon(Icons.qr_code_scanner,
+                      color: KiranaColors.primary),
                   title: const Text('Barcode Scanner Configuration'),
-                  subtitle: const Text('USB HID Barcode Gun (Auto-Enter enabled)'),
+                  subtitle:
+                      const Text('USB HID Barcode Gun (Auto-Enter enabled)'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('HID barcode scanner connected.')),
+                      const SnackBar(
+                          content: Text('HID barcode scanner connected.')),
                     );
                   },
                 ),
@@ -85,7 +98,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: KiranaSpacing.lg),
 
           // Cloud Sync & Storage
-          const Text('Cloud Synchronization & Storage', style: KiranaTypography.titleMedium),
+          const Text('Cloud Synchronization & Storage',
+              style: KiranaTypography.titleMedium),
           const SizedBox(height: KiranaSpacing.xs),
           Card(
             child: Column(
@@ -103,22 +117,28 @@ class SettingsScreen extends ConsumerWidget {
                           onPressed: () {
                             ref.read(syncEngineProvider).syncNow();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Triggered background cloud sync...')),
+                              const SnackBar(
+                                  content: Text(
+                                      'Triggered background cloud sync...')),
                             );
                           },
                           child: const Text('Sync Now'),
                         )
-                      : const Icon(Icons.check_circle, color: KiranaColors.success, size: 20),
+                      : const Icon(Icons.check_circle,
+                          color: KiranaColors.success, size: 20),
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.backup_outlined, color: KiranaColors.primary),
+                  leading: const Icon(Icons.backup_outlined,
+                      color: KiranaColors.primary),
                   title: const Text('Export Local Database Backup'),
-                  subtitle: const Text('Save encrypted SQLite database copy locally'),
+                  subtitle:
+                      const Text('Save encrypted SQLite database copy locally'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Database backup exported.')),
+                      const SnackBar(
+                          content: Text('Database backup exported.')),
                     );
                   },
                 ),
@@ -134,9 +154,11 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: Icon(Icons.info_outline, color: KiranaColors.neutral700),
+                  leading:
+                      Icon(Icons.info_outline, color: KiranaColors.neutral700),
                   title: Text('KiranaOS Version'),
-                  subtitle: Text('1.0.0 (Phase 03 — Production Ready Architecture)'),
+                  subtitle:
+                      Text('1.0.0 (Phase 03 — Production Ready Architecture)'),
                 ),
               ],
             ),

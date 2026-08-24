@@ -45,17 +45,22 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: KiranaSpacing.md),
                 Text(
                   displayName,
-                  style: KiranaTypography.titleLarge.copyWith(fontWeight: FontWeight.bold),
+                  style: KiranaTypography.titleLarge
+                      .copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 2),
-                Text(email, style: KiranaTypography.bodyMedium.copyWith(color: KiranaColors.neutral600)),
+                Text(email,
+                    style: KiranaTypography.bodyMedium
+                        .copyWith(color: KiranaColors.neutral600)),
                 const SizedBox(height: KiranaSpacing.xs),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: KiranaColors.primary.withValues(alpha: 0.1),
                     borderRadius: KiranaRadius.borderPill,
-                    border: Border.all(color: KiranaColors.primary.withValues(alpha: 0.3)),
+                    border: Border.all(
+                        color: KiranaColors.primary.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     'ROLE: $role',
@@ -74,7 +79,8 @@ class ProfileScreen extends ConsumerWidget {
           // Store Details Card
           Text(
             'Store Details',
-            style: KiranaTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+            style: KiranaTypography.titleMedium
+                .copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: KiranaSpacing.sm),
           shopDetailsAsync.when(
@@ -82,20 +88,25 @@ class ProfileScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.storefront, color: KiranaColors.primary),
+                    leading: const Icon(Icons.storefront,
+                        color: KiranaColors.primary),
                     title: const Text('Store Name'),
-                    subtitle: Text(shop?.name ?? authState.activeShopName ?? 'Not Configured'),
+                    subtitle: Text(shop?.name ??
+                        authState.activeShopName ??
+                        'Not Configured'),
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.phone, color: KiranaColors.primary),
+                    leading:
+                        const Icon(Icons.phone, color: KiranaColors.primary),
                     title: const Text('Store Contact Phone'),
                     subtitle: Text(shop?.phone ?? user?.phone ?? 'Not Added'),
                   ),
                   if (shop?.gstin != null && shop!.gstin!.isNotEmpty) ...[
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.receipt_long, color: KiranaColors.primary),
+                      leading: const Icon(Icons.receipt_long,
+                          color: KiranaColors.primary),
                       title: const Text('GSTIN'),
                       subtitle: Text(shop.gstin!),
                     ),
@@ -103,7 +114,8 @@ class ProfileScreen extends ConsumerWidget {
                   if (shop?.upiId != null && shop!.upiId!.isNotEmpty) ...[
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.qr_code_2, color: KiranaColors.primary),
+                      leading: const Icon(Icons.qr_code_2,
+                          color: KiranaColors.primary),
                       title: const Text('UPI ID for Dynamic QR'),
                       subtitle: Text(shop.upiId!),
                     ),
@@ -142,16 +154,19 @@ class ProfileScreen extends ConsumerWidget {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Sign Out'),
-                  content: const Text('Are you sure you want to sign out? Offline data remains saved locally.'),
+                  content: const Text(
+                      'Are you sure you want to sign out? Offline data remains saved locally.'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
                       child: const Text('Cancel'),
                     ),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: KiranaColors.error),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: KiranaColors.error),
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Sign Out', style: TextStyle(color: Colors.white)),
+                      child: const Text('Sign Out',
+                          style: TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),

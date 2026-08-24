@@ -111,21 +111,34 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
                 // Step Indicator
                 Row(
                   children: [
-                    _StepCircle(step: 1, currentStep: _currentStep + 1, label: 'Basics'),
+                    _StepCircle(
+                        step: 1,
+                        currentStep: _currentStep + 1,
+                        label: 'Basics'),
                     Expanded(
                       child: Container(
                         height: 2,
-                        color: _currentStep >= 1 ? KiranaColors.primary : KiranaColors.neutral200,
+                        color: _currentStep >= 1
+                            ? KiranaColors.primary
+                            : KiranaColors.neutral200,
                       ),
                     ),
-                    _StepCircle(step: 2, currentStep: _currentStep + 1, label: 'Business'),
+                    _StepCircle(
+                        step: 2,
+                        currentStep: _currentStep + 1,
+                        label: 'Business'),
                     Expanded(
                       child: Container(
                         height: 2,
-                        color: _currentStep >= 2 ? KiranaColors.primary : KiranaColors.neutral200,
+                        color: _currentStep >= 2
+                            ? KiranaColors.primary
+                            : KiranaColors.neutral200,
                       ),
                     ),
-                    _StepCircle(step: 3, currentStep: _currentStep + 1, label: 'Confirm'),
+                    _StepCircle(
+                        step: 3,
+                        currentStep: _currentStep + 1,
+                        label: 'Confirm'),
                   ],
                 ),
                 const SizedBox(height: KiranaSpacing.xxl),
@@ -140,12 +153,14 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, color: KiranaColors.error),
+                        const Icon(Icons.error_outline,
+                            color: KiranaColors.error),
                         const SizedBox(width: KiranaSpacing.sm),
                         Expanded(
                           child: Text(
                             shopState.errorMessage!,
-                            style: KiranaTypography.bodyMedium.copyWith(color: KiranaColors.error),
+                            style: KiranaTypography.bodyMedium
+                                .copyWith(color: KiranaColors.error),
                           ),
                         ),
                       ],
@@ -171,7 +186,8 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
       children: [
         Text(
           'Store Basic Details',
-          style: KiranaTypography.headlineMedium.copyWith(fontWeight: FontWeight.bold),
+          style: KiranaTypography.headlineMedium
+              .copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: KiranaSpacing.xs),
         const Text(
@@ -180,7 +196,8 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
         ),
         if (_step1Error != null) ...[
           const SizedBox(height: KiranaSpacing.md),
-          Text(_step1Error!, style: const TextStyle(color: KiranaColors.error, fontSize: 13)),
+          Text(_step1Error!,
+              style: const TextStyle(color: KiranaColors.error, fontSize: 13)),
         ],
         const SizedBox(height: KiranaSpacing.xl),
         AppTextField(
@@ -244,7 +261,8 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
       children: [
         Text(
           'Business & Tax Details (Optional)',
-          style: KiranaTypography.headlineMedium.copyWith(fontWeight: FontWeight.bold),
+          style: KiranaTypography.headlineMedium
+              .copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: KiranaSpacing.xs),
         const Text(
@@ -301,7 +319,8 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
       children: [
         Text(
           'Confirm Store Creation',
-          style: KiranaTypography.headlineMedium.copyWith(fontWeight: FontWeight.bold),
+          style: KiranaTypography.headlineMedium
+              .copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: KiranaSpacing.xs),
         const Text(
@@ -319,14 +338,20 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _SummaryRow(label: 'Store Name', value: _nameController.text.trim()),
+              _SummaryRow(
+                  label: 'Store Name', value: _nameController.text.trim()),
               _SummaryRow(label: 'Phone', value: _phoneController.text.trim()),
               if (_addressController.text.isNotEmpty)
-                _SummaryRow(label: 'Address', value: _addressController.text.trim()),
+                _SummaryRow(
+                    label: 'Address', value: _addressController.text.trim()),
               if (_cityController.text.isNotEmpty)
-                _SummaryRow(label: 'City & State', value: '${_cityController.text.trim()}, ${_stateController.text}'),
+                _SummaryRow(
+                    label: 'City & State',
+                    value:
+                        '${_cityController.text.trim()}, ${_stateController.text}'),
               if (_gstinController.text.isNotEmpty)
-                _SummaryRow(label: 'GSTIN', value: _gstinController.text.trim()),
+                _SummaryRow(
+                    label: 'GSTIN', value: _gstinController.text.trim()),
               if (_upiController.text.isNotEmpty)
                 _SummaryRow(label: 'UPI ID', value: _upiController.text.trim()),
             ],
@@ -404,8 +429,12 @@ class _SummaryRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: KiranaTypography.bodySmall.copyWith(color: KiranaColors.neutral600)),
-          Text(value, style: KiranaTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+          Text(label,
+              style: KiranaTypography.bodySmall
+                  .copyWith(color: KiranaColors.neutral600)),
+          Text(value,
+              style: KiranaTypography.bodyMedium
+                  .copyWith(fontWeight: FontWeight.w600)),
         ],
       ),
     );

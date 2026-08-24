@@ -67,12 +67,14 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Result<void, Failure>> sendPasswordResetEmail({required String email}) async {
+  Future<Result<void, Failure>> sendPasswordResetEmail(
+      {required String email}) async {
     return const Success(null);
   }
 
   @override
-  Future<Result<void, Failure>> updatePassword({required String newPassword}) async {
+  Future<Result<void, Failure>> updatePassword(
+      {required String newPassword}) async {
     return const Success(null);
   }
 
@@ -126,7 +128,8 @@ void main() {
       expect(notifier.state.activeShopName, 'Gupta Provision Store');
     });
 
-    test('Restores authenticated session without shop (requires onboarding)', () async {
+    test('Restores authenticated session without shop (requires onboarding)',
+        () async {
       mockRepo.mockUser = const UserModel(
         id: 'usr_new_1',
         email: 'newowner@kirana.com',
@@ -171,7 +174,8 @@ void main() {
       expect(notifier.state.errorMessage, 'Invalid email or password');
     });
 
-    test('Registration creates user without shop and prompts onboarding', () async {
+    test('Registration creates user without shop and prompts onboarding',
+        () async {
       notifier = AuthNotifier(mockRepo);
       final success = await notifier.register(
         email: 'newuser@store.com',

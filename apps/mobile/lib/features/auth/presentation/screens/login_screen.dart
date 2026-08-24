@@ -65,8 +65,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
-    final connectivity = ref.watch(connectivityStatusStreamProvider).valueOrNull ??
-        ConnectivityStatus.online;
+    final connectivity =
+        ref.watch(connectivityStatusStreamProvider).valueOrNull ??
+            ConnectivityStatus.online;
     final isOffline = connectivity == ConnectivityStatus.offline;
 
     final errorMessage = _localError ?? authState.errorMessage;
@@ -127,12 +128,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.wifi_off, size: 20, color: KiranaColors.warning),
+                          Icon(Icons.wifi_off,
+                              size: 20, color: KiranaColors.warning),
                           SizedBox(width: KiranaSpacing.sm),
                           Expanded(
                             child: Text(
                               "You're offline. Reconnect to log in with new credentials.",
-                              style: TextStyle(fontSize: 12, color: KiranaColors.neutral800),
+                              style: TextStyle(
+                                  fontSize: 12, color: KiranaColors.neutral800),
                             ),
                           ),
                         ],
@@ -152,12 +155,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, size: 20, color: KiranaColors.error),
+                          const Icon(Icons.error_outline,
+                              size: 20, color: KiranaColors.error),
                           const SizedBox(width: KiranaSpacing.sm),
                           Expanded(
                             child: Text(
                               errorMessage,
-                              style: const TextStyle(fontSize: 13, color: KiranaColors.error),
+                              style: const TextStyle(
+                                  fontSize: 13, color: KiranaColors.error),
                             ),
                           ),
                         ],
@@ -203,7 +208,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onPressed: () => context.push('/forgot-password'),
                       child: const Text(
                         'Forgot Password?',
-                        style: TextStyle(fontSize: 13, color: KiranaColors.primary),
+                        style: TextStyle(
+                            fontSize: 13, color: KiranaColors.primary),
                       ),
                     ),
                   ),
@@ -229,7 +235,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: () => context.push('/register'),
                         child: const Text(
                           'Create Account',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: KiranaColors.primary),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: KiranaColors.primary),
                         ),
                       ),
                     ],

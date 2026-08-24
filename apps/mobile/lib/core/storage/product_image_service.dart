@@ -67,7 +67,8 @@ class ProductImageService {
   static String _getBaseNameWithoutExtension(String fileName) {
     final normalized = fileName.replaceAll(r'\', '/');
     final lastSlash = normalized.lastIndexOf('/');
-    final name = lastSlash == -1 ? normalized : normalized.substring(lastSlash + 1);
+    final name =
+        lastSlash == -1 ? normalized : normalized.substring(lastSlash + 1);
     final dotIndex = name.lastIndexOf('.');
     if (dotIndex == -1) return name;
     return name.substring(0, dotIndex);

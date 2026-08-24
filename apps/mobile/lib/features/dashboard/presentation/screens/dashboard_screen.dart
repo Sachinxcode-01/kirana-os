@@ -20,7 +20,8 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final metricsAsync = ref.watch(dashboardMetricsStreamProvider);
     final authState = ref.watch(authNotifierProvider);
-    final pendingSyncCount = ref.watch(pendingSyncCountProvider).valueOrNull ?? 0;
+    final pendingSyncCount =
+        ref.watch(pendingSyncCountProvider).valueOrNull ?? 0;
     final connectivity =
         ref.watch(connectivityStatusStreamProvider).valueOrNull ??
             ConnectivityStatus.online;
@@ -33,14 +34,17 @@ class DashboardScreen extends ConsumerWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(storeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(storeName,
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             Row(
               children: [
                 Container(
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: isOffline ? KiranaColors.error : KiranaColors.success,
+                    color:
+                        isOffline ? KiranaColors.error : KiranaColors.success,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -51,7 +55,8 @@ class DashboardScreen extends ConsumerWidget {
                       : (pendingSyncCount > 0
                           ? '$pendingSyncCount sync pending'
                           : 'Cloud Synced'),
-                  style: const TextStyle(fontSize: 11, color: KiranaColors.neutral600),
+                  style: const TextStyle(
+                      fontSize: 11, color: KiranaColors.neutral600),
                 ),
               ],
             ),
@@ -75,9 +80,11 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: KiranaColors.error),
+              const Icon(Icons.error_outline,
+                  size: 48, color: KiranaColors.error),
               const SizedBox(height: KiranaSpacing.md),
-              const Text('Failed to load dashboard metrics', style: KiranaTypography.titleMedium),
+              const Text('Failed to load dashboard metrics',
+                  style: KiranaTypography.titleMedium),
               const SizedBox(height: KiranaSpacing.lg),
               ElevatedButton(
                 onPressed: () => ref.refresh(dashboardMetricsStreamProvider),
@@ -131,11 +138,13 @@ class DashboardScreen extends ConsumerWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: KiranaColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                     ),
                     onPressed: () => context.push('/billing'),
                     icon: const Icon(Icons.point_of_sale),
-                    label: const Text('OPEN POS', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text('OPEN POS',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -154,7 +163,8 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               _KpiCard(
                 title: "Today's Sales",
-                value: CurrencyFormatter.formatPaise(metrics.todaySalesPaise.toInt()),
+                value: CurrencyFormatter.formatPaise(
+                    metrics.todaySalesPaise.toInt()),
                 icon: Icons.currency_rupee,
                 color: KiranaColors.primary,
               ),
@@ -166,7 +176,8 @@ class DashboardScreen extends ConsumerWidget {
               ),
               _KpiCard(
                 title: "Udhaar Outstanding",
-                value: CurrencyFormatter.formatPaise(metrics.totalUdhaarOutstandingPaise.toInt()),
+                value: CurrencyFormatter.formatPaise(
+                    metrics.totalUdhaarOutstandingPaise.toInt()),
                 icon: Icons.account_balance_wallet,
                 color: KiranaColors.secondary,
                 onTap: () => context.push('/credit'),
@@ -175,7 +186,9 @@ class DashboardScreen extends ConsumerWidget {
                 title: "Low Stock Items",
                 value: '${metrics.lowStockItemsCount} Items',
                 icon: Icons.warning_amber,
-                color: metrics.lowStockItemsCount > 0 ? KiranaColors.error : KiranaColors.neutral500,
+                color: metrics.lowStockItemsCount > 0
+                    ? KiranaColors.error
+                    : KiranaColors.neutral500,
                 onTap: () => context.push('/inventory'),
               ),
             ],
@@ -185,7 +198,8 @@ class DashboardScreen extends ConsumerWidget {
           // Quick Action Buttons
           Text(
             'Quick Operations',
-            style: KiranaTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+            style: KiranaTypography.titleMedium
+                .copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: KiranaSpacing.md),
           Row(
@@ -223,7 +237,8 @@ class DashboardScreen extends ConsumerWidget {
             children: [
               Text(
                 'Recent Invoices',
-                style: KiranaTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+                style: KiranaTypography.titleMedium
+                    .copyWith(fontWeight: FontWeight.bold),
               ),
               if (metrics.recentBills.isNotEmpty)
                 TextButton(
@@ -244,16 +259,19 @@ class DashboardScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.receipt_long_outlined, size: 40, color: KiranaColors.neutral400),
+                  const Icon(Icons.receipt_long_outlined,
+                      size: 40, color: KiranaColors.neutral400),
                   const SizedBox(height: KiranaSpacing.sm),
                   Text(
                     'No bills created yet today',
-                    style: KiranaTypography.bodyMedium.copyWith(color: KiranaColors.neutral600),
+                    style: KiranaTypography.bodyMedium
+                        .copyWith(color: KiranaColors.neutral600),
                   ),
                   const SizedBox(height: KiranaSpacing.xs),
                   const Text(
                     'Start your first sale with Quick Barcode POS above.',
-                    style: TextStyle(fontSize: 12, color: KiranaColors.neutral500),
+                    style:
+                        TextStyle(fontSize: 12, color: KiranaColors.neutral500),
                   ),
                 ],
               ),
@@ -263,14 +281,16 @@ class DashboardScreen extends ConsumerWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: metrics.recentBills.length,
-              separatorBuilder: (context, index) => const SizedBox(height: KiranaSpacing.xs),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: KiranaSpacing.xs),
               itemBuilder: (context, index) {
                 final bill = metrics.recentBills[index];
                 return Card(
                   child: ListTile(
                     leading: const CircleAvatar(
                       backgroundColor: KiranaColors.primaryContainer,
-                      child: Icon(Icons.receipt, color: KiranaColors.primary, size: 20),
+                      child: Icon(Icons.receipt,
+                          color: KiranaColors.primary, size: 20),
                     ),
                     title: Text(
                       bill.billNumber,
@@ -281,7 +301,8 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     trailing: Text(
                       CurrencyFormatter.formatPaise(bill.totalPaise.toInt()),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ),
                 );
@@ -369,14 +390,16 @@ class _QuickActionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: KiranaRadius.borderMd,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: KiranaSpacing.md, horizontal: KiranaSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+              vertical: KiranaSpacing.md, horizontal: KiranaSpacing.sm),
           child: Column(
             children: [
               Icon(icon, color: KiranaColors.primary, size: 24),
               const SizedBox(height: KiranaSpacing.xs),
               Text(
                 title,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 textAlign: TextAlign.center,
               ),
             ],

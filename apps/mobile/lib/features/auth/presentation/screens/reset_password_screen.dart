@@ -49,9 +49,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       _error = null;
     });
 
-    final success = await ref
-        .read(authNotifierProvider.notifier)
-        .updatePassword(password);
+    final success =
+        await ref.read(authNotifierProvider.notifier).updatePassword(password);
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -64,7 +63,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         );
         context.go('/login');
       } else {
-        setState(() => _error = 'Failed to update password. Link may have expired.');
+        setState(
+            () => _error = 'Failed to update password. Link may have expired.');
       }
     }
   }
@@ -83,7 +83,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               children: [
                 Text(
                   'Create New Password',
-                  style: KiranaTypography.headlineMedium.copyWith(fontWeight: FontWeight.bold),
+                  style: KiranaTypography.headlineMedium
+                      .copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: KiranaSpacing.xs),
                 const Text(
@@ -91,7 +92,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   style: KiranaTypography.bodyMedium,
                 ),
                 const SizedBox(height: KiranaSpacing.xl),
-
                 if (_error != null) ...[
                   Container(
                     padding: const EdgeInsets.all(KiranaSpacing.md),
@@ -100,11 +100,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                       borderRadius: KiranaRadius.borderMd,
                       border: Border.all(color: KiranaColors.error),
                     ),
-                    child: Text(_error!, style: const TextStyle(fontSize: 13, color: KiranaColors.error)),
+                    child: Text(_error!,
+                        style: const TextStyle(
+                            fontSize: 13, color: KiranaColors.error)),
                   ),
                   const SizedBox(height: KiranaSpacing.lg),
                 ],
-
                 AppTextField(
                   label: 'New Password *',
                   hint: 'Enter minimum 6 characters',
@@ -112,12 +113,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   obscureText: _obscurePassword,
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(_obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 const SizedBox(height: KiranaSpacing.lg),
-
                 AppTextField(
                   label: 'Confirm New Password *',
                   hint: 'Re-enter new password',
@@ -126,7 +129,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                 ),
                 const SizedBox(height: KiranaSpacing.xxl),
-
                 AppButton(
                   label: 'Update Password & Continue',
                   isLoading: _isLoading,

@@ -105,7 +105,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: KiranaSpacing.xl),
-
                 if (errorMessage != null) ...[
                   Container(
                     padding: const EdgeInsets.all(KiranaSpacing.md),
@@ -116,12 +115,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, size: 20, color: KiranaColors.error),
+                        const Icon(Icons.error_outline,
+                            size: 20, color: KiranaColors.error),
                         const SizedBox(width: KiranaSpacing.sm),
                         Expanded(
                           child: Text(
                             errorMessage,
-                            style: const TextStyle(fontSize: 13, color: KiranaColors.error),
+                            style: const TextStyle(
+                                fontSize: 13, color: KiranaColors.error),
                           ),
                         ),
                       ],
@@ -129,7 +130,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: KiranaSpacing.lg),
                 ],
-
                 AppTextField(
                   label: 'Full Name *',
                   hint: 'e.g. Ramesh Gupta',
@@ -137,7 +137,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   prefixIcon: const Icon(Icons.person_outline),
                 ),
                 const SizedBox(height: KiranaSpacing.lg),
-
                 AppTextField(
                   label: 'Email Address *',
                   hint: 'owner@store.com',
@@ -146,7 +145,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   prefixIcon: const Icon(Icons.email_outlined),
                 ),
                 const SizedBox(height: KiranaSpacing.lg),
-
                 AppTextField(
                   label: 'Phone Number (Optional)',
                   hint: '10-digit mobile number',
@@ -155,7 +153,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   prefixIcon: const Icon(Icons.phone_outlined),
                 ),
                 const SizedBox(height: KiranaSpacing.lg),
-
                 AppTextField(
                   label: 'Password (min 6 characters) *',
                   hint: 'Enter strong password',
@@ -174,7 +171,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: KiranaSpacing.lg),
-
                 AppTextField(
                   label: 'Confirm Password *',
                   hint: 'Re-enter password',
@@ -183,21 +179,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                 ),
                 const SizedBox(height: KiranaSpacing.xxl),
-
                 AppButton(
                   label: 'Create Account & Continue',
                   isLoading: authState.isAuthenticating,
-                  onPressed: authState.isAuthenticating ? null : _handleRegister,
+                  onPressed:
+                      authState.isAuthenticating ? null : _handleRegister,
                 ),
                 const SizedBox(height: KiranaSpacing.lg),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Already have an account? ', style: TextStyle(color: KiranaColors.neutral600)),
+                    const Text('Already have an account? ',
+                        style: TextStyle(color: KiranaColors.neutral600)),
                     TextButton(
                       onPressed: () => context.go('/login'),
-                      child: const Text('Sign In', style: TextStyle(fontWeight: FontWeight.bold, color: KiranaColors.primary)),
+                      child: const Text('Sign In',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: KiranaColors.primary)),
                     ),
                   ],
                 ),

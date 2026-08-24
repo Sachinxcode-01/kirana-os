@@ -5,7 +5,8 @@ import '../../domain/repositories/dashboard_repository.dart';
 import '../../data/datasources/dashboard_local_data_source.dart';
 import '../../data/repositories/dashboard_repository_impl.dart';
 
-final dashboardLocalDataSourceProvider = Provider<DashboardLocalDataSource>((ref) {
+final dashboardLocalDataSourceProvider =
+    Provider<DashboardLocalDataSource>((ref) {
   final db = ref.watch(databaseProvider);
   return DashboardLocalDataSource(db);
 });
