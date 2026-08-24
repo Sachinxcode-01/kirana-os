@@ -64,9 +64,11 @@ final activeShopIdProvider = StateProvider<String>((ref) => 'shop_demo_1');
 final productRepositoryProvider = Provider<ProductRepository>((ref) {
   final db = ref.watch(databaseProvider);
   final shopId = ref.watch(activeShopIdProvider);
+  final connectivity = ref.watch(connectivityServiceProvider);
   return ProductRepositoryImpl(
     localDataSource: ProductLocalDataSource(db),
     remoteDataSource: ProductRemoteDataSource(),
+    connectivityService: connectivity,
     shopId: shopId,
   );
 });

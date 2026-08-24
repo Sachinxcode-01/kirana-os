@@ -11,6 +11,8 @@ class ProductsTable extends Table {
   TextColumn get name => text().withLength(min: 1, max: 255)();
   TextColumn get regionalName => text().nullable()();
   TextColumn get description => text().nullable()();
+  TextColumn get brand => text().nullable()();
+  TextColumn get unit => text().withDefault(const Constant('PCS'))();
   TextColumn get hsnCode => text().nullable()();
   Int64Column get mrpPaise => int64()();
   Int64Column get sellingPricePaise => int64()();

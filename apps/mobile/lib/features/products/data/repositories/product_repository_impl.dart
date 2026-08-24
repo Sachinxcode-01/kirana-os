@@ -4,7 +4,10 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
+import '../../../../core/network/connectivity_service.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../database/drift/database.dart';
+import '../../domain/models/product_model.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../datasources/product_local_data_source.dart';
 import '../datasources/product_remote_data_source.dart';
@@ -12,14 +15,18 @@ import '../datasources/product_remote_data_source.dart';
 class ProductRepositoryImpl implements ProductRepository {
   final ProductLocalDataSource _localDataSource;
   final ProductRemoteDataSource _remoteDataSource;
+  final ConnectivityService? _connectivityService;
   final String _shopId;
+  final Uuid _uuid = const Uuid();
 
   ProductRepositoryImpl({
     required ProductLocalDataSource localDataSource,
     required ProductRemoteDataSource remoteDataSource,
+    ConnectivityService? connectivityService,
     required String shopId,
   })  : _localDataSource = localDataSource,
         _remoteDataSource = remoteDataSource,
+        _connectivityService = connectivityService,
         _shopId = shopId;
 
   @override
@@ -35,80 +42,364 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
-  Stream<List<ProductData>> watchProducts() {
-    return _localDataSource.watchProducts(_shopId);
+  Future<Result<ProductModel?, Failure>> getProductById(String id) async {
+    try {
+      final product = await _localDataSource.getProductById(id);
+      return Success(product);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
   }
 
   @override
-  Future<Result<void, Failure>> createProduct({
-    required String name,
-    required int mrpPaise,
-    required int sellingPricePaise,
-    required String barcode,
+  Stream<List<ProductModel>> watchProducts({
     String? categoryId,
-    String? unitId,
-    double initialStock = 0.0,
-    double taxRate = 0.0,
+    String? searchQuery,
+  }) {
+    return _localDataSource.watchProducts(
+      _shopId,
+      categoryId: categoryId,
+      searchQuery: searchQuery,
+    );
+  }
+
+  @override
+  Future<Result<List<ProductModel>, Failure>> getProducts({
+    String? categoryId,
+    String? searchQuery,
+    bool refreshFromRemote = true,
   }) async {
     try {
-      final productId = const Uuid().v4();
-      final now = DateTime.now();
+      final local = await _localDataSource.getProducts(
+        _shopId,
+        categoryId: categoryId,
+        searchQuery: searchQuery,
+      );
 
-      // 1. Insert local product record
+      if (refreshFromRemote && _connectivityService != null) {
+        final isOnline = await _connectivityService.isOnline();
+        if (isOnline) {
+          try {
+            await syncRemoteProducts();
+            final refreshed = await _localDataSource.getProducts(
+              _shopId,
+              categoryId: categoryId,
+              searchQuery: searchQuery,
+            );
+            return Success(refreshed);
+          } catch (cloudErr) {
+            AppLogger.w('Background cloud fetch deferred: $cloudErr',
+                tag: 'ProductRepository');
+          }
+        }
+      }
+
+      return Success(local);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<ProductModel, Failure>> createProduct({
+    required String name,
+    required String categoryId,
+    String? brand,
+    String unit = 'PCS',
+    required int sellingPricePaise,
+    int purchasePricePaise = 0,
+    int? mrpPaise,
+    double minStockAlert = 5.0,
+    double initialStock = 0.0,
+    String? description,
+    String? barcode,
+    double taxRate = 0.0,
+  }) async {
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) {
+      return const ErrorResult(ValidationFailure('Product name is required'));
+    }
+
+    final cleanCategory = categoryId.trim();
+    if (cleanCategory.isEmpty) {
+      return const ErrorResult(ValidationFailure('Category is required'));
+    }
+
+    if (sellingPricePaise <= 0) {
+      return const ErrorResult(
+          ValidationFailure('Selling price must be greater than zero'));
+    }
+
+    if (purchasePricePaise < 0) {
+      return const ErrorResult(
+          ValidationFailure('Purchase price cannot be negative'));
+    }
+
+    if (minStockAlert < 0) {
+      return const ErrorResult(
+          ValidationFailure('Minimum stock alert cannot be negative'));
+    }
+
+    try {
+      // 1. Check duplicate name in same shop
+      final existing =
+          await _localDataSource.getProductByName(_shopId, cleanName);
+      if (existing != null && existing.isActive) {
+        return ErrorResult(ValidationFailure(
+            'A product with the name "$cleanName" already exists.'));
+      }
+
+      final productId = _uuid.v4();
+      final now = DateTime.now();
+      final actualMrp = mrpPaise ?? sellingPricePaise;
+
+      final product = ProductModel(
+        id: productId,
+        shopId: _shopId,
+        name: cleanName,
+        categoryId: cleanCategory,
+        brand: brand?.trim().isEmpty == true ? null : brand?.trim(),
+        unit: unit.trim().isEmpty ? 'PCS' : unit.trim(),
+        sellingPricePaise: sellingPricePaise,
+        purchasePricePaise: purchasePricePaise,
+        mrpPaise: actualMrp,
+        currentStock: initialStock,
+        minStockAlert: minStockAlert,
+        description:
+            description?.trim().isEmpty == true ? null : description?.trim(),
+        taxRatePercentage: taxRate,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      // 2. Persist to local Drift SQLite (Offline First)
       await _localDataSource.upsertProduct(
         ProductsTableCompanion(
-          id: Value(productId),
+          id: Value(product.id),
           shopId: Value(_shopId),
-          name: Value(name),
-          mrpPaise: Value(BigInt.from(mrpPaise)),
-          sellingPricePaise: Value(BigInt.from(sellingPricePaise)),
-          purchasePricePaise: Value(BigInt.zero),
-          categoryId: Value(categoryId),
-          currentStock: Value(initialStock),
-          taxRatePercentage: Value(taxRate),
+          categoryId: Value(product.categoryId),
+          name: Value(product.name),
+          brand: Value(product.brand),
+          unit: Value(product.unit),
+          mrpPaise: Value(BigInt.from(product.mrpPaise)),
+          sellingPricePaise: Value(BigInt.from(product.sellingPricePaise)),
+          purchasePricePaise: Value(BigInt.from(product.purchasePricePaise)),
+          currentStock: Value(product.currentStock),
+          minStockAlert: Value(product.minStockAlert),
+          description: Value(product.description),
+          taxRatePercentage: Value(product.taxRatePercentage),
           isActive: const Value(true),
           createdAt: Value(now),
           updatedAt: Value(now),
         ),
       );
 
-      // 2. Link barcode
-      await _localDataSource.linkBarcode(
-        ProductBarcodesTableCompanion(
-          id: Value(const Uuid().v4()),
-          shopId: Value(_shopId),
-          productId: Value(productId),
-          barcode: Value(barcode),
-          isPrimary: const Value(true),
-          createdAt: Value(now),
-        ),
-      );
+      // 3. Link barcode if provided
+      if (barcode != null && barcode.trim().isNotEmpty) {
+        await _localDataSource.linkBarcode(
+          ProductBarcodesTableCompanion(
+            id: Value(_uuid.v4()),
+            shopId: Value(_shopId),
+            productId: Value(product.id),
+            barcode: Value(barcode.trim()),
+            isPrimary: const Value(true),
+            createdAt: Value(now),
+          ),
+        );
+      }
 
-      // 3. Enlist in local sync queue
-      final opId = const Uuid().v4();
-      final payload = {
-        'id': productId,
-        'shop_id': _shopId,
-        'name': name,
-        'mrp_paise': mrpPaise,
-        'selling_price_paise': sellingPricePaise,
-        'barcode': barcode,
-        'current_stock': initialStock,
-        'tax_rate_percentage': taxRate,
-      };
-
+      // 4. Enlist in local sync queue
+      final opId = _uuid.v4();
       await _localDataSource.enqueueSyncOperation(
         SyncQueueTableCompanion(
           operationId: Value(opId),
           shopId: Value(_shopId),
           entityType: const Value('product'),
-          entityId: Value(productId),
+          entityId: Value(product.id),
           operationType: const Value('CREATE'),
-          payload: Value(jsonEncode(payload)),
+          payload: Value(jsonEncode(product.toJson())),
           createdAt: Value(now),
           status: const Value('PENDING'),
         ),
       );
+
+      // 5. Opportunistically sync with cloud if online
+      if (_connectivityService != null) {
+        final isOnline = await _connectivityService.isOnline();
+        if (isOnline) {
+          try {
+            await _remoteDataSource.createProduct(product);
+          } catch (cloudErr) {
+            AppLogger.w('Background cloud product creation deferred: $cloudErr',
+                tag: 'ProductRepository');
+          }
+        }
+      }
+
+      return Success(product);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<ProductModel, Failure>> updateProduct({
+    required String id,
+    required String name,
+    required String categoryId,
+    String? brand,
+    String unit = 'PCS',
+    required int sellingPricePaise,
+    int purchasePricePaise = 0,
+    int? mrpPaise,
+    double minStockAlert = 5.0,
+    String? description,
+  }) async {
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) {
+      return const ErrorResult(ValidationFailure('Product name is required'));
+    }
+
+    final cleanCategory = categoryId.trim();
+    if (cleanCategory.isEmpty) {
+      return const ErrorResult(ValidationFailure('Category is required'));
+    }
+
+    if (sellingPricePaise <= 0) {
+      return const ErrorResult(
+          ValidationFailure('Selling price must be greater than zero'));
+    }
+
+    if (purchasePricePaise < 0) {
+      return const ErrorResult(
+          ValidationFailure('Purchase price cannot be negative'));
+    }
+
+    if (minStockAlert < 0) {
+      return const ErrorResult(
+          ValidationFailure('Minimum stock alert cannot be negative'));
+    }
+
+    try {
+      final current = await _localDataSource.getProductById(id);
+      if (current == null) {
+        return const ErrorResult(ValidationFailure('Product not found'));
+      }
+
+      // Duplicate name check if name changed
+      if (current.name.toLowerCase() != cleanName.toLowerCase()) {
+        final existing =
+            await _localDataSource.getProductByName(_shopId, cleanName);
+        if (existing != null && existing.id != id && existing.isActive) {
+          return ErrorResult(ValidationFailure(
+              'Another product with the name "$cleanName" already exists.'));
+        }
+      }
+
+      final now = DateTime.now();
+      final updated = current.copyWith(
+        name: cleanName,
+        categoryId: cleanCategory,
+        brand: brand?.trim().isEmpty == true ? null : brand?.trim(),
+        unit: unit.trim().isEmpty ? 'PCS' : unit.trim(),
+        sellingPricePaise: sellingPricePaise,
+        purchasePricePaise: purchasePricePaise,
+        mrpPaise: mrpPaise ?? current.mrpPaise,
+        minStockAlert: minStockAlert,
+        description:
+            description?.trim().isEmpty == true ? null : description?.trim(),
+        updatedAt: now,
+      );
+
+      // 1. Update Drift SQLite
+      await _localDataSource.upsertProduct(
+        ProductsTableCompanion(
+          id: Value(updated.id),
+          shopId: Value(_shopId),
+          categoryId: Value(updated.categoryId),
+          name: Value(updated.name),
+          brand: Value(updated.brand),
+          unit: Value(updated.unit),
+          mrpPaise: Value(BigInt.from(updated.mrpPaise)),
+          sellingPricePaise: Value(BigInt.from(updated.sellingPricePaise)),
+          purchasePricePaise: Value(BigInt.from(updated.purchasePricePaise)),
+          currentStock: Value(updated.currentStock),
+          minStockAlert: Value(updated.minStockAlert),
+          description: Value(updated.description),
+          taxRatePercentage: Value(updated.taxRatePercentage),
+          isActive: const Value(true),
+          createdAt: Value(updated.createdAt),
+          updatedAt: Value(now),
+        ),
+      );
+
+      // 2. Enqueue sync UPDATE
+      final opId = _uuid.v4();
+      await _localDataSource.enqueueSyncOperation(
+        SyncQueueTableCompanion(
+          operationId: Value(opId),
+          shopId: Value(_shopId),
+          entityType: const Value('product'),
+          entityId: Value(updated.id),
+          operationType: const Value('UPDATE'),
+          payload: Value(jsonEncode(updated.toJson())),
+          createdAt: Value(now),
+          status: const Value('PENDING'),
+        ),
+      );
+
+      // 3. Cloud sync if online
+      if (_connectivityService != null) {
+        final isOnline = await _connectivityService.isOnline();
+        if (isOnline) {
+          try {
+            await _remoteDataSource.updateProduct(updated);
+          } catch (cloudErr) {
+            AppLogger.w('Background cloud product update deferred: $cloudErr',
+                tag: 'ProductRepository');
+          }
+        }
+      }
+
+      return Success(updated);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> archiveProduct(String id) async {
+    try {
+      await _localDataSource.softDeleteProduct(id);
+
+      final now = DateTime.now();
+      final opId = _uuid.v4();
+      await _localDataSource.enqueueSyncOperation(
+        SyncQueueTableCompanion(
+          operationId: Value(opId),
+          shopId: Value(_shopId),
+          entityType: const Value('product'),
+          entityId: Value(id),
+          operationType: const Value('DELETE'),
+          payload: Value(
+              jsonEncode({'id': id, 'shop_id': _shopId, 'is_active': false})),
+          createdAt: Value(now),
+          status: const Value('PENDING'),
+        ),
+      );
+
+      if (_connectivityService != null) {
+        final isOnline = await _connectivityService.isOnline();
+        if (isOnline) {
+          try {
+            await _remoteDataSource.archiveProduct(id, _shopId);
+          } catch (cloudErr) {
+            AppLogger.w('Background cloud archive deferred: $cloudErr',
+                tag: 'ProductRepository');
+          }
+        }
+      }
 
       return const Success(null);
     } catch (e) {
@@ -128,7 +419,10 @@ class ProductRepositoryImpl implements ProductRepository {
           ProductsTableCompanion(
             id: Value(productId),
             shopId: Value(_shopId),
+            categoryId: Value(raw['category_id'] as String?),
             name: Value(raw['name'] as String),
+            brand: Value(raw['brand'] as String?),
+            unit: Value(raw['unit'] as String? ?? 'PCS'),
             mrpPaise: Value(BigInt.from((raw['mrp_paise'] as num).toInt())),
             sellingPricePaise:
                 Value(BigInt.from((raw['selling_price_paise'] as num).toInt())),
@@ -136,6 +430,9 @@ class ProductRepositoryImpl implements ProductRepository {
                 ((raw['purchase_price_paise'] ?? 0) as num).toInt())),
             currentStock:
                 Value((raw['current_stock'] as num?)?.toDouble() ?? 0.0),
+            minStockAlert:
+                Value((raw['min_stock_alert'] as num?)?.toDouble() ?? 5.0),
+            description: Value(raw['description'] as String?),
             taxRatePercentage:
                 Value((raw['tax_rate_percentage'] as num?)?.toDouble() ?? 0.0),
             isActive: Value(raw['is_active'] as bool? ?? true),
