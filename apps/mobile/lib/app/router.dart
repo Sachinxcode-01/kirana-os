@@ -23,6 +23,7 @@ import '../features/purchases/presentation/screens/purchases_screen.dart';
 import '../features/reports/presentation/screens/reports_screen.dart';
 import '../features/returns/presentation/screens/returns_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
+import '../features/suppliers/presentation/screens/suppliers_screen.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
