@@ -119,6 +119,8 @@ class SyncEngine {
     }
   }
 
+  Future<void> syncNow() => processPendingQueue();
+
   void dispose() {
     _connSubscription?.cancel();
   }

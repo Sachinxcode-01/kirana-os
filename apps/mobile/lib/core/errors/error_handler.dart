@@ -3,6 +3,9 @@ import 'failure.dart';
 
 /// Maps raw exceptions and database/network errors to domain [Failure] instances.
 abstract final class ErrorHandler {
+  static Failure handle(dynamic exception, [StackTrace? stackTrace]) =>
+      handleException(exception, stackTrace);
+
   static Failure handleException(dynamic exception, [StackTrace? stackTrace]) {
     if (exception is Failure) return exception;
 

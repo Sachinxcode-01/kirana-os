@@ -11,8 +11,16 @@ abstract interface class AuthRepository {
   Future<Result<UserModel, Failure>> registerWithEmail({
     required String email,
     required String password,
-    required String shopName,
-    required String phone,
+    required String fullName,
+    String? phone,
+  });
+
+  Future<Result<void, Failure>> sendPasswordResetEmail({
+    required String email,
+  });
+
+  Future<Result<void, Failure>> updatePassword({
+    required String newPassword,
   });
 
   Future<Result<void, Failure>> logout();

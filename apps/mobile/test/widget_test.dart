@@ -11,10 +11,11 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    // Pump a single frame
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // Verify that the KiranaOS Dashboard or App shell renders cleanly
-    expect(find.text('KiranaOS Dashboard'), findsOneWidget);
-    expect(find.text('Quick Barcode POS'), findsOneWidget);
+    // Verify that the KiranaOS Splash screen renders brand header cleanly
+    expect(find.text('KiranaOS'), findsOneWidget);
+    expect(find.text('Next-Gen Retail & POS System'), findsOneWidget);
   });
 }

@@ -6,6 +6,7 @@ sealed class Result<S, F extends Failure> {
 
   bool get isSuccess => this is Success<S, F>;
   bool get isFailure => this is ErrorResult<S, F>;
+  bool get isError => isFailure;
 
   S? get dataOrNull => switch (this) {
         Success(data: final d) => d,
