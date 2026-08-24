@@ -1,0 +1,53 @@
+name: kirana_mobile
+description: "KiranaOS — Production-grade Offline-First Kirana POS & Retail Management System."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management & DI
+  flutter_riverpod: ^2.6.1
+
+  # Declarative Routing & Auth Guards
+  go_router: ^14.8.1
+
+  # Offline-First Persistence (SQLite ORM)
+  drift: ^2.24.2
+  drift_flutter: ^0.2.4
+  sqlite3_flutter_libs: ^0.5.28
+
+  # Cloud Integration (PostgreSQL, Auth, Storage, Realtime)
+  supabase_flutter: ^2.8.4
+
+  # Device & Hardware Integrations
+  flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.3.5
+  connectivity_plus: ^6.1.3
+
+  # Formatting, ID Generation & Utilities
+  uuid: ^4.5.1
+  intl: ^0.20.2
+
+  # Purposeful Animation & Visual Loading Subsystem
+  flutter_animate: ^4.5.2
+  shimmer: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  drift_dev: ^2.24.2
+  build_runner: ^2.4.15
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icons/
+    - assets/images/

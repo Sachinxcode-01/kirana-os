@@ -1,0 +1,13 @@
+name: core_contracts
+description: "KiranaOS Shared Core Contracts, Currency Arithmetic & Invariant Engine."
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  intl: ^0.20.2
+
+dev_dependencies:
+  test: ^1.25.0
