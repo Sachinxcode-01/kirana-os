@@ -21,7 +21,7 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
       ),
     ])
       ..where(productBarcodesTable.shopId.equals(shopId) &
-          productBarcodesTable.barcode.equals(barcode) &
+          productBarcodesTable.barcode.equals(barcode.trim()) &
           productsTable.isActive.equals(true));
 
     final row = await query.getSingleOrNull();
@@ -111,8 +111,55 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  /// Map barcode to product
+  // ===========================================================================
+  // BARCODE METHODS
+  // ===========================================================================
+
+  /// Get all barcodes for a specific product
+  Future<List<ProductBarcodeData>> getBarcodesForProduct(String productId) {
+    return (select(productBarcodesTable)
+          ..where((t) => t.productId.equals(productId))
+          ..orderBy([(t) => OrderingTerm.desc(t.isPrimary)]))
+        .get();
+  }
+
+  /// Watch barcodes for a specific product
+  Stream<List<ProductBarcodeData>> watchBarcodesForProduct(String productId) {
+    return (select(productBarcodesTable)
+          ..where((t) => t.productId.equals(productId))
+          ..orderBy([(t) => OrderingTerm.desc(t.isPrimary)]))
+        .watch();
+  }
+
+  /// Get barcode by shop & exact barcode string
+  Future<ProductBarcodeData?> getBarcodeByValue(String shopId, String barcode) {
+    return (select(productBarcodesTable)
+          ..where((t) =>
+              t.shopId.equals(shopId) &
+              t.barcode.equals(barcode.trim().toUpperCase())))
+        .getSingleOrNull();
+  }
+
+  /// Get barcode by ID
+  Future<ProductBarcodeData?> getBarcodeById(String id) {
+    return (select(productBarcodesTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// Upsert barcode entry
   Future<void> linkBarcode(ProductBarcodesTableCompanion barcode) async {
     await into(productBarcodesTable).insertOnConflictUpdate(barcode);
+  }
+
+  /// Delete single barcode by ID
+  Future<void> deleteBarcode(String id) async {
+    await (delete(productBarcodesTable)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Delete all barcodes for a product
+  Future<void> deleteBarcodesForProduct(String productId) async {
+    await (delete(productBarcodesTable)
+          ..where((t) => t.productId.equals(productId)))
+        .go();
   }
 }

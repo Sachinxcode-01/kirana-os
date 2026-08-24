@@ -9,6 +9,7 @@ import 'package:kirana_mobile/core/theme/typography.dart';
 import 'package:kirana_mobile/core/widgets/app_button.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
 import 'package:kirana_mobile/features/categories/presentation/providers/category_provider.dart';
+import 'package:kirana_mobile/features/barcodes/presentation/widgets/product_barcode_section.dart';
 import '../../domain/models/product_model.dart';
 import '../providers/product_provider.dart';
 
@@ -900,7 +901,12 @@ class _ProductFormSheetState extends ConsumerState<_ProductFormSheet> {
                 controller: _descriptionController,
                 prefixIcon: const Icon(Icons.description_outlined),
               ),
-              const SizedBox(height: KiranaSpacing.xl),
+              const SizedBox(height: KiranaSpacing.lg),
+
+              if (isEditing) ...[
+                ProductBarcodeSection(productId: widget.product!.id),
+                const SizedBox(height: KiranaSpacing.lg),
+              ],
 
               // Submit Button
               AppButton(
