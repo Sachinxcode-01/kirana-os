@@ -95,20 +95,24 @@ class CustomersScreen extends ConsumerWidget {
                       ),
                     ),
                     title: Text(c.name, style: KiranaTypography.titleMedium),
-                    subtitle: Text('Phone: ${c.phone}', style: KiranaTypography.bodySmall),
+                    subtitle: Text('Phone: ${c.phone}',
+                        style: KiranaTypography.bodySmall),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          c.debtPaise > 0 ? c.debtPaise.toRupeesString() : 'No Due',
+                          c.debtPaise > 0
+                              ? c.debtPaise.toRupeesString()
+                              : 'No Due',
                           style: KiranaTypography.priceTabular.copyWith(
                             color: c.debtPaise > 0
                                 ? KiranaColors.secondary
                                 : KiranaColors.success,
                           ),
                         ),
-                        Text('Limit ${c.limitPaise.toRupeesString()}', style: KiranaTypography.labelSmall),
+                        Text('Limit ${c.limitPaise.toRupeesString()}',
+                            style: KiranaTypography.labelSmall),
                       ],
                     ),
                   ),

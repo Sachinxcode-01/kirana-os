@@ -38,7 +38,9 @@ class EmptyState extends StatelessWidget {
               child: Icon(icon, size: 48, color: KiranaColors.textMuted),
             ),
             const SizedBox(height: KiranaSpacing.lg),
-            Text(title, style: KiranaTypography.titleLarge, textAlign: TextAlign.center),
+            Text(title,
+                style: KiranaTypography.titleLarge,
+                textAlign: TextAlign.center),
             const SizedBox(height: KiranaSpacing.xs),
             Text(
               description,

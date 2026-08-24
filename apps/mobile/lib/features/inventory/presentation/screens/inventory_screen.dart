@@ -42,7 +42,8 @@ class InventoryScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: KiranaSpacing.lg),
-          const Text('Critical Stock Items', style: KiranaTypography.titleLarge),
+          const Text('Critical Stock Items',
+              style: KiranaTypography.titleLarge),
           const SizedBox(height: KiranaSpacing.sm),
           ...lowStockItems.map((item) {
             final (name, current, min) = item;

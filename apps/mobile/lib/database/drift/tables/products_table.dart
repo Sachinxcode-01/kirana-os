@@ -17,7 +17,8 @@ class ProductsTable extends Table {
   Int64Column get purchasePricePaise =>
       int64().clientDefault(() => BigInt.zero)();
   RealColumn get taxRatePercentage => real().withDefault(const Constant(0.0))();
-  BoolColumn get isTaxInclusive => boolean().withDefault(const Constant(true))();
+  BoolColumn get isTaxInclusive =>
+      boolean().withDefault(const Constant(true))();
   RealColumn get currentStock => real().withDefault(const Constant(0.0))();
   RealColumn get minStockAlert => real().withDefault(const Constant(5.0))();
   BoolColumn get isLoose => boolean().withDefault(const Constant(false))();

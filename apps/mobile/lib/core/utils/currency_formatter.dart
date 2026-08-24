@@ -17,7 +17,8 @@ abstract final class CurrencyFormatter {
   static String formatPaise(int paise, {bool includeSymbol = true}) {
     final rupees = paise / 100.0;
     if (!includeSymbol) {
-      return NumberFormat.decimalPatternDigits(locale: 'en_IN', decimalDigits: 2)
+      return NumberFormat.decimalPatternDigits(
+              locale: 'en_IN', decimalDigits: 2)
           .format(rupees);
     }
     return _inrFormatter.format(rupees).trim();

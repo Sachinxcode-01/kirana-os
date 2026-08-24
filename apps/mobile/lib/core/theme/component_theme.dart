@@ -37,8 +37,7 @@ abstract final class KiranaComponentThemes {
     ),
   );
 
-  static final InputDecorationTheme inputDecorationTheme =
-      InputDecorationTheme(
+  static final InputDecorationTheme inputDecorationTheme = InputDecorationTheme(
     filled: true,
     fillColor: KiranaColors.surfaceVariant,
     contentPadding: const EdgeInsets.symmetric(
@@ -61,8 +60,10 @@ abstract final class KiranaComponentThemes {
       borderRadius: KiranaRadius.borderMd,
       borderSide: BorderSide(color: KiranaColors.error),
     ),
-    hintStyle: KiranaTypography.bodyMedium.copyWith(color: KiranaColors.textMuted),
-    labelStyle: KiranaTypography.bodyMedium.copyWith(color: KiranaColors.textSecondary),
+    hintStyle:
+        KiranaTypography.bodyMedium.copyWith(color: KiranaColors.textMuted),
+    labelStyle:
+        KiranaTypography.bodyMedium.copyWith(color: KiranaColors.textSecondary),
   );
 
   static const CardThemeData cardTheme = CardThemeData(

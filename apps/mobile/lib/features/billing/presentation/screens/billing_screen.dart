@@ -171,7 +171,8 @@ class BillingScreen extends ConsumerWidget {
                               Row(
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.remove_circle_outline),
+                                    icon:
+                                        const Icon(Icons.remove_circle_outline),
                                     onPressed: () => ref
                                         .read(cartProvider.notifier)
                                         .updateQuantity(
@@ -224,7 +225,8 @@ class BillingScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('Grand Total', style: KiranaTypography.labelSmall),
+                        const Text('Grand Total',
+                            style: KiranaTypography.labelSmall),
                         Text(
                           totalPaise.toRupeesString(),
                           style: KiranaTypography.displayTotal.copyWith(
@@ -238,9 +240,8 @@ class BillingScreen extends ConsumerWidget {
                   AppButton(
                     label: 'CHECKOUT (${cart.length})',
                     icon: Icons.payments_outlined,
-                    onPressed: cart.isEmpty
-                        ? null
-                        : () => context.push('/payments'),
+                    onPressed:
+                        cart.isEmpty ? null : () => context.push('/payments'),
                   ),
                 ],
               ),

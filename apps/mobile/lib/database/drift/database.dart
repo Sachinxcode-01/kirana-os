@@ -17,6 +17,7 @@ import 'daos/products_dao.dart';
 import 'daos/billing_dao.dart';
 import 'daos/customers_dao.dart';
 import 'daos/sync_dao.dart';
+import 'daos/categories_dao.dart';
 
 part 'database.g.dart';
 
@@ -39,6 +40,7 @@ part 'database.g.dart';
     BillingDao,
     CustomersDao,
     SyncDao,
+    CategoriesDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {

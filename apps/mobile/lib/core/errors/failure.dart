@@ -30,6 +30,11 @@ final class PermissionDeniedFailure extends Failure {
   const PermissionDeniedFailure(super.message, {super.code, super.details});
 }
 
+// Storage & Media Failures
+final class StorageFailure extends Failure {
+  const StorageFailure(super.message, {super.code, super.details});
+}
+
 // Barcode Failures
 final class BarcodeFailure extends Failure {
   const BarcodeFailure(super.message, {super.code, super.details});
@@ -63,5 +68,6 @@ final class SyncFailure extends Failure {
 
 // Fallback Unknown Failure
 final class UnknownFailure extends Failure {
-  const UnknownFailure([super.message = 'An unexpected error occurred. Please try again.']);
+  const UnknownFailure(
+      [super.message = 'An unexpected error occurred. Please try again.']);
 }

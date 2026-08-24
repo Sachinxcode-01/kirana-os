@@ -11,10 +11,8 @@ class BillsTable extends Table {
   TextColumn get customerId => text().nullable()();
   TextColumn get cashierId => text()();
   Int64Column get subtotalPaise => int64()();
-  Int64Column get taxTotalPaise =>
-      int64().clientDefault(() => BigInt.zero)();
-  Int64Column get discountPaise =>
-      int64().clientDefault(() => BigInt.zero)();
+  Int64Column get taxTotalPaise => int64().clientDefault(() => BigInt.zero)();
+  Int64Column get discountPaise => int64().clientDefault(() => BigInt.zero)();
   Int64Column get totalPaise => int64()();
   TextColumn get paymentStatus => text().withDefault(const Constant('paid'))();
   BoolColumn get isCancelled => boolean().withDefault(const Constant(false))();

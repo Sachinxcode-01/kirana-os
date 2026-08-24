@@ -8,9 +8,11 @@ class InventoryMovementsTable extends Table {
   TextColumn get id => text()();
   TextColumn get shopId => text()();
   TextColumn get productId => text()();
-  RealColumn get quantityDelta => real()(); // Negative for sales, positive for inward
+  RealColumn get quantityDelta =>
+      real()(); // Negative for sales, positive for inward
   RealColumn get balanceAfter => real()();
-  TextColumn get reason => text()(); // 'sale', 'sale_return', 'purchase_inward', 'adjustment'
+  TextColumn get reason =>
+      text()(); // 'sale', 'sale_return', 'purchase_inward', 'adjustment'
   TextColumn get referenceId => text().nullable()();
   TextColumn get performedBy => text()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

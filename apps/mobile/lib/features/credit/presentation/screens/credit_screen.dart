@@ -23,7 +23,8 @@ class CreditScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Total Outstanding Udhaar', style: KiranaTypography.labelSmall),
+                  const Text('Total Outstanding Udhaar',
+                      style: KiranaTypography.labelSmall),
                   const SizedBox(height: KiranaSpacing.xs),
                   Text(
                     3850000.toRupeesString(), // ₹38,500.00
@@ -41,7 +42,8 @@ class CreditScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: KiranaSpacing.lg),
-          const Text('Recent Udhaar Accounts', style: KiranaTypography.titleLarge),
+          const Text('Recent Udhaar Accounts',
+              style: KiranaTypography.titleLarge),
           const SizedBox(height: KiranaSpacing.sm),
           Card(
             child: ListTile(

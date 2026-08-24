@@ -6,11 +6,13 @@ import '../tables/product_barcodes_table.dart';
 part 'products_dao.g.dart';
 
 @DriftAccessor(tables: [ProductsTable, ProductBarcodesTable])
-class ProductsDao extends DatabaseAccessor<AppDatabase> with _$ProductsDaoMixin {
+class ProductsDao extends DatabaseAccessor<AppDatabase>
+    with _$ProductsDaoMixin {
   ProductsDao(super.db);
 
   /// Fast indexed barcode lookup (<15ms)
-  Future<ProductData?> getProductByBarcode(String shopId, String barcode) async {
+  Future<ProductData?> getProductByBarcode(
+      String shopId, String barcode) async {
     final query = select(productsTable).join([
       innerJoin(
         productBarcodesTable,

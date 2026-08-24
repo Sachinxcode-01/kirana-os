@@ -1,7 +1,7 @@
 # Database Architecture & Entity Specification — KiranaOS
 
-**Document Version**: 1.0.0 (Phase 01 Production Architecture)  
-**Cloud Engine**: PostgreSQL 16 (Supabase)  
+**Document Version**: 2.0.0 (Phase 02 Implemented Foundation)  
+**Cloud Engine**: PostgreSQL 16 (Supabase) — Migrations located in `supabase/migrations/`  
 **Local Engine**: SQLite 3.45+ (Drift ORM in Flutter)  
 
 ---

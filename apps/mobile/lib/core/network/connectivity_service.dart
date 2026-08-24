@@ -18,6 +18,11 @@ class ConnectivityService {
   ConnectivityStatus get currentStatus => _currentStatus;
   Stream<ConnectivityStatus> get statusStream => _statusController.stream;
 
+  Future<bool> isOnline() async {
+    final status = await checkConnectivity();
+    return status == ConnectivityStatus.online;
+  }
+
   void _init() {
     _connectivity.onConnectivityChanged.listen(_handleConnectivityChange);
     checkConnectivity();

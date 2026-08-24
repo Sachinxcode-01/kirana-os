@@ -13,17 +13,19 @@ part 'customers_dao.g.dart';
     SyncQueueTable,
   ],
 )
-class CustomersDao extends DatabaseAccessor<AppDatabase> with _$CustomersDaoMixin {
+class CustomersDao extends DatabaseAccessor<AppDatabase>
+    with _$CustomersDaoMixin {
   CustomersDao(super.db);
 
   /// Watch all customers with search filter
-  Stream<List<CustomerData>> watchCustomers(String shopId, [String query = '']) {
+  Stream<List<CustomerData>> watchCustomers(String shopId,
+      [String query = '']) {
     final selectQuery = select(customersTable)
       ..where((t) => t.shopId.equals(shopId));
 
     if (query.isNotEmpty) {
-      selectQuery.where((t) =>
-          t.name.like('%$query%') | t.phone.like('%$query%'));
+      selectQuery
+          .where((t) => t.name.like('%$query%') | t.phone.like('%$query%'));
     }
 
     return (selectQuery..orderBy([(t) => OrderingTerm.asc(t.name)])).watch();
@@ -31,7 +33,8 @@ class CustomersDao extends DatabaseAccessor<AppDatabase> with _$CustomersDaoMixi
 
   /// Get single customer by ID
   Future<CustomerData?> getCustomerById(String id) {
-    return (select(customersTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+    return (select(customersTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
   }
 
   /// Atomic Credit Settlement / Payment Collection
@@ -48,7 +51,10 @@ class CustomersDao extends DatabaseAccessor<AppDatabase> with _$CustomersDaoMixi
       // 2. Decrement customer outstanding debt
       await customUpdate(
         'UPDATE customers SET current_debt_paise = current_debt_paise - ? WHERE id = ?',
-        variables: [Variable.withBigInt(BigInt.from(amountPaise)), Variable.withString(customerId)],
+        variables: [
+          Variable.withBigInt(BigInt.from(amountPaise)),
+          Variable.withString(customerId)
+        ],
         updates: {customersTable},
       );
 

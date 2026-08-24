@@ -23,11 +23,11 @@ import '../features/purchases/presentation/screens/purchases_screen.dart';
 import '../features/reports/presentation/screens/reports_screen.dart';
 import '../features/returns/presentation/screens/returns_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
-import '../features/suppliers/presentation/screens/suppliers_screen.dart';
-import 'app_providers.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final isAuthenticated = ref.watch(authStateProvider);
+  final authState = ref.watch(authNotifierProvider);
+  final isAuthenticated = authState.isAuthenticated;
 
   return GoRouter(
     initialLocation: '/dashboard',
@@ -142,10 +142,18 @@ class _AppNavigationShell extends StatelessWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/dashboard')) return 0;
-    if (location.startsWith('/billing') || location.startsWith('/barcode')) return 1;
-    if (location.startsWith('/products') || location.startsWith('/categories')) return 2;
-    if (location.startsWith('/customers') || location.startsWith('/credit')) return 3;
+    if (location.startsWith('/dashboard')) {
+      return 0;
+    }
+    if (location.startsWith('/billing') || location.startsWith('/barcode')) {
+      return 1;
+    }
+    if (location.startsWith('/products') || location.startsWith('/categories')) {
+      return 2;
+    }
+    if (location.startsWith('/customers') || location.startsWith('/credit')) {
+      return 3;
+    }
     return 0;
   }
 
@@ -180,7 +188,8 @@ class _AppNavigationShell extends StatelessWidget {
               labelType: NavigationRailLabelType.all,
               leading: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16.0),
-                child: Icon(Icons.storefront, color: KiranaColors.primary, size: 32),
+                child: Icon(Icons.storefront,
+                    color: KiranaColors.primary, size: 32),
               ),
               destinations: const [
                 NavigationRailDestination(

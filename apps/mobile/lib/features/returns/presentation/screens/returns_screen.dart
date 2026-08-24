@@ -21,7 +21,8 @@ class ReturnsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Process Customer Return', style: KiranaTypography.titleLarge),
+                  const Text('Process Customer Return',
+                      style: KiranaTypography.titleLarge),
                   const SizedBox(height: KiranaSpacing.xs),
                   const Text(
                     'Scan returned item or enter invoice number to restore stock and issue refund note.',

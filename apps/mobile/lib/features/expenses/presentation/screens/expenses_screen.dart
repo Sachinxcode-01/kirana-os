@@ -34,7 +34,8 @@ class ExpensesScreen extends StatelessWidget {
           return Card(
             child: ListTile(
               title: Text(title, style: KiranaTypography.titleMedium),
-              subtitle: Text('$category • $date', style: KiranaTypography.bodySmall),
+              subtitle:
+                  Text('$category • $date', style: KiranaTypography.bodySmall),
               trailing: Text(
                 amount.toRupeesString(),
                 style: KiranaTypography.priceTabular.copyWith(

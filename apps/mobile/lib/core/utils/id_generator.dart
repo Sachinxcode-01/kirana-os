@@ -15,7 +15,8 @@ abstract final class IdGenerator {
   static String generateBillNumber([DateTime? date]) {
     final now = date ?? DateTime.now();
     final datePrefix = DateFormatter.formatForBillNumber(now);
-    final randomSuffix = (1000 + (DateTime.now().microsecond % 9000)).toString();
+    final randomSuffix =
+        (1000 + (DateTime.now().microsecond % 9000)).toString();
     return 'INV-$datePrefix-$randomSuffix';
   }
 }

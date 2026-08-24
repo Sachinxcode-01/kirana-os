@@ -10,7 +10,11 @@ class SuppliersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final suppliers = [
-      ('Metro Cash & Carry Wholesale', '9845012345', 1200000), // ₹12,000 pending
+      (
+        'Metro Cash & Carry Wholesale',
+        '9845012345',
+        1200000
+      ), // ₹12,000 pending
       ('Hindustan Unilever Dist.', '9845098765', 0),
       ('ITC Agro Distributors', '9988776655', 450000), // ₹4,500 pending
     ];
@@ -26,15 +30,20 @@ class SuppliersScreen extends StatelessWidget {
           return Card(
             child: ListTile(
               title: Text(name, style: KiranaTypography.titleMedium),
-              subtitle: Text('Phone: $phone', style: KiranaTypography.bodySmall),
+              subtitle:
+                  Text('Phone: $phone', style: KiranaTypography.bodySmall),
               trailing: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    payable > 0 ? 'Payable ${payable.toRupeesString()}' : 'Settled',
+                    payable > 0
+                        ? 'Payable ${payable.toRupeesString()}'
+                        : 'Settled',
                     style: KiranaTypography.labelLarge.copyWith(
-                      color: payable > 0 ? KiranaColors.secondary : KiranaColors.success,
+                      color: payable > 0
+                          ? KiranaColors.secondary
+                          : KiranaColors.success,
                     ),
                   ),
                 ],

@@ -27,7 +27,8 @@ class PaymentsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(KiranaSpacing.lg),
                 child: Column(
                   children: [
-                    const Text('Total Bill Payable', style: KiranaTypography.labelSmall),
+                    const Text('Total Bill Payable',
+                        style: KiranaTypography.labelSmall),
                     const SizedBox(height: KiranaSpacing.xs),
                     Text(
                       totalPaise.toRupeesString(),

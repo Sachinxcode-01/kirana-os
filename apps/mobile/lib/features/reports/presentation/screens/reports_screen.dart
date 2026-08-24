@@ -8,10 +8,26 @@ class ReportsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reportOptions = [
-      ('Day-End Z-Report', 'Reconcile drawer cash & total receipts', Icons.summarize),
-      ('Sales & Profit Summary', 'Item-wise margins and revenue', Icons.trending_up),
-      ('GST Tax Summary (GSTR-1)', 'B2B/B2C tax slab breakdown for CA', Icons.account_balance),
-      ('Fast-Moving Inventory', 'Top 20 revenue generating SKUs', Icons.insights),
+      (
+        'Day-End Z-Report',
+        'Reconcile drawer cash & total receipts',
+        Icons.summarize
+      ),
+      (
+        'Sales & Profit Summary',
+        'Item-wise margins and revenue',
+        Icons.trending_up
+      ),
+      (
+        'GST Tax Summary (GSTR-1)',
+        'B2B/B2C tax slab breakdown for CA',
+        Icons.account_balance
+      ),
+      (
+        'Fast-Moving Inventory',
+        'Top 20 revenue generating SKUs',
+        Icons.insights
+      ),
     ];
 
     return Scaffold(

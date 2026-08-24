@@ -9,9 +9,24 @@ class NotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final alerts = [
-      ('Low Stock Alert', 'Fortune Sunflower Oil 1L has only 3 units left.', Icons.warning, KiranaColors.error),
-      ('Udhaar Due Reminder', 'Dr. Srinivas Rao outstanding balance reached ₹3,400.00.', Icons.notification_important, KiranaColors.secondary),
-      ('Cloud Sync Complete', 'All 42 offline bills synchronized with Supabase.', Icons.cloud_done, KiranaColors.success),
+      (
+        'Low Stock Alert',
+        'Fortune Sunflower Oil 1L has only 3 units left.',
+        Icons.warning,
+        KiranaColors.error
+      ),
+      (
+        'Udhaar Due Reminder',
+        'Dr. Srinivas Rao outstanding balance reached ₹3,400.00.',
+        Icons.notification_important,
+        KiranaColors.secondary
+      ),
+      (
+        'Cloud Sync Complete',
+        'All 42 offline bills synchronized with Supabase.',
+        Icons.cloud_done,
+        KiranaColors.success
+      ),
     ];
 
     return Scaffold(

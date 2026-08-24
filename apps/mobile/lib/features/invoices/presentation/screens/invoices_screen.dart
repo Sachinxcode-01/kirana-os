@@ -11,9 +11,27 @@ class InvoicesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final invoices = [
-      ('INV-20260824-0042', 'Cash Sale', 35700, '24 Aug 2026, 07:15 PM', 'Paid'),
-      ('INV-20260824-0041', 'Ramesh Gupta (Udhaar)', 125000, '24 Aug 2026, 06:40 PM', 'Udhaar'),
-      ('INV-20260824-0040', 'UPI Payment', 8400, '24 Aug 2026, 06:22 PM', 'Paid'),
+      (
+        'INV-20260824-0042',
+        'Cash Sale',
+        35700,
+        '24 Aug 2026, 07:15 PM',
+        'Paid'
+      ),
+      (
+        'INV-20260824-0041',
+        'Ramesh Gupta (Udhaar)',
+        125000,
+        '24 Aug 2026, 06:40 PM',
+        'Udhaar'
+      ),
+      (
+        'INV-20260824-0040',
+        'UPI Payment',
+        8400,
+        '24 Aug 2026, 06:22 PM',
+        'Paid'
+      ),
     ];
 
     return Scaffold(
@@ -27,7 +45,8 @@ class InvoicesScreen extends StatelessWidget {
           return Card(
             child: ListTile(
               title: Text(inv, style: KiranaTypography.titleMedium),
-              subtitle: Text('$customer • $time', style: KiranaTypography.bodySmall),
+              subtitle:
+                  Text('$customer • $time', style: KiranaTypography.bodySmall),
               trailing: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -69,7 +88,8 @@ class InvoicesScreen extends StatelessWidget {
           children: [
             Text('Invoice: $inv', style: KiranaTypography.titleLarge),
             const SizedBox(height: KiranaSpacing.xs),
-            Text('Total: ${total.toRupeesString()}', style: KiranaTypography.headlineMedium),
+            Text('Total: ${total.toRupeesString()}',
+                style: KiranaTypography.headlineMedium),
             const SizedBox(height: KiranaSpacing.xl),
             AppButton(
               label: 'Print Thermal Receipt (ESC/POS)',

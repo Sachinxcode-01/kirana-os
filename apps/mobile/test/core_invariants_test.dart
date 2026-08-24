@@ -58,7 +58,8 @@ void main() {
     test('Animation tokens are strictly bounded for POS responsiveness', () {
       expect(AnimationDurations.micro.inMilliseconds, lessThanOrEqualTo(150));
       expect(AnimationDurations.quick.inMilliseconds, lessThanOrEqualTo(200));
-      expect(AnimationDurations.standard.inMilliseconds, lessThanOrEqualTo(300));
+      expect(
+          AnimationDurations.standard.inMilliseconds, lessThanOrEqualTo(300));
     });
   });
 }
