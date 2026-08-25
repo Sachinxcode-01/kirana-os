@@ -17,6 +17,8 @@ class AppTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final bool obscureText;
   final bool autofocus;
+  final bool readOnly;
+  final int? maxLength;
   final String? errorText;
   final List<TextInputFormatter>? inputFormatters;
   final FocusNode? focusNode;
@@ -33,6 +35,8 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.obscureText = false,
     this.autofocus = false,
+    this.readOnly = false,
+    this.maxLength,
     this.errorText,
     this.inputFormatters,
     this.focusNode,
@@ -61,9 +65,12 @@ class AppTextField extends StatelessWidget {
           onSubmitted: onSubmitted,
           obscureText: obscureText,
           autofocus: autofocus,
+          readOnly: readOnly,
+          maxLength: maxLength,
           inputFormatters: inputFormatters,
           style: KiranaTypography.bodyLarge,
           decoration: InputDecoration(
+            counterText: maxLength != null ? '' : null,
             hintText: hint,
             errorText: errorText,
             prefixIcon: prefixIcon,

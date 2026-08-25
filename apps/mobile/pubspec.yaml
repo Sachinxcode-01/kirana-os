@@ -37,6 +37,7 @@ dependencies:
   # Formatting, ID Generation & Utilities
   uuid: ^4.5.1
   intl: ^0.20.2
+  http: ^1.2.2
 
   # Purposeful Animation & Visual Loading Subsystem
   flutter_animate: ^4.5.2

@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kirana_mobile/core/services/pincode_service.dart';
 import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
@@ -27,6 +30,14 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
   final _stateController = TextEditingController(text: 'Karnataka');
   final _pincodeController = TextEditingController();
 
+  // PIN code auto-fill state
+  Timer? _pincodeDebounceTimer;
+  bool _isFetchingPincode = false;
+  String? _pincodeError;
+  List<String> _localities = [];
+  String? _selectedLocality;
+  final _pincodeService = PincodeService();
+
   // Step 2 Controllers
   final _gstinController = TextEditingController();
   final _fssaiController = TextEditingController();
@@ -36,6 +47,7 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
 
   @override
   void dispose() {
+    _pincodeDebounceTimer?.cancel();
     _nameController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
@@ -46,6 +58,63 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
     _fssaiController.dispose();
     _upiController.dispose();
     super.dispose();
+  }
+
+  void _onPincodeChanged(String value) {
+    _pincodeDebounceTimer?.cancel();
+    final clean = value.trim();
+
+    if (clean.length < 6) {
+      if (_pincodeError != null || _localities.isNotEmpty) {
+        setState(() {
+          _pincodeError = null;
+          _localities = [];
+          _selectedLocality = null;
+        });
+      }
+      return;
+    }
+
+    if (clean.length == 6) {
+      _pincodeDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+        _lookupPincode(clean);
+      });
+    }
+  }
+
+  Future<void> _lookupPincode(String pincode) async {
+    setState(() {
+      _isFetchingPincode = true;
+      _pincodeError = null;
+    });
+
+    final result = await _pincodeService.fetchAddressFromPincode(pincode);
+
+    if (!mounted) return;
+
+    result.fold(
+      (data) {
+        setState(() {
+          _isFetchingPincode = false;
+          _stateController.text = data.state;
+          _cityController.text = data.district;
+          _localities = data.localities;
+          _selectedLocality =
+              data.localities.isNotEmpty ? data.localities.first : null;
+          _pincodeError = null;
+        });
+      },
+      (failure) {
+        setState(() {
+          _isFetchingPincode = false;
+          _pincodeError = failure.message;
+          _stateController.text = '';
+          _cityController.text = '';
+          _localities = [];
+          _selectedLocality = null;
+        });
+      },
+    );
   }
 
   bool _validateStep1() {
@@ -223,24 +292,93 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
         ),
         const SizedBox(height: KiranaSpacing.lg),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: AppTextField(
-                label: 'City',
-                hint: 'e.g. Bangalore',
-                controller: _cityController,
+                label: 'Pincode (Auto-fills Address)',
+                hint: '6-digit PIN (e.g. 560038)',
+                controller: _pincodeController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: _onPincodeChanged,
+                suffixIcon: _isFetchingPincode
+                    ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : const Icon(Icons.pin_drop_outlined),
               ),
             ),
             const SizedBox(width: KiranaSpacing.md),
             Expanded(
               child: AppTextField(
-                label: 'Pincode',
-                hint: 'e.g. 560001',
-                controller: _pincodeController,
-                keyboardType: TextInputType.number,
+                label: 'City / District',
+                hint: 'e.g. Bangalore',
+                controller: _cityController,
               ),
             ),
           ],
+        ),
+        if (_pincodeError != null) ...[
+          const SizedBox(height: KiranaSpacing.xs),
+          Text(
+            _pincodeError!,
+            style: const TextStyle(color: KiranaColors.error, fontSize: 13),
+          ),
+        ],
+        if (_localities.isNotEmpty) ...[
+          const SizedBox(height: KiranaSpacing.lg),
+          Text(
+            'Select Locality / Area',
+            style: KiranaTypography.labelLarge.copyWith(
+              color: KiranaColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: KiranaSpacing.xs),
+          DropdownButtonFormField<String>(
+            value: _selectedLocality,
+            decoration: const InputDecoration(
+              filled: true,
+              fillColor: KiranaColors.surfaceVariant,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: KiranaSpacing.lg,
+                vertical: KiranaSpacing.md,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: KiranaRadius.borderMd,
+                borderSide: BorderSide(color: KiranaColors.outline),
+              ),
+            ),
+            items: _localities.map((locality) {
+              return DropdownMenuItem<String>(
+                value: locality,
+                child: Text(locality, style: KiranaTypography.bodyLarge),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  _selectedLocality = val;
+                  if (_addressController.text.trim().isEmpty) {
+                    _addressController.text = val;
+                  }
+                });
+              }
+            },
+          ),
+        ],
+        const SizedBox(height: KiranaSpacing.lg),
+        AppTextField(
+          label: 'State',
+          hint: 'e.g. Karnataka',
+          controller: _stateController,
+          readOnly: true,
         ),
         const SizedBox(height: KiranaSpacing.xxl),
         AppButton(
