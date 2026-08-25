@@ -30,6 +30,9 @@ abstract final class ErrorHandler {
     if (exception is SyncException) {
       return SyncFailure(exception.message, code: exception.code);
     }
+    if (exception is PermissionDeniedException) {
+      return PermissionDeniedFailure(exception.message, code: exception.code);
+    }
 
     final str = exception.toString();
     if (str.contains('SocketException') ||
@@ -40,6 +43,10 @@ abstract final class ErrorHandler {
     }
     if (str.contains('AuthException') || str.contains('invalid_credentials')) {
       return const AuthFailure('Invalid credentials or session expired.');
+    }
+    if (str.contains('42501') || str.contains('permission denied')) {
+      return const PermissionDeniedFailure(
+          'Permission denied. Action requires Shop Manager or Owner role.');
     }
     if (str.contains('duplicate key') || str.contains('UNIQUE constraint')) {
       return const ValidationFailure(

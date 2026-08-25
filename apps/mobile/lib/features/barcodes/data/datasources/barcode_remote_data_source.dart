@@ -35,10 +35,15 @@ class BarcodeRemoteDataSource {
       final productData = response['products'] as Map<String, dynamic>;
       return ProductModel.fromJson(productData);
     } on supabase.PostgrestException catch (e) {
+      if (e.code == '42501') {
+        throw PermissionDeniedException(
+            'Permission denied. Shop access restricted.');
+      }
       AppLogger.w('Supabase barcode search error: ${e.message}',
           tag: 'BarcodeRemoteDataSource');
       throw DatabaseException(e.message, e.code);
     } catch (e) {
+      if (e is AppException) rethrow;
       throw DatabaseException(
           'Failed to search product by barcode in cloud: $e');
     }
@@ -67,8 +72,13 @@ class BarcodeRemoteDataSource {
         throw ValidationException(
             'Barcode "${barcode.barcode}" is already registered to another product.');
       }
+      if (e.code == '42501') {
+        throw PermissionDeniedException(
+            'Permission denied. Action requires Shop Manager or Owner role.');
+      }
       throw DatabaseException(e.message, e.code);
     } catch (e) {
+      if (e is AppException) rethrow;
       throw DatabaseException('Failed to save barcode to cloud: $e');
     }
   }
@@ -94,8 +104,13 @@ class BarcodeRemoteDataSource {
         throw ValidationException(
             'Barcode "${barcode.barcode}" is already registered.');
       }
+      if (e.code == '42501') {
+        throw PermissionDeniedException(
+            'Permission denied. Action requires Shop Manager or Owner role.');
+      }
       throw DatabaseException(e.message, e.code);
     } catch (e) {
+      if (e is AppException) rethrow;
       throw DatabaseException('Failed to update barcode in cloud: $e');
     }
   }
@@ -108,8 +123,13 @@ class BarcodeRemoteDataSource {
           .eq('id', barcodeId)
           .eq('shop_id', shopId);
     } on supabase.PostgrestException catch (e) {
+      if (e.code == '42501') {
+        throw PermissionDeniedException(
+            'Permission denied. Action requires Shop Manager or Owner role.');
+      }
       throw DatabaseException(e.message, e.code);
     } catch (e) {
+      if (e is AppException) rethrow;
       throw DatabaseException('Failed to delete barcode from cloud: $e');
     }
   }

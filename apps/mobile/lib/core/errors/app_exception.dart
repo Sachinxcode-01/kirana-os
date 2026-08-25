@@ -42,3 +42,8 @@ final class SyncException extends AppException {
   const SyncException(
       [super.message = 'Sync operation failed', super.code, super.details]);
 }
+
+final class PermissionDeniedException extends AppException {
+  const PermissionDeniedException(
+      [super.message = 'Permission denied', super.code]);
+}

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kirana_mobile/core/errors/app_exception.dart';
 import 'package:kirana_mobile/core/network/connectivity_service.dart';
 import 'package:kirana_mobile/core/network/connectivity_status.dart';
 import 'package:kirana_mobile/database/drift/database.dart';
@@ -13,15 +14,25 @@ import 'package:kirana_mobile/features/products/domain/models/product_model.dart
 
 class MockBarcodeRemoteDataSource implements BarcodeRemoteDataSource {
   final List<BarcodeModel> remoteBarcodes = [];
+  ProductModel? remoteProductToReturn;
+  bool throwPermissionError = false;
 
   @override
   Future<BarcodeModel> createBarcode(BarcodeModel barcode) async {
+    if (throwPermissionError) {
+      throw const PermissionDeniedException(
+          'Permission denied from Supabase RLS');
+    }
     remoteBarcodes.add(barcode);
     return barcode;
   }
 
   @override
   Future<BarcodeModel> updateBarcode(BarcodeModel barcode) async {
+    if (throwPermissionError) {
+      throw const PermissionDeniedException(
+          'Permission denied from Supabase RLS');
+    }
     final index = remoteBarcodes.indexWhere((b) => b.id == barcode.id);
     if (index != -1) remoteBarcodes[index] = barcode;
     return barcode;
@@ -29,13 +40,21 @@ class MockBarcodeRemoteDataSource implements BarcodeRemoteDataSource {
 
   @override
   Future<void> deleteBarcode(String barcodeId, String shopId) async {
+    if (throwPermissionError) {
+      throw const PermissionDeniedException(
+          'Permission denied from Supabase RLS');
+    }
     remoteBarcodes.removeWhere((b) => b.id == barcodeId && b.shopId == shopId);
   }
 
   @override
   Future<ProductModel?> fetchProductByBarcode(
       String shopId, String barcode) async {
-    return null;
+    if (throwPermissionError) {
+      throw const PermissionDeniedException(
+          'Permission denied from Supabase RLS');
+    }
+    return remoteProductToReturn;
   }
 }
 
@@ -219,6 +238,71 @@ void main() {
       final searchRes = await repository.searchProductByBarcode(code);
       expect(searchRes.isSuccess, isTrue);
       expect(searchRes.dataOrNull!.name, 'Fortune Sunflower Oil 1L');
+    });
+
+    test('Remote fallback search fetches product from cloud and caches locally',
+        () async {
+      const code = '8901234567890';
+      final remoteProd = ProductModel(
+        id: 'prod_cloud_99',
+        shopId: testShopId,
+        name: 'Tata Salt 1kg',
+        sellingPricePaise: 2800,
+        mrpPaise: 3000,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      remoteDataSource.remoteProductToReturn = remoteProd;
+
+      final searchRes = await repository.searchProductByBarcode(code);
+      expect(searchRes.isSuccess, isTrue);
+      expect(searchRes.dataOrNull?.name, 'Tata Salt 1kg');
+
+      // Verify cached locally in Drift
+      final localCheck =
+          await localDataSource.getProductByBarcode(testShopId, code);
+      expect(localCheck, isNotNull);
+      expect(localCheck!.name, 'Tata Salt 1kg');
+    });
+
+    test('Shop isolation prevents accessing barcode of another shop', () async {
+      const code = '8901030383742';
+      // Seed product in shop_other
+      await db.into(db.productsTable).insert(
+            ProductsTableCompanion.insert(
+              id: 'prod_other_1',
+              shopId: 'shop_other_999',
+              name: 'Other Shop Product',
+              mrpPaise: BigInt.from(1000),
+              sellingPricePaise: BigInt.from(900),
+              createdAt: Value(DateTime.now()),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+      await db.into(db.productBarcodesTable).insert(
+            ProductBarcodesTableCompanion.insert(
+              id: 'bc_other_1',
+              shopId: 'shop_other_999',
+              productId: 'prod_other_1',
+              barcode: code,
+              createdAt: Value(DateTime.now()),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+
+      // Search via repository configured for testShopId
+      final searchRes = await repository.searchProductByBarcode(code);
+      expect(searchRes.isSuccess, isTrue);
+      expect(searchRes.dataOrNull, isNull);
+    });
+
+    test('Handles permission denied failure gracefully', () async {
+      remoteDataSource.throwPermissionError = true;
+      const code = '8909999999999';
+
+      final searchRes = await repository.searchProductByBarcode(code);
+      expect(searchRes.isError, isTrue);
+      expect(searchRes.failureOrNull?.message, contains('Permission denied'));
     });
   });
 }
