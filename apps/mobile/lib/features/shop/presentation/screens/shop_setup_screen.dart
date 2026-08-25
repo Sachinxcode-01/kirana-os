@@ -44,6 +44,7 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
   final _upiController = TextEditingController();
 
   String? _step1Error;
+  String? _step2Error;
 
   @override
   void dispose() {
@@ -118,15 +119,34 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
   }
 
   bool _validateStep1() {
-    if (_nameController.text.trim().isEmpty) {
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final pincode = _pincodeController.text.trim();
+
+    if (name.isEmpty) {
       setState(() => _step1Error = 'Store name is required');
       return false;
     }
-    if (_phoneController.text.trim().length < 10) {
+    if (phone.length < 10) {
       setState(() => _step1Error = 'Enter a valid 10-digit phone number');
       return false;
     }
+    if (pincode.isNotEmpty &&
+        (pincode.length != 6 || int.tryParse(pincode) == null)) {
+      setState(() => _step1Error = 'Pincode must be a 6-digit number');
+      return false;
+    }
     setState(() => _step1Error = null);
+    return true;
+  }
+
+  bool _validateStep2() {
+    final gstin = _gstinController.text.trim();
+    if (gstin.isNotEmpty && gstin.length != 15) {
+      setState(() => _step2Error = 'GSTIN must be 15 characters long');
+      return false;
+    }
+    setState(() => _step2Error = null);
     return true;
   }
 
@@ -407,6 +427,11 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
           'Add GSTIN, FSSAI license, or UPI ID to print instant dynamic QR codes on bills.',
           style: KiranaTypography.bodyMedium,
         ),
+        if (_step2Error != null) ...[
+          const SizedBox(height: KiranaSpacing.md),
+          Text(_step2Error!,
+              style: const TextStyle(color: KiranaColors.error, fontSize: 13)),
+        ],
         const SizedBox(height: KiranaSpacing.xl),
         AppTextField(
           label: 'GSTIN (Optional)',
@@ -442,7 +467,11 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
             Expanded(
               child: AppButton(
                 label: 'Review & Finish →',
-                onPressed: () => setState(() => _currentStep = 2),
+                onPressed: () {
+                  if (_validateStep2()) {
+                    setState(() => _currentStep = 2);
+                  }
+                },
               ),
             ),
           ],

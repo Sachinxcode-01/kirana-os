@@ -3,6 +3,7 @@ import 'package:kirana_mobile/app/app_providers.dart';
 import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:kirana_mobile/features/shop/domain/models/shop_model.dart';
 import 'package:kirana_mobile/features/shop/domain/repositories/shop_repository.dart';
+import 'package:kirana_mobile/features/shop/domain/usecases/create_shop_usecase.dart';
 import 'package:kirana_mobile/features/shop/data/datasources/shop_local_data_source.dart';
 import 'package:kirana_mobile/features/shop/data/datasources/shop_remote_data_source.dart';
 import 'package:kirana_mobile/features/shop/data/repositories/shop_repository_impl.dart';
@@ -27,6 +28,11 @@ final shopRepositoryProvider = Provider<ShopRepository>((ref) {
   );
 });
 
+final createShopUseCaseProvider = Provider<CreateShopUseCase>((ref) {
+  final repository = ref.watch(shopRepositoryProvider);
+  return CreateShopUseCase(repository);
+});
+
 class ShopSetupState {
   final bool isLoading;
   final String? errorMessage;
@@ -40,10 +46,11 @@ class ShopSetupState {
 }
 
 class ShopNotifier extends StateNotifier<ShopSetupState> {
-  final ShopRepository _repository;
+  final CreateShopUseCase _createShopUseCase;
   final Ref _ref;
 
-  ShopNotifier(this._repository, this._ref) : super(const ShopSetupState());
+  ShopNotifier(this._createShopUseCase, this._ref)
+      : super(const ShopSetupState());
 
   Future<bool> createShop({
     required String name,
@@ -59,9 +66,18 @@ class ShopNotifier extends StateNotifier<ShopSetupState> {
   }) async {
     if (state.isLoading) return false;
 
-    state = const ShopSetupState(isLoading: true);
+    final authState = _ref.read(authNotifierProvider);
+    if (authState.hasActiveShop) {
+      state = const ShopSetupState(
+        isLoading: false,
+        errorMessage: 'You already belong to an active store.',
+      );
+      return false;
+    }
 
-    final result = await _repository.createShop(
+    state = const ShopSetupState(isLoading: true, errorMessage: null);
+
+    final result = await _createShopUseCase.execute(
       name: name,
       phone: phone,
       address: address,
@@ -85,7 +101,10 @@ class ShopNotifier extends StateNotifier<ShopSetupState> {
         return true;
       },
       (failure) {
-        state = ShopSetupState(isLoading: false, errorMessage: failure.message);
+        state = ShopSetupState(
+          isLoading: false,
+          errorMessage: failure.message,
+        );
         return false;
       },
     );
@@ -94,8 +113,8 @@ class ShopNotifier extends StateNotifier<ShopSetupState> {
 
 final shopNotifierProvider =
     StateNotifierProvider<ShopNotifier, ShopSetupState>((ref) {
-  final repository = ref.watch(shopRepositoryProvider);
-  return ShopNotifier(repository, ref);
+  final useCase = ref.watch(createShopUseCaseProvider);
+  return ShopNotifier(useCase, ref);
 });
 
 final currentShopDetailsProvider =

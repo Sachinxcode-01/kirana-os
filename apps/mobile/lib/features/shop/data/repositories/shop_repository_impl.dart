@@ -60,27 +60,15 @@ class ShopRepositoryImpl implements ShopRepository {
       await _localDataSource.saveShop(shop, ownerId: 'current_user');
       return Success(shop);
     } catch (e) {
-      final localShop = ShopModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: name.trim(),
-        phone: phone.trim(),
-        address: address,
-        city: city,
-        state: state ?? 'Karnataka',
-        pincode: pincode,
-        gstin: gstin,
-        fssaiLicense: fssaiLicense,
-        upiId: upiId,
-        logoUrl: logoUrl,
-        createdAt: DateTime.now(),
-      );
-
-      try {
-        await _localDataSource.saveShop(localShop, ownerId: 'current_user');
-        return Success(localShop);
-      } catch (_) {
-        return ErrorResult(ErrorHandler.handle(e));
+      final failure = ErrorHandler.handle(e);
+      if (failure is NetworkFailure ||
+          e.toString().contains('connection') ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('offline')) {
+        return const ErrorResult(
+            NetworkFailure('Shop setup requires an internet connection.'));
       }
+      return ErrorResult(failure);
     }
   }
 
