@@ -11,11 +11,12 @@ void main() {
       ),
     );
 
-    // Pump a single frame
-    await tester.pump(const Duration(milliseconds: 100));
-
-    // Verify that the KiranaOS Splash screen renders brand header cleanly
+    // Verify that the KiranaOS Splash screen renders brand header initially
     expect(find.text('KiranaOS'), findsOneWidget);
     expect(find.text('Next-Gen Retail & POS System'), findsOneWidget);
+
+    // Settle async auth check & navigation to Login screen
+    await tester.pumpAndSettle();
+    expect(find.text('Sign In'), findsOneWidget);
   });
 }
