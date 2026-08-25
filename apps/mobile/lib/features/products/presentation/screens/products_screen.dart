@@ -46,14 +46,10 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   }
 
   void _showProductDialog({ProductModel? product, String? prefilledBarcode}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ProductsScreenFormDialog(
-        product: product,
-        prefilledBarcode: prefilledBarcode,
-      ),
+    ProductsScreenFormDialog.show(
+      context,
+      product: product,
+      prefilledBarcode: prefilledBarcode,
     );
   }
 
@@ -619,9 +615,32 @@ class _ProductCard extends StatelessWidget {
 class ProductsScreenFormDialog extends ConsumerStatefulWidget {
   final ProductModel? product;
   final String? prefilledBarcode;
+  final String? prefilledCategoryId;
 
-  const ProductsScreenFormDialog(
-      {super.key, this.product, this.prefilledBarcode});
+  const ProductsScreenFormDialog({
+    super.key,
+    this.product,
+    this.prefilledBarcode,
+    this.prefilledCategoryId,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    ProductModel? product,
+    String? prefilledBarcode,
+    String? prefilledCategoryId,
+  }) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ProductsScreenFormDialog(
+        product: product,
+        prefilledBarcode: prefilledBarcode,
+        prefilledCategoryId: prefilledCategoryId,
+      ),
+    );
+  }
 
   @override
   ConsumerState<ProductsScreenFormDialog> createState() =>
@@ -662,6 +681,9 @@ class _ProductsScreenFormDialogState
       _selectedUnit = p.unit;
     } else {
       _minStockController.text = '5';
+      if (widget.prefilledCategoryId != null) {
+        _selectedCategoryId = widget.prefilledCategoryId;
+      }
     }
   }
 

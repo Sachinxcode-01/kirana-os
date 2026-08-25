@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:kirana_mobile/core/extensions/context_extensions.dart';
 import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/radius.dart';
@@ -7,6 +8,8 @@ import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
 import 'package:kirana_mobile/core/widgets/app_button.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
+import 'package:kirana_mobile/features/products/presentation/providers/product_provider.dart';
+import 'package:kirana_mobile/features/products/presentation/screens/products_screen.dart';
 import '../../domain/models/category_model.dart';
 import '../providers/category_provider.dart';
 
@@ -33,6 +36,18 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => _CategoryFormSheet(category: category),
     );
+  }
+
+  void _handleAddProductToCategory(CategoryModel category) {
+    ProductsScreenFormDialog.show(
+      context,
+      prefilledCategoryId: category.id,
+    );
+  }
+
+  void _handleViewCategoryProducts(CategoryModel category) {
+    ref.read(productCategoryFilterProvider.notifier).state = category.id;
+    context.go('/products');
   }
 
   void _confirmArchive(CategoryModel category) {
@@ -222,6 +237,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       final cat = categories[index];
                       return _CategoryCard(
                         category: cat,
+                        onAddProduct: () => _handleAddProductToCategory(cat),
+                        onViewProducts: () => _handleViewCategoryProducts(cat),
                         onEdit: () => _showCategoryDialog(category: cat),
                         onArchive: () => _confirmArchive(cat),
                       );
@@ -238,6 +255,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     final cat = categories[index];
                     return _CategoryCard(
                       category: cat,
+                      onAddProduct: () => _handleAddProductToCategory(cat),
+                      onViewProducts: () => _handleViewCategoryProducts(cat),
                       onEdit: () => _showCategoryDialog(category: cat),
                       onArchive: () => _confirmArchive(cat),
                     );
@@ -334,11 +353,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
 class _CategoryCard extends StatelessWidget {
   final CategoryModel category;
+  final VoidCallback onAddProduct;
+  final VoidCallback onViewProducts;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
 
   const _CategoryCard({
     required this.category,
+    required this.onAddProduct,
+    required this.onViewProducts,
     required this.onEdit,
     required this.onArchive,
   });
@@ -352,7 +375,7 @@ class _CategoryCard extends StatelessWidget {
         side: const BorderSide(color: KiranaColors.neutral200),
       ),
       child: InkWell(
-        onTap: onEdit,
+        onTap: onViewProducts,
         borderRadius: KiranaRadius.borderMd,
         child: Padding(
           padding: const EdgeInsets.all(KiranaSpacing.md),
@@ -403,19 +426,23 @@ class _CategoryCard extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: KiranaColors.neutral100,
-                        borderRadius: KiranaRadius.borderPill,
-                      ),
-                      child: Text(
-                        '${category.productCount} ${category.productCount == 1 ? 'item' : 'items'}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: KiranaColors.neutral700,
+                    InkWell(
+                      onTap: onViewProducts,
+                      borderRadius: KiranaRadius.borderPill,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: KiranaColors.neutral100,
+                          borderRadius: KiranaRadius.borderPill,
+                        ),
+                        child: Text(
+                          '${category.productCount} ${category.productCount == 1 ? 'item' : 'items'} • Tap to view',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: KiranaColors.primary,
+                          ),
                         ),
                       ),
                     ),
@@ -428,17 +455,43 @@ class _CategoryCard extends StatelessWidget {
                 icon:
                     const Icon(Icons.more_vert, color: KiranaColors.neutral600),
                 onSelected: (value) {
+                  if (value == 'add_product') onAddProduct();
+                  if (value == 'view_products') onViewProducts();
                   if (value == 'edit') onEdit();
                   if (value == 'archive') onArchive();
                 },
                 itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'add_product',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_circle_outline,
+                            size: 18, color: KiranaColors.primary),
+                        SizedBox(width: KiranaSpacing.sm),
+                        Text('Add Product in Category',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: KiranaColors.primary)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'view_products',
+                    child: Row(
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 18),
+                        SizedBox(width: KiranaSpacing.sm),
+                        Text('View Products'),
+                      ],
+                    ),
+                  ),
                   const PopupMenuItem(
                     value: 'edit',
                     child: Row(
                       children: [
                         Icon(Icons.edit_outlined, size: 18),
                         SizedBox(width: KiranaSpacing.sm),
-                        Text('Edit'),
+                        Text('Edit Category'),
                       ],
                     ),
                   ),
@@ -449,7 +502,7 @@ class _CategoryCard extends StatelessWidget {
                         Icon(Icons.archive_outlined,
                             size: 18, color: KiranaColors.error),
                         SizedBox(width: KiranaSpacing.sm),
-                        Text('Archive',
+                        Text('Archive Category',
                             style: TextStyle(color: KiranaColors.error)),
                       ],
                     ),
