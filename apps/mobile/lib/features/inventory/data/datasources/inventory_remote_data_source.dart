@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
-import '../../../../core/errors/exceptions.dart';
-import '../../../../core/utils/logger.dart';
+import 'package:kirana_mobile/core/errors/exceptions.dart';
+import 'package:kirana_mobile/core/utils/app_logger.dart';
 import '../models/inventory_movement_model.dart';
 import '../models/stock_adjustment_request.dart';
 
@@ -15,7 +15,7 @@ class InventoryRemoteDataSource {
     try {
       return supa.Supabase.instance.client;
     } catch (e) {
-      throw const NetworkException('Supabase connection not initialized');
+      throw DatabaseException('Supabase connection not initialized');
     }
   }
 

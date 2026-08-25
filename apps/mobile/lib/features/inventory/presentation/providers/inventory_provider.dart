@@ -1,10 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../database/drift/drift_database.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../products/data/datasources/product_local_data_source.dart';
-import '../../../products/domain/models/product_model.dart';
-
-import '../../../shop/presentation/providers/shop_provider.dart';
+import 'package:kirana_mobile/database/drift/database.dart';
+import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:kirana_mobile/features/products/data/datasources/product_local_data_source.dart';
+import 'package:kirana_mobile/features/products/domain/models/product_model.dart';
+import 'package:kirana_mobile/features/shop/presentation/providers/shop_provider.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
 import '../../data/datasources/inventory_remote_data_source.dart';
 import '../../data/repositories/inventory_repository_impl.dart';

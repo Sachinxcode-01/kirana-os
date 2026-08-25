@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/colors.dart';
-import '../../../../core/theme/radius.dart';
-import '../../../../core/theme/spacing.dart';
-import '../../../../core/theme/typography.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../products/domain/models/product_model.dart';
-import '../../../shop/presentation/providers/shop_provider.dart';
+import 'package:kirana_mobile/core/theme/colors.dart';
+import 'package:kirana_mobile/core/theme/radius.dart';
+import 'package:kirana_mobile/core/theme/spacing.dart';
+import 'package:kirana_mobile/core/theme/typography.dart';
+import 'package:kirana_mobile/core/widgets/app_button.dart';
+import 'package:kirana_mobile/core/widgets/app_text_field.dart';
+import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
+import 'package:kirana_mobile/features/products/domain/models/product_model.dart';
+import 'package:kirana_mobile/features/shop/presentation/providers/shop_provider.dart';
 import '../../domain/models/inventory_movement_model.dart';
 import '../../domain/models/stock_adjustment_request.dart';
 import '../providers/inventory_provider.dart';
@@ -255,7 +255,7 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
               controller: _quantityController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              enabled: !isCashier && !isLoading,
+              readOnly: isCashier || isLoading,
             ),
             const SizedBox(height: KiranaSpacing.lg),
 
@@ -300,7 +300,7 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
               label: 'Note / Reference (Optional)',
               hint: 'e.g. Invoice #PO-9821 or damaged packaging',
               controller: _noteController,
-              enabled: !isCashier && !isLoading,
+              readOnly: isCashier || isLoading,
             ),
             const SizedBox(height: KiranaSpacing.lg),
 
@@ -347,7 +347,7 @@ class _TabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: isSelected
-          ? activeColor.withOpacity(0.12)
+          ? activeColor.withValues(alpha: 0.12)
           : KiranaColors.surfaceVariant,
       borderRadius: KiranaRadius.borderMd,
       child: InkWell(

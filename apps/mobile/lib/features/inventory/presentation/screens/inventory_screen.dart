@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/colors.dart';
-import '../../../../core/theme/radius.dart';
-import '../../../../core/theme/spacing.dart';
-import '../../../../core/theme/typography.dart';
-import '../../products/presentation/providers/product_provider.dart';
+import 'package:kirana_mobile/core/theme/colors.dart';
+import 'package:kirana_mobile/core/theme/radius.dart';
+import 'package:kirana_mobile/core/theme/spacing.dart';
+import 'package:kirana_mobile/core/theme/typography.dart';
+import 'package:kirana_mobile/features/products/presentation/providers/product_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../widgets/stock_adjustment_sheet.dart';
 import 'inventory_history_screen.dart';
@@ -15,7 +15,7 @@ class InventoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lowStockAsync = ref.watch(lowStockProductsProvider);
-    final allProductsAsync = ref.watch(productListProvider);
+    final allProductsAsync = ref.watch(productsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -37,7 +37,7 @@ class InventoryScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(lowStockProductsProvider);
-          ref.invalidate(productListProvider);
+          ref.invalidate(productsStreamProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(KiranaSpacing.md),
@@ -197,7 +197,7 @@ class InventoryScreen extends ConsumerWidget {
                                 context, product);
                             if (adjusted == true) {
                               ref.invalidate(lowStockProductsProvider);
-                              ref.invalidate(productListProvider);
+                              ref.invalidate(productsStreamProvider);
                             }
                           },
                           child: const Text('Adjust'),
@@ -247,7 +247,7 @@ class _StatCard extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
+            backgroundColor: color.withValues(alpha: 0.1),
             child: Icon(icon, color: color),
           ),
           const SizedBox(width: KiranaSpacing.md),
