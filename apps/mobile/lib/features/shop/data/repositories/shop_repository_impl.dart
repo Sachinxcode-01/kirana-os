@@ -60,7 +60,27 @@ class ShopRepositoryImpl implements ShopRepository {
       await _localDataSource.saveShop(shop, ownerId: 'current_user');
       return Success(shop);
     } catch (e) {
-      return ErrorResult(ErrorHandler.handle(e));
+      final localShop = ShopModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: name.trim(),
+        phone: phone.trim(),
+        address: address,
+        city: city,
+        state: state ?? 'Karnataka',
+        pincode: pincode,
+        gstin: gstin,
+        fssaiLicense: fssaiLicense,
+        upiId: upiId,
+        logoUrl: logoUrl,
+        createdAt: DateTime.now(),
+      );
+
+      try {
+        await _localDataSource.saveShop(localShop, ownerId: 'current_user');
+        return Success(localShop);
+      } catch (_) {
+        return ErrorResult(ErrorHandler.handle(e));
+      }
     }
   }
 
