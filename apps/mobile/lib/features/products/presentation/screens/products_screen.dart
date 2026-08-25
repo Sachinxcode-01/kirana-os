@@ -42,12 +42,15 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     super.dispose();
   }
 
-  void _showProductDialog({ProductModel? product}) {
+  void _showProductDialog({ProductModel? product, String? prefilledBarcode}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _ProductFormSheet(product: product),
+      builder: (context) => ProductsScreenFormDialog(
+        product: product,
+        prefilledBarcode: prefilledBarcode,
+      ),
     );
   }
 
@@ -574,16 +577,20 @@ class _ProductCard extends StatelessWidget {
   }
 }
 
-class _ProductFormSheet extends ConsumerStatefulWidget {
+class ProductsScreenFormDialog extends ConsumerStatefulWidget {
   final ProductModel? product;
+  final String? prefilledBarcode;
 
-  const _ProductFormSheet({this.product});
+  const ProductsScreenFormDialog(
+      {super.key, this.product, this.prefilledBarcode});
 
   @override
-  ConsumerState<_ProductFormSheet> createState() => _ProductFormSheetState();
+  ConsumerState<ProductsScreenFormDialog> createState() =>
+      _ProductsScreenFormDialogState();
 }
 
-class _ProductFormSheetState extends ConsumerState<_ProductFormSheet> {
+class _ProductsScreenFormDialogState
+    extends ConsumerState<ProductsScreenFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
@@ -689,6 +696,7 @@ class _ProductFormSheetState extends ConsumerState<_ProductFormSheet> {
             purchasePricePaise: purchasePricePaise,
             minStockAlert: minStock,
             description: desc.isNotEmpty ? desc : null,
+            barcode: widget.prefilledBarcode,
           );
     } else {
       // Update
@@ -771,6 +779,39 @@ class _ProductFormSheetState extends ConsumerState<_ProductFormSheet> {
                     errorMessage,
                     style: const TextStyle(
                         fontSize: 13, color: KiranaColors.error),
+                  ),
+                ),
+                const SizedBox(height: KiranaSpacing.md),
+              ],
+
+              if (widget.prefilledBarcode != null && !isEditing) ...[
+                Container(
+                  padding: const EdgeInsets.all(KiranaSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: KiranaColors.primaryContainer,
+                    borderRadius: KiranaRadius.borderMd,
+                    border: Border.all(color: KiranaColors.primary),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.qr_code,
+                          size: 18, color: KiranaColors.primary),
+                      const SizedBox(width: KiranaSpacing.xs),
+                      Text(
+                        'Linking Scanned Barcode: ',
+                        style: KiranaTypography.bodySmall.copyWith(
+                          color: KiranaColors.neutral700,
+                        ),
+                      ),
+                      Text(
+                        widget.prefilledBarcode!,
+                        style: KiranaTypography.priceTabular.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: KiranaColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: KiranaSpacing.md),
