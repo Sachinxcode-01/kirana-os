@@ -25,6 +25,7 @@ class ProductsTable extends Table {
       boolean().withDefault(const Constant(true))();
   RealColumn get currentStock => real().withDefault(const Constant(0.0))();
   RealColumn get minStockAlert => real().withDefault(const Constant(5.0))();
+  RealColumn get maxStockAlert => real().nullable()();
   BoolColumn get isLoose => boolean().withDefault(const Constant(false))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

@@ -20,6 +20,7 @@ class MockProductRepository implements ProductRepository {
     int purchasePricePaise = 0,
     int? mrpPaise,
     double minStockAlert = 5.0,
+    double? maxStockAlert,
     double initialStock = 0.0,
     String? description,
     String? barcode,
@@ -40,6 +41,7 @@ class MockProductRepository implements ProductRepository {
         purchasePricePaise: purchasePricePaise,
         mrpPaise: mrpPaise ?? sellingPricePaise,
         minStockAlert: minStockAlert,
+        maxStockAlert: maxStockAlert,
         currentStock: initialStock,
         description: description,
         createdAt: DateTime.now(),
@@ -59,6 +61,8 @@ class MockProductRepository implements ProductRepository {
     int purchasePricePaise = 0,
     int? mrpPaise,
     double minStockAlert = 5.0,
+    double? maxStockAlert,
+    bool clearMaxStockAlert = false,
     String? description,
   }) async {
     if (shouldFail) {
@@ -76,7 +80,32 @@ class MockProductRepository implements ProductRepository {
         purchasePricePaise: purchasePricePaise,
         mrpPaise: mrpPaise ?? sellingPricePaise,
         minStockAlert: minStockAlert,
+        maxStockAlert: clearMaxStockAlert ? null : maxStockAlert,
         description: description,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<ProductModel, Failure>> updateStockSettings({
+    required String productId,
+    required double minStockAlert,
+    double? maxStockAlert,
+  }) async {
+    if (shouldFail) {
+      return ErrorResult(ValidationFailure(failureMessage));
+    }
+    return Success(
+      ProductModel(
+        id: productId,
+        shopId: 'shop_1',
+        name: 'Test Product',
+        sellingPricePaise: 1000,
+        mrpPaise: 1000,
+        minStockAlert: minStockAlert,
+        maxStockAlert: maxStockAlert,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ),

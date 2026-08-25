@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:kirana_mobile/features/inventory/domain/models/stock_status.dart';
 import '../database.dart';
 import '../tables/products_table.dart';
 import '../tables/product_barcodes_table.dart';
@@ -28,11 +29,12 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
     return row?.readTable(productsTable);
   }
 
-  /// Live stream of active products with optional category and search filter
+  /// Live stream of active products with optional category, search, and stock status filter
   Stream<List<ProductData>> watchProducts(
     String shopId, {
     String? categoryId,
     String? searchQuery,
+    StockStatusFilter? statusFilter,
   }) {
     final query = select(productsTable)
       ..where((t) {
@@ -45,7 +47,20 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
           predicate = predicate &
               (t.name.lower().like(term) |
                   t.brand.lower().like(term) |
-                  t.description.lower().like(term));
+                  t.description.lower().like(term) |
+                  t.regionalName.lower().like(term));
+        }
+        if (statusFilter != null && statusFilter != StockStatusFilter.all) {
+          if (statusFilter == StockStatusFilter.inStock) {
+            predicate =
+                predicate & t.currentStock.isBiggerThan(t.minStockAlert);
+          } else if (statusFilter == StockStatusFilter.lowStock) {
+            predicate = predicate &
+                t.currentStock.isSmallerOrEqual(t.minStockAlert) &
+                t.currentStock.isBiggerThanValue(0.0);
+          } else if (statusFilter == StockStatusFilter.outOfStock) {
+            predicate = predicate & t.currentStock.isSmallerOrEqualValue(0.0);
+          }
         }
         return predicate;
       })
@@ -59,6 +74,7 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
     String shopId, {
     String? categoryId,
     String? searchQuery,
+    StockStatusFilter? statusFilter,
   }) {
     final query = select(productsTable)
       ..where((t) {
@@ -71,7 +87,20 @@ class ProductsDao extends DatabaseAccessor<AppDatabase>
           predicate = predicate &
               (t.name.lower().like(term) |
                   t.brand.lower().like(term) |
-                  t.description.lower().like(term));
+                  t.description.lower().like(term) |
+                  t.regionalName.lower().like(term));
+        }
+        if (statusFilter != null && statusFilter != StockStatusFilter.all) {
+          if (statusFilter == StockStatusFilter.inStock) {
+            predicate =
+                predicate & t.currentStock.isBiggerThan(t.minStockAlert);
+          } else if (statusFilter == StockStatusFilter.lowStock) {
+            predicate = predicate &
+                t.currentStock.isSmallerOrEqual(t.minStockAlert) &
+                t.currentStock.isBiggerThanValue(0.0);
+          } else if (statusFilter == StockStatusFilter.outOfStock) {
+            predicate = predicate & t.currentStock.isSmallerOrEqualValue(0.0);
+          }
         }
         return predicate;
       })

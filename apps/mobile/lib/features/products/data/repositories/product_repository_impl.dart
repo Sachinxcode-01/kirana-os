@@ -110,6 +110,7 @@ class ProductRepositoryImpl implements ProductRepository {
     int purchasePricePaise = 0,
     int? mrpPaise,
     double minStockAlert = 5.0,
+    double? maxStockAlert,
     double initialStock = 0.0,
     String? description,
     String? barcode,
@@ -137,7 +138,17 @@ class ProductRepositoryImpl implements ProductRepository {
 
     if (minStockAlert < 0) {
       return const ErrorResult(
-          ValidationFailure('Minimum stock alert cannot be negative'));
+          ValidationFailure('Minimum stock level cannot be negative'));
+    }
+
+    if (maxStockAlert != null && maxStockAlert < 0) {
+      return const ErrorResult(
+          ValidationFailure('Maximum stock level cannot be negative'));
+    }
+
+    if (maxStockAlert != null && maxStockAlert < minStockAlert) {
+      return const ErrorResult(ValidationFailure(
+          'Maximum stock level must be greater than or equal to minimum stock level'));
     }
 
     try {
@@ -165,6 +176,7 @@ class ProductRepositoryImpl implements ProductRepository {
         mrpPaise: actualMrp,
         currentStock: initialStock,
         minStockAlert: minStockAlert,
+        maxStockAlert: maxStockAlert,
         description:
             description?.trim().isEmpty == true ? null : description?.trim(),
         taxRatePercentage: taxRate,
@@ -188,6 +200,7 @@ class ProductRepositoryImpl implements ProductRepository {
           purchasePricePaise: Value(BigInt.from(product.purchasePricePaise)),
           currentStock: Value(product.currentStock),
           minStockAlert: Value(product.minStockAlert),
+          maxStockAlert: Value(product.maxStockAlert),
           description: Value(product.description),
           taxRatePercentage: Value(product.taxRatePercentage),
           isActive: const Value(true),
@@ -255,6 +268,8 @@ class ProductRepositoryImpl implements ProductRepository {
     int purchasePricePaise = 0,
     int? mrpPaise,
     double minStockAlert = 5.0,
+    double? maxStockAlert,
+    bool clearMaxStockAlert = false,
     String? description,
   }) async {
     final cleanName = name.trim();
@@ -279,7 +294,17 @@ class ProductRepositoryImpl implements ProductRepository {
 
     if (minStockAlert < 0) {
       return const ErrorResult(
-          ValidationFailure('Minimum stock alert cannot be negative'));
+          ValidationFailure('Minimum stock level cannot be negative'));
+    }
+
+    if (maxStockAlert != null && maxStockAlert < 0) {
+      return const ErrorResult(
+          ValidationFailure('Maximum stock level cannot be negative'));
+    }
+
+    if (maxStockAlert != null && maxStockAlert < minStockAlert) {
+      return const ErrorResult(ValidationFailure(
+          'Maximum stock level must be greater than or equal to minimum stock level'));
     }
 
     try {
@@ -308,6 +333,8 @@ class ProductRepositoryImpl implements ProductRepository {
         purchasePricePaise: purchasePricePaise,
         mrpPaise: mrpPaise ?? current.mrpPaise,
         minStockAlert: minStockAlert,
+        maxStockAlert: maxStockAlert,
+        clearMaxStockAlert: clearMaxStockAlert,
         description:
             description?.trim().isEmpty == true ? null : description?.trim(),
         updatedAt: now,
@@ -328,6 +355,7 @@ class ProductRepositoryImpl implements ProductRepository {
           purchasePricePaise: Value(BigInt.from(updated.purchasePricePaise)),
           currentStock: Value(updated.currentStock),
           minStockAlert: Value(updated.minStockAlert),
+          maxStockAlert: Value(updated.maxStockAlert),
           description: Value(updated.description),
           taxRatePercentage: Value(updated.taxRatePercentage),
           isActive: const Value(true),
@@ -365,6 +393,52 @@ class ProductRepositoryImpl implements ProductRepository {
       }
 
       return Success(updated);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<ProductModel, Failure>> updateStockSettings({
+    required String productId,
+    required double minStockAlert,
+    double? maxStockAlert,
+  }) async {
+    if (minStockAlert < 0) {
+      return const ErrorResult(
+          ValidationFailure('Minimum stock level cannot be negative'));
+    }
+
+    if (maxStockAlert != null && maxStockAlert < 0) {
+      return const ErrorResult(
+          ValidationFailure('Maximum stock level cannot be negative'));
+    }
+
+    if (maxStockAlert != null && maxStockAlert < minStockAlert) {
+      return const ErrorResult(ValidationFailure(
+          'Maximum stock level must be greater than or equal to minimum stock level'));
+    }
+
+    try {
+      final current = await _localDataSource.getProductById(productId);
+      if (current == null) {
+        return const ErrorResult(ValidationFailure('Product not found'));
+      }
+
+      return await updateProduct(
+        id: current.id,
+        name: current.name,
+        categoryId: current.categoryId ?? '',
+        brand: current.brand,
+        unit: current.unit,
+        sellingPricePaise: current.sellingPricePaise,
+        purchasePricePaise: current.purchasePricePaise,
+        mrpPaise: current.mrpPaise,
+        minStockAlert: minStockAlert,
+        maxStockAlert: maxStockAlert,
+        clearMaxStockAlert: maxStockAlert == null,
+        description: current.description,
+      );
     } catch (e) {
       return ErrorResult(ErrorHandler.handleException(e));
     }

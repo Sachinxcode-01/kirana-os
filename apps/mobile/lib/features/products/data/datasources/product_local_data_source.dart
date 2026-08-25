@@ -1,3 +1,4 @@
+import '../../../inventory/domain/models/stock_status.dart';
 import '../../../../database/drift/database.dart';
 import '../../domain/models/product_model.dart';
 
@@ -32,12 +33,14 @@ class ProductLocalDataSource {
     String shopId, {
     String? categoryId,
     String? searchQuery,
+    StockStatusFilter? statusFilter,
   }) {
     return _db.productsDao
         .watchProducts(
       shopId,
       categoryId: categoryId,
       searchQuery: searchQuery,
+      statusFilter: statusFilter,
     )
         .asyncMap((rows) async {
       final models = <ProductModel>[];
@@ -55,11 +58,13 @@ class ProductLocalDataSource {
     String shopId, {
     String? categoryId,
     String? searchQuery,
+    StockStatusFilter? statusFilter,
   }) async {
     final rows = await _db.productsDao.getProducts(
       shopId,
       categoryId: categoryId,
       searchQuery: searchQuery,
+      statusFilter: statusFilter,
     );
     final models = <ProductModel>[];
     for (final row in rows) {
@@ -102,6 +107,7 @@ class ProductLocalDataSource {
       mrpPaise: row.mrpPaise.toInt(),
       currentStock: row.currentStock,
       minStockAlert: row.minStockAlert,
+      maxStockAlert: row.maxStockAlert,
       description: row.description,
       regionalName: row.regionalName,
       hsnCode: row.hsnCode,

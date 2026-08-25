@@ -59,3 +59,31 @@ enum StockStatus {
     }
   }
 }
+
+enum StockStatusFilter {
+  all('ALL'),
+  inStock('IN STOCK'),
+  lowStock('LOW STOCK'),
+  outOfStock('OUT OF STOCK');
+
+  final String label;
+  const StockStatusFilter(this.label);
+}
+
+class StockUnitFormatter {
+  static String formatQuantity(double quantity) {
+    if (quantity % 1 == 0) {
+      return quantity.toInt().toString();
+    }
+    return quantity
+        .toStringAsFixed(3)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
+  }
+
+  static String formatWithUnit(double quantity, String unit) {
+    final formattedQty = formatQuantity(quantity);
+    final cleanUnit = unit.trim().isEmpty ? 'PCS' : unit.trim();
+    return '$formattedQty ${cleanUnit.toLowerCase()}';
+  }
+}

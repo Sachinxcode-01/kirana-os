@@ -8,6 +8,7 @@ import '../../data/datasources/inventory_remote_data_source.dart';
 import '../../data/repositories/inventory_repository_impl.dart';
 import '../../domain/models/inventory_movement_model.dart';
 import '../../domain/models/stock_adjustment_request.dart';
+import '../../domain/models/stock_status.dart';
 import '../../domain/repositories/inventory_repository.dart';
 
 final inventoryLocalDataSourceProvider =
@@ -172,4 +173,113 @@ final stockAdjustmentNotifierProvider = StateNotifierProvider.autoDispose<
     StockAdjustmentNotifier, AsyncValue<void>>((ref) {
   final repo = ref.watch(inventoryRepositoryProvider);
   return StockAdjustmentNotifier(repo, ref);
+});
+
+// Inventory Search and Filtering Providers
+final inventorySearchQueryProvider =
+    StateProvider.autoDispose<String>((ref) => '');
+
+final inventoryCategoryFilterProvider =
+    StateProvider.autoDispose<String?>((ref) => null);
+
+final inventoryStatusFilterProvider =
+    StateProvider.autoDispose<StockStatusFilter>(
+        (ref) => StockStatusFilter.all);
+
+final inventoryFilteredProductsStreamProvider =
+    StreamProvider.autoDispose<List<ProductModel>>((ref) {
+  final shopId = ref.watch(activeShopIdProvider);
+  final searchQuery = ref.watch(inventorySearchQueryProvider);
+  final categoryId = ref.watch(inventoryCategoryFilterProvider);
+  final statusFilter = ref.watch(inventoryStatusFilterProvider);
+
+  if (shopId.isEmpty) {
+    return Stream.value([]);
+  }
+
+  final db = ref.watch(databaseProvider);
+  final productLocalDS = ProductLocalDataSource(db);
+
+  return productLocalDS.watchProducts(
+    shopId,
+    searchQuery: searchQuery,
+    categoryId: categoryId,
+    statusFilter: statusFilter,
+  );
+});
+
+// Stock settings update notifier (Min/Max Stock)
+class InventorySettingsNotifier extends StateNotifier<AsyncValue<void>> {
+  final InventoryRepository _repository;
+  final Ref _ref;
+
+  InventorySettingsNotifier(this._repository, this._ref)
+      : super(const AsyncValue.data(null));
+
+  Future<bool> updateStockSettings({
+    required String productId,
+    required double minStockAlert,
+    double? maxStockAlert,
+  }) async {
+    state = const AsyncValue.loading();
+
+    // Enforce RBAC security rules: Cashier cannot modify stock settings
+    final currentUser = _ref.read(authNotifierProvider).user;
+    if (currentUser?.role == 'cashier') {
+      state = AsyncValue.error(
+        'Permission denied: Only authorized roles (owners/managers) can modify stock settings',
+        StackTrace.current,
+      );
+      return false;
+    }
+
+    if (minStockAlert < 0) {
+      state = AsyncValue.error(
+        'Minimum stock level cannot be negative',
+        StackTrace.current,
+      );
+      return false;
+    }
+
+    if (maxStockAlert != null && maxStockAlert < 0) {
+      state = AsyncValue.error(
+        'Maximum stock level cannot be negative',
+        StackTrace.current,
+      );
+      return false;
+    }
+
+    if (maxStockAlert != null && maxStockAlert < minStockAlert) {
+      state = AsyncValue.error(
+        'Maximum stock level must be greater than or equal to minimum stock level',
+        StackTrace.current,
+      );
+      return false;
+    }
+
+    final result = await _repository.updateStockSettings(
+      productId: productId,
+      minStockAlert: minStockAlert,
+      maxStockAlert: maxStockAlert,
+    );
+
+    if (result.isSuccess) {
+      state = const AsyncValue.data(null);
+      _ref.invalidate(lowStockProductsProvider);
+      _ref.invalidate(inventoryFilteredProductsStreamProvider);
+      return true;
+    } else {
+      state = AsyncValue.error(
+        result.failureOrNull?.message ?? 'Failed to update stock settings',
+        StackTrace.current,
+      );
+      return false;
+    }
+  }
+}
+
+final inventorySettingsNotifierProvider = StateNotifierProvider.autoDispose<
+    InventorySettingsNotifier, AsyncValue<void>>((ref) {
+  final repo = ref.watch(inventoryRepositoryProvider);
+  return InventorySettingsNotifier(repo, ref);
 });

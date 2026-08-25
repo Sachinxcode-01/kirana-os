@@ -12,6 +12,7 @@ class ProductModel {
   final int mrpPaise;
   final double currentStock;
   final double minStockAlert;
+  final double? maxStockAlert;
   final String? description;
   final String? regionalName;
   final String? hsnCode;
@@ -36,6 +37,7 @@ class ProductModel {
     required this.mrpPaise,
     this.currentStock = 0.0,
     this.minStockAlert = 5.0,
+    this.maxStockAlert,
     this.description,
     this.regionalName,
     this.hsnCode,
@@ -61,6 +63,8 @@ class ProductModel {
     int? mrpPaise,
     double? currentStock,
     double? minStockAlert,
+    double? maxStockAlert,
+    bool clearMaxStockAlert = false,
     String? description,
     String? regionalName,
     String? hsnCode,
@@ -85,6 +89,8 @@ class ProductModel {
       mrpPaise: mrpPaise ?? this.mrpPaise,
       currentStock: currentStock ?? this.currentStock,
       minStockAlert: minStockAlert ?? this.minStockAlert,
+      maxStockAlert:
+          clearMaxStockAlert ? null : (maxStockAlert ?? this.maxStockAlert),
       description: description ?? this.description,
       regionalName: regionalName ?? this.regionalName,
       hsnCode: hsnCode ?? this.hsnCode,
@@ -112,6 +118,9 @@ class ProductModel {
       mrpPaise: (data.mrpPaise as num).toInt(),
       currentStock: (data.currentStock as num).toDouble(),
       minStockAlert: (data.minStockAlert as num).toDouble(),
+      maxStockAlert: data.maxStockAlert != null
+          ? (data.maxStockAlert as num).toDouble()
+          : null,
       description: data.description as String?,
       regionalName: data.regionalName as String?,
       hsnCode: data.hsnCode as String?,
@@ -142,6 +151,7 @@ class ProductModel {
           ((json['mrp_paise'] ?? json['selling_price_paise']) as num).toInt(),
       currentStock: (json['current_stock'] as num?)?.toDouble() ?? 0.0,
       minStockAlert: (json['min_stock_alert'] as num?)?.toDouble() ?? 5.0,
+      maxStockAlert: (json['max_stock_alert'] as num?)?.toDouble(),
       description: json['description'] as String?,
       regionalName: json['regional_name'] as String?,
       hsnCode: json['hsn_code'] as String?,
@@ -173,6 +183,7 @@ class ProductModel {
       'mrp_paise': mrpPaise,
       'current_stock': currentStock,
       'min_stock_alert': minStockAlert,
+      'max_stock_alert': maxStockAlert,
       'description': description,
       'regional_name': regionalName,
       'hsn_code': hsnCode,

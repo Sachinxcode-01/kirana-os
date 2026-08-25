@@ -1,25 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kirana_mobile/app/app_providers.dart';
+import 'package:kirana_mobile/core/network/connectivity_status.dart';
 import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
+import 'package:kirana_mobile/core/widgets/app_text_field.dart';
+import 'package:kirana_mobile/features/categories/presentation/providers/category_provider.dart';
+import 'package:kirana_mobile/features/products/domain/models/product_model.dart';
 import 'package:kirana_mobile/features/products/presentation/providers/product_provider.dart';
+import '../../domain/models/stock_status.dart';
 import '../providers/inventory_provider.dart';
+import '../widgets/inventory_settings_dialog.dart';
 import '../widgets/stock_adjustment_sheet.dart';
 import 'inventory_history_screen.dart';
 
-class InventoryScreen extends ConsumerWidget {
+class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final lowStockAsync = ref.watch(lowStockProductsProvider);
+  ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends ConsumerState<InventoryScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final connectivityAsync = ref.watch(connectivityStatusStreamProvider);
+    final isOffline =
+        connectivityAsync.asData?.value == ConnectivityStatus.offline;
+
+    final categoriesAsync = ref.watch(categoriesStreamProvider);
+    final selectedCategory = ref.watch(inventoryCategoryFilterProvider);
+    final selectedStatusFilter = ref.watch(inventoryStatusFilterProvider);
+    final filteredProductsAsync =
+        ref.watch(inventoryFilteredProductsStreamProvider);
     final allProductsAsync = ref.watch(productsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inventory & Stock Alerts'),
+        title: const Text('Inventory Configuration'),
         actions: [
           IconButton(
             icon: const Icon(Icons.history_rounded),
@@ -36,184 +64,310 @@ class InventoryScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(lowStockProductsProvider);
+          ref.invalidate(inventoryFilteredProductsStreamProvider);
           ref.invalidate(productsStreamProvider);
+          ref.invalidate(lowStockProductsProvider);
         },
-        child: ListView(
-          padding: const EdgeInsets.all(KiranaSpacing.md),
+        child: Column(
           children: [
-            lowStockAsync.when(
-              data: (lowStockItems) {
-                if (lowStockItems.isEmpty) {
-                  return Card(
-                    color: KiranaColors.secondaryContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(KiranaSpacing.md),
-                      child: Row(
+            // 1. Offline Banner Indicator
+            if (isOffline)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: KiranaSpacing.md,
+                  vertical: KiranaSpacing.xs,
+                ),
+                color: KiranaColors.warningContainer,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.wifi_off,
+                      size: 16,
+                      color: KiranaColors.warning,
+                    ),
+                    const SizedBox(width: KiranaSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        'OFFLINE MODE — Displaying cached inventory data from local database.',
+                        style: KiranaTypography.bodySmall.copyWith(
+                          color: KiranaColors.warning,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(KiranaSpacing.md),
+                children: [
+                  // 2. Search Bar
+                  AppTextField(
+                    hint: 'Search product by name, brand, regional name...',
+                    controller: _searchController,
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              ref
+                                  .read(inventorySearchQueryProvider.notifier)
+                                  .state = '';
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                    onChanged: (val) {
+                      ref.read(inventorySearchQueryProvider.notifier).state =
+                          val;
+                      setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: KiranaSpacing.md),
+
+                  // 3. Stock Overview Quick Metrics
+                  allProductsAsync.when(
+                    data: (products) {
+                      final totalCount = products.length;
+                      final inStockCount = products.where((p) {
+                        final status = StockStatus.fromQuantities(
+                            p.currentStock, p.minStockAlert);
+                        return status == StockStatus.inStock;
+                      }).length;
+                      final lowStockCount = products.where((p) {
+                        final status = StockStatus.fromQuantities(
+                            p.currentStock, p.minStockAlert);
+                        return status == StockStatus.lowStock;
+                      }).length;
+                      final outOfStockCount = products.where((p) {
+                        final status = StockStatus.fromQuantities(
+                            p.currentStock, p.minStockAlert);
+                        return status == StockStatus.outOfStock;
+                      }).length;
+
+                      return Column(
                         children: [
-                          const Icon(Icons.check_circle,
-                              color: KiranaColors.secondary),
-                          const SizedBox(width: KiranaSpacing.md),
-                          Expanded(
-                            child: Text(
-                              'All products have sufficient stock.',
-                              style: KiranaTypography.bodyMedium.copyWith(
-                                color: KiranaColors.secondary,
-                                fontWeight: FontWeight.w600,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _MetricCard(
+                                  title: 'Total Catalog',
+                                  value: '$totalCount',
+                                  color: KiranaColors.primary,
+                                  icon: Icons.inventory_2_outlined,
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: KiranaSpacing.sm),
+                              Expanded(
+                                child: _MetricCard(
+                                  title: 'In Stock',
+                                  value: '$inStockCount',
+                                  color: KiranaColors.secondary,
+                                  icon: Icons.check_circle_outline,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: KiranaSpacing.sm),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _MetricCard(
+                                  title: 'Low Stock',
+                                  value: '$lowStockCount',
+                                  color: KiranaColors.warning,
+                                  icon: Icons.warning_amber_rounded,
+                                ),
+                              ),
+                              const SizedBox(width: KiranaSpacing.sm),
+                              Expanded(
+                                child: _MetricCard(
+                                  title: 'Out of Stock',
+                                  value: '$outOfStockCount',
+                                  color: KiranaColors.error,
+                                  icon: Icons.error_outline,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ),
-                  );
-                }
+                      );
+                    },
+                    loading: () => const LinearProgressIndicator(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+                  const SizedBox(height: KiranaSpacing.lg),
 
-                return Card(
-                  color: KiranaColors.errorContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(KiranaSpacing.md),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.warning, color: KiranaColors.error),
-                        const SizedBox(width: KiranaSpacing.md),
-                        Expanded(
-                          child: Text(
-                            '${lowStockItems.length} products are running below minimum safety stock.',
-                            style: KiranaTypography.bodyMedium.copyWith(
-                              color: KiranaColors.error,
-                              fontWeight: FontWeight.w600,
+                  // 4. Category Filter Chips (Horizontal)
+                  categoriesAsync.when(
+                    data: (categories) {
+                      if (categories.isEmpty) return const SizedBox.shrink();
+                      return SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  right: KiranaSpacing.xs),
+                              child: ChoiceChip(
+                                label: const Text('All Categories'),
+                                selected: selectedCategory == null,
+                                onSelected: (_) {
+                                  ref
+                                      .read(inventoryCategoryFilterProvider
+                                          .notifier)
+                                      .state = null;
+                                },
+                              ),
                             ),
-                          ),
+                            ...categories.map((cat) {
+                              final isSelected = selectedCategory == cat.id;
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                    right: KiranaSpacing.xs),
+                                child: ChoiceChip(
+                                  label: Text(cat.name),
+                                  selected: isSelected,
+                                  onSelected: (_) {
+                                    ref
+                                        .read(inventoryCategoryFilterProvider
+                                            .notifier)
+                                        .state = isSelected ? null : cat.id;
+                                  },
+                                ),
+                              );
+                            }),
+                          ],
                         ),
-                      ],
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+                  const SizedBox(height: KiranaSpacing.sm),
+
+                  // 5. Stock Status Filter Chips (ALL, IN STOCK, LOW STOCK, OUT OF STOCK)
+                  SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: StockStatusFilter.values.map((statusFilter) {
+                        final isSelected = selectedStatusFilter == statusFilter;
+                        return Padding(
+                          padding:
+                              const EdgeInsets.only(right: KiranaSpacing.xs),
+                          child: FilterChip(
+                            label: Text(statusFilter.label),
+                            selected: isSelected,
+                            selectedColor: KiranaColors.primaryContainer,
+                            onSelected: (_) {
+                              ref
+                                  .read(inventoryStatusFilterProvider.notifier)
+                                  .state = statusFilter;
+                            },
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
-                );
-              },
-              loading: () => const LinearProgressIndicator(),
-              error: (err, _) => Text(
-                'Could not load stock alerts: $err',
-                style: KiranaTypography.bodySmall
-                    .copyWith(color: KiranaColors.error),
+                  const SizedBox(height: KiranaSpacing.lg),
+
+                  // 6. Filtered Inventory List with AnimatedSwitcher
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: filteredProductsAsync.when(
+                      data: (products) {
+                        if (products.isEmpty) {
+                          return Padding(
+                            key: const ValueKey('empty_state'),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: KiranaSpacing.xxl),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.inventory_outlined,
+                                    size: 48,
+                                    color: KiranaColors.neutral400,
+                                  ),
+                                  const SizedBox(height: KiranaSpacing.md),
+                                  Text(
+                                    'No inventory items match active filters',
+                                    style:
+                                        KiranaTypography.titleMedium.copyWith(
+                                      color: KiranaColors.neutral700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: KiranaSpacing.xs),
+                                  Text(
+                                    'Try adjusting your search query, category, or stock status filter.',
+                                    style: KiranaTypography.bodySmall.copyWith(
+                                      color: KiranaColors.neutral500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          key: ValueKey('list_${products.length}'),
+                          children: products.map((product) {
+                            return _InventoryProductCard(
+                              key: ValueKey(product.id),
+                              product: product,
+                              onSettingsTap: () async {
+                                final updated =
+                                    await InventorySettingsDialog.show(
+                                        context, product);
+                                if (updated == true) {
+                                  ref.invalidate(
+                                      inventoryFilteredProductsStreamProvider);
+                                  ref.invalidate(productsStreamProvider);
+                                  ref.invalidate(lowStockProductsProvider);
+                                }
+                              },
+                              onAdjustTap: () async {
+                                final adjusted =
+                                    await StockAdjustmentSheet.show(
+                                        context, product);
+                                if (adjusted == true) {
+                                  ref.invalidate(
+                                      inventoryFilteredProductsStreamProvider);
+                                  ref.invalidate(productsStreamProvider);
+                                  ref.invalidate(lowStockProductsProvider);
+                                }
+                              },
+                            );
+                          }).toList(),
+                        );
+                      },
+                      loading: () => const Center(
+                        key: ValueKey('loading'),
+                        child: Padding(
+                          padding: EdgeInsets.all(KiranaSpacing.xl),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                      error: (err, _) => Center(
+                        key: const ValueKey('error'),
+                        child: Text(
+                          'Error loading inventory: $err',
+                          style: const TextStyle(color: KiranaColors.error),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: KiranaSpacing.lg),
-
-            // Quick Stats Card Row
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    title: 'Total Catalog',
-                    value: allProductsAsync.when(
-                      data: (list) => '${list.length}',
-                      loading: () => '...',
-                      error: (_, __) => '0',
-                    ),
-                    icon: Icons.inventory_2_outlined,
-                    color: KiranaColors.primary,
-                  ),
-                ),
-                const SizedBox(width: KiranaSpacing.md),
-                Expanded(
-                  child: _StatCard(
-                    title: 'Low Stock',
-                    value: lowStockAsync.when(
-                      data: (list) => '${list.length}',
-                      loading: () => '...',
-                      error: (_, __) => '0',
-                    ),
-                    icon: Icons.warning_amber_rounded,
-                    color: KiranaColors.warning,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: KiranaSpacing.xl),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Critical Low Stock Items',
-                    style: KiranaTypography.titleLarge),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const InventoryHistoryScreen(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.receipt_long, size: 16),
-                  label: const Text('View Logs'),
-                ),
-              ],
-            ),
-            const SizedBox(height: KiranaSpacing.sm),
-
-            lowStockAsync.when(
-              data: (lowStockItems) {
-                if (lowStockItems.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: KiranaSpacing.xl),
-                    child: Center(
-                      child: Text('No low stock alerts recorded!'),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: lowStockItems.map((product) {
-                    final isOutOfStock = product.currentStock <= 0;
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: KiranaSpacing.sm),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: KiranaRadius.borderMd,
-                      ),
-                      child: ListTile(
-                        title: Text(
-                          product.name,
-                          style: KiranaTypography.titleMedium
-                              .copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          'Current: ${product.currentStock % 1 == 0 ? product.currentStock.toInt() : product.currentStock} ${product.unit} (Min: ${product.minStockAlert % 1 == 0 ? product.minStockAlert.toInt() : product.minStockAlert} ${product.unit})',
-                          style: KiranaTypography.bodySmall.copyWith(
-                            color: isOutOfStock
-                                ? KiranaColors.error
-                                : KiranaColors.warning,
-                          ),
-                        ),
-                        trailing: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: KiranaColors.primary,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(64, 36),
-                          ),
-                          onPressed: () async {
-                            final adjusted = await StockAdjustmentSheet.show(
-                                context, product);
-                            if (adjusted == true) {
-                              ref.invalidate(lowStockProductsProvider);
-                              ref.invalidate(productsStreamProvider);
-                            }
-                          },
-                          child: const Text('Adjust'),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-              loading: () => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(KiranaSpacing.xl),
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-              error: (err, _) => Center(child: Text('Error: $err')),
             ),
           ],
         ),
@@ -222,23 +376,23 @@ class InventoryScreen extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
+class _MetricCard extends StatelessWidget {
   final String title;
   final String value;
-  final IconData icon;
   final Color color;
+  final IconData icon;
 
-  const _StatCard({
+  const _MetricCard({
     required this.title,
     required this.value,
-    required this.icon,
     required this.color,
+    required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(KiranaSpacing.md),
+      padding: const EdgeInsets.all(KiranaSpacing.sm),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: KiranaRadius.borderMd,
@@ -247,26 +401,195 @@ class _StatCard extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.1),
-            child: Icon(icon, color: color),
+            radius: 18,
+            backgroundColor: color.withValues(alpha: 0.12),
+            child: Icon(icon, size: 20, color: color),
           ),
-          const SizedBox(width: KiranaSpacing.md),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: KiranaTypography.bodySmall
-                    .copyWith(color: KiranaColors.textSecondary),
-              ),
-              Text(
-                value,
-                style: KiranaTypography.headlineMedium
-                    .copyWith(fontWeight: FontWeight.bold),
-              ),
-            ],
+          const SizedBox(width: KiranaSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: KiranaTypography.bodySmall.copyWith(
+                      color: KiranaColors.textSecondary, fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: KiranaTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: KiranaColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InventoryProductCard extends StatelessWidget {
+  final ProductModel product;
+  final VoidCallback onSettingsTap;
+  final VoidCallback onAdjustTap;
+
+  const _InventoryProductCard({
+    super.key,
+    required this.product,
+    required this.onSettingsTap,
+    required this.onAdjustTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = StockStatus.fromQuantities(
+      product.currentStock,
+      product.minStockAlert,
+    );
+
+    final formattedQuantity = StockUnitFormatter.formatWithUnit(
+      product.currentStock,
+      product.unit,
+    );
+
+    final formattedMin =
+        StockUnitFormatter.formatQuantity(product.minStockAlert);
+    final formattedMax = product.maxStockAlert != null
+        ? StockUnitFormatter.formatQuantity(product.maxStockAlert!)
+        : null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: KiranaSpacing.sm),
+      elevation: 0.5,
+      shape: RoundedRectangleBorder(
+        borderRadius: KiranaRadius.borderMd,
+        side: const BorderSide(color: KiranaColors.neutral200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(KiranaSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Status Icon Avatar
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: status.containerColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(status.icon, color: status.badgeColor, size: 24),
+            ),
+            const SizedBox(width: KiranaSpacing.md),
+
+            // Product & Stock Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: KiranaTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+
+                  // Stock Quantity & Unit
+                  Row(
+                    children: [
+                      Text(
+                        'Stock: ',
+                        style: KiranaTypography.bodySmall.copyWith(
+                          color: KiranaColors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        formattedQuantity,
+                        style: KiranaTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: status.badgeColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+
+                  // Min & Max stock indicators
+                  Text(
+                    formattedMax != null
+                        ? 'Min: $formattedMin ${product.unit.toLowerCase()} | Max: $formattedMax ${product.unit.toLowerCase()}'
+                        : 'Min Safety: $formattedMin ${product.unit.toLowerCase()}',
+                    style: KiranaTypography.bodySmall.copyWith(
+                      color: KiranaColors.neutral600,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Stock Status Badge & Actions
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Status Badge
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: status.containerColor,
+                    borderRadius: KiranaRadius.borderPill,
+                    border: Border.all(
+                      color: status.badgeColor.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    status.label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: status.badgeColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: KiranaSpacing.xs),
+
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.settings_outlined, size: 20),
+                      tooltip: 'Inventory Settings',
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(6),
+                      onPressed: onSettingsTap,
+                    ),
+                    const SizedBox(width: 4),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: KiranaColors.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(60, 32),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                      onPressed: onAdjustTap,
+                      child:
+                          const Text('Adjust', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

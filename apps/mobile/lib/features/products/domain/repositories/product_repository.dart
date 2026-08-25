@@ -33,6 +33,7 @@ abstract interface class ProductRepository {
     int purchasePricePaise = 0,
     int? mrpPaise,
     double minStockAlert = 5.0,
+    double? maxStockAlert,
     double initialStock = 0.0,
     String? description,
     String? barcode,
@@ -50,7 +51,16 @@ abstract interface class ProductRepository {
     int purchasePricePaise = 0,
     int? mrpPaise,
     double minStockAlert = 5.0,
+    double? maxStockAlert,
+    bool clearMaxStockAlert = false,
     String? description,
+  });
+
+  /// Update product inventory thresholds (Minimum & Maximum Stock)
+  Future<Result<ProductModel, Failure>> updateStockSettings({
+    required String productId,
+    required double minStockAlert,
+    double? maxStockAlert,
   });
 
   /// Soft delete / archive product
