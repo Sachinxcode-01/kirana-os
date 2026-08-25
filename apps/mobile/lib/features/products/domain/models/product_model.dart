@@ -97,6 +97,33 @@ class ProductModel {
     );
   }
 
+  factory ProductModel.fromDrift(dynamic data, {String? categoryName}) {
+    return ProductModel(
+      id: data.id as String,
+      shopId: data.shopId as String,
+      name: data.name as String,
+      categoryId: data.categoryId as String?,
+      categoryName: categoryName,
+      brand: data.brand as String?,
+      imageUrl: data.imageUrl as String?,
+      unit: data.unit as String? ?? 'PCS',
+      sellingPricePaise: (data.sellingPricePaise as num).toInt(),
+      purchasePricePaise: (data.purchasePricePaise as num).toInt(),
+      mrpPaise: (data.mrpPaise as num).toInt(),
+      currentStock: (data.currentStock as num).toDouble(),
+      minStockAlert: (data.minStockAlert as num).toDouble(),
+      description: data.description as String?,
+      regionalName: data.regionalName as String?,
+      hsnCode: data.hsnCode as String?,
+      taxRatePercentage: (data.taxRatePercentage as num).toDouble(),
+      isTaxInclusive: data.isTaxInclusive as bool,
+      isLoose: data.isLoose as bool,
+      isActive: data.isActive as bool,
+      createdAt: data.createdAt as DateTime,
+      updatedAt: data.updatedAt as DateTime,
+    );
+  }
+
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
       id: json['id'] as String,

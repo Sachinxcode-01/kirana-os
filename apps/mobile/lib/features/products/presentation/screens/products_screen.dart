@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:kirana_mobile/features/categories/presentation/providers/category_provider.dart';
 import 'package:kirana_mobile/features/barcodes/presentation/widgets/product_barcode_section.dart';
 import '../widgets/product_image_picker.dart';
+import '../../inventory/presentation/widgets/stock_adjustment_sheet.dart';
 import '../../domain/models/product_model.dart';
 import '../providers/product_provider.dart';
 
@@ -566,10 +567,23 @@ class _ProductCard extends StatelessWidget {
                 icon:
                     const Icon(Icons.more_vert, color: KiranaColors.neutral600),
                 onSelected: (value) {
+                  if (value == 'adjust_stock') {
+                    StockAdjustmentSheet.show(context, product);
+                  }
                   if (value == 'edit') onEdit();
                   if (value == 'archive') onArchive();
                 },
                 itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'adjust_stock',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_note, size: 18),
+                        SizedBox(width: KiranaSpacing.sm),
+                        Text('Adjust Stock'),
+                      ],
+                    ),
+                  ),
                   const PopupMenuItem(
                     value: 'edit',
                     child: Row(

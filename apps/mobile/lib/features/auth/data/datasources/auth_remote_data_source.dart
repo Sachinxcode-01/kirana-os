@@ -38,6 +38,12 @@ class AuthRemoteDataSource {
     } on supa.AuthException catch (e) {
       AppLogger.e('Supabase Auth login error: ${e.message}',
           tag: 'AuthRemoteDataSource');
+      if (e.message.toLowerCase().contains('email not confirmed')) {
+        throw AuthException(
+          'Email not confirmed. Please check your inbox to confirm your email, or turn off "Confirm email" in Supabase Authentication settings.',
+          e.statusCode,
+        );
+      }
       throw AuthException(e.message, e.statusCode);
     } catch (e) {
       AppLogger.e('Unexpected login error: $e', tag: 'AuthRemoteDataSource');
