@@ -9,9 +9,10 @@ import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
 import 'package:kirana_mobile/core/utils/currency_formatter.dart';
-import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:kirana_mobile/features/dashboard/domain/models/dashboard_metrics.dart';
 import 'package:kirana_mobile/features/dashboard/presentation/providers/dashboard_provider.dart';
+
+import 'package:kirana_mobile/features/dashboard/presentation/widgets/dashboard_session_header.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -19,49 +20,15 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final metricsAsync = ref.watch(dashboardMetricsStreamProvider);
-    final authState = ref.watch(authNotifierProvider);
-    final pendingSyncCount =
-        ref.watch(pendingSyncCountProvider).valueOrNull ?? 0;
     final connectivity =
         ref.watch(connectivityStatusStreamProvider).valueOrNull ??
             ConnectivityStatus.online;
     final isOffline = connectivity == ConnectivityStatus.offline;
 
-    final storeName = authState.activeShopName ?? 'Kirana Store';
-
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(storeName,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color:
-                        isOffline ? KiranaColors.error : KiranaColors.success,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isOffline
-                      ? 'Offline (Billing Available)'
-                      : (pendingSyncCount > 0
-                          ? '$pendingSyncCount sync pending'
-                          : 'Cloud Synced'),
-                  style: const TextStyle(
-                      fontSize: 11, color: KiranaColors.neutral600),
-                ),
-              ],
-            ),
-          ],
-        ),
+        titleSpacing: 0,
+        title: const DashboardSessionHeader(),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
