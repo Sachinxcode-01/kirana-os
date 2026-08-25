@@ -236,12 +236,15 @@ class AuthRemoteDataSource {
       final shopData = shopUsers?['shops'] as Map<String, dynamic>?;
       final shopName = shopData?['name'] as String?;
 
+      final avatarUrl = user.userMetadata?['avatar_url'] as String?;
+
       return UserModel(
         id: user.id,
         email: user.email ?? '',
         phone: user.phone ?? user.userMetadata?['phone'] as String?,
         displayName: displayName,
         role: role,
+        avatarUrl: avatarUrl,
         shopId: shopId,
         shopName: shopName,
       );
@@ -254,6 +257,7 @@ class AuthRemoteDataSource {
         phone: user.phone,
         displayName: user.email ?? 'User',
         role: 'owner',
+        avatarUrl: user.userMetadata?['avatar_url'] as String?,
         shopId: null,
         shopName: null,
       );

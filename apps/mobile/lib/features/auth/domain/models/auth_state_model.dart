@@ -14,6 +14,7 @@ class UserModel {
   final String? phone;
   final String? displayName;
   final String role;
+  final String? avatarUrl;
   final String? shopId;
   final String? shopName;
 
@@ -23,6 +24,7 @@ class UserModel {
     this.phone,
     this.displayName,
     this.role = 'owner',
+    this.avatarUrl,
     this.shopId,
     this.shopName,
   });
@@ -33,6 +35,8 @@ class UserModel {
     String? phone,
     String? displayName,
     String? role,
+    String? avatarUrl,
+    bool clearAvatarUrl = false,
     String? shopId,
     String? shopName,
   }) {
@@ -42,6 +46,7 @@ class UserModel {
       phone: phone ?? this.phone,
       displayName: displayName ?? this.displayName,
       role: role ?? this.role,
+      avatarUrl: clearAvatarUrl ? null : (avatarUrl ?? this.avatarUrl),
       shopId: shopId ?? this.shopId,
       shopName: shopName ?? this.shopName,
     );
