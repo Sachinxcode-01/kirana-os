@@ -254,6 +254,14 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: KiranaSpacing.md),
 
           AppButton(
+            label: 'Shop Staff Management',
+            variant: AppButtonVariant.outlined,
+            icon: Icons.people_alt_outlined,
+            onPressed: () => context.push('/staff'),
+          ),
+          const SizedBox(height: KiranaSpacing.md),
+
+          AppButton(
             label: 'Change Password',
             variant: AppButtonVariant.outlined,
             onPressed: () => context.push('/change-password'),

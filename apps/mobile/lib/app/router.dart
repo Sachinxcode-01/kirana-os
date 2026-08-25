@@ -24,6 +24,7 @@ import 'package:kirana_mobile/features/onboarding/presentation/screens/onboardin
 import 'package:kirana_mobile/features/payments/presentation/screens/payments_screen.dart';
 import 'package:kirana_mobile/features/products/presentation/screens/products_screen.dart';
 import 'package:kirana_mobile/features/profile/presentation/screens/profile_screen.dart';
+import 'package:kirana_mobile/features/staff/presentation/screens/staff_screen.dart';
 import 'package:kirana_mobile/features/purchases/presentation/screens/purchases_screen.dart';
 import 'package:kirana_mobile/features/reports/presentation/screens/reports_screen.dart';
 import 'package:kirana_mobile/features/returns/presentation/screens/returns_screen.dart';
@@ -198,6 +199,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: '/staff',
+            builder: (context, state) => const StaffScreen(),
           ),
           GoRoute(
             path: '/change-password',
