@@ -127,9 +127,10 @@ class DashboardSessionHeader extends ConsumerWidget {
                 backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                     ? NetworkImage(avatarUrl)
                     : null,
-                onBackgroundImageError: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? (e, st) {}
-                    : null,
+                onBackgroundImageError:
+                    avatarUrl != null && avatarUrl.isNotEmpty
+                        ? (e, st) {}
+                        : null,
                 child: avatarUrl == null || avatarUrl.isEmpty
                     ? Text(
                         userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
@@ -215,9 +216,8 @@ class DashboardSessionHeader extends ConsumerWidget {
               backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                   ? NetworkImage(avatarUrl)
                   : null,
-              onBackgroundImageError: avatarUrl != null && avatarUrl.isNotEmpty
-                  ? (e, st) {}
-                  : null,
+              onBackgroundImageError:
+                  avatarUrl != null && avatarUrl.isNotEmpty ? (e, st) {} : null,
               child: avatarUrl == null || avatarUrl.isEmpty
                   ? Text(
                       userName.isNotEmpty ? userName[0].toUpperCase() : 'U',

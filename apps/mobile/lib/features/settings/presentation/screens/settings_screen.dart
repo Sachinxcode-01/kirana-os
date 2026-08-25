@@ -39,6 +39,16 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.settings_suggest,
+                      color: KiranaColors.primary),
+                  title: const Text('Shop Settings'),
+                  subtitle:
+                      const Text('Configure tax, currency, and bill defaults'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/settings/shop'),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.pin, color: KiranaColors.primary),
                   title: const Text('Terminal Cashier Quick PIN'),
                   subtitle: const Text(

@@ -27,4 +27,12 @@ class PreferencesService {
   bool getBoolean(String key, {bool defaultValue = false}) {
     return _prefs.getBool(key) ?? defaultValue;
   }
+
+  Future<void> setString(String key, String value) async {
+    await _prefs.setString(key, value);
+  }
+
+  String? getString(String key) {
+    return _prefs.getString(key);
+  }
 }

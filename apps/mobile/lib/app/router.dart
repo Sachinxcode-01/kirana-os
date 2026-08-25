@@ -29,6 +29,7 @@ import 'package:kirana_mobile/features/purchases/presentation/screens/purchases_
 import 'package:kirana_mobile/features/reports/presentation/screens/reports_screen.dart';
 import 'package:kirana_mobile/features/returns/presentation/screens/returns_screen.dart';
 import 'package:kirana_mobile/features/settings/presentation/screens/settings_screen.dart';
+import 'package:kirana_mobile/features/settings/presentation/screens/shop_settings_screen.dart';
 import 'package:kirana_mobile/features/shop/presentation/screens/shop_setup_screen.dart';
 import 'package:kirana_mobile/features/splash/presentation/screens/splash_screen.dart';
 import 'package:kirana_mobile/features/suppliers/presentation/screens/suppliers_screen.dart';
@@ -211,6 +212,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: '/settings/shop',
+            builder: (context, state) => const ShopSettingsScreen(),
           ),
         ],
       ),

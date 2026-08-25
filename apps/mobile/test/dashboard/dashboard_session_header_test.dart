@@ -48,7 +48,8 @@ void main() {
     }) {
       return ProviderScope(
         overrides: [
-          authNotifierProvider.overrideWith((ref) => TestAuthNotifier(authState)),
+          authNotifierProvider
+              .overrideWith((ref) => TestAuthNotifier(authState)),
           connectivityStatusStreamProvider.overrideWith(
             (ref) => Stream.value(connectivity),
           ),
