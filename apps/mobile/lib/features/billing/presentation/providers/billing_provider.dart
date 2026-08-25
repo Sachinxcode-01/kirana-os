@@ -8,6 +8,7 @@ import '../../data/datasources/billing_local_data_source.dart';
 import '../../data/datasources/billing_remote_data_source.dart';
 import '../../data/repositories/billing_repository_impl.dart';
 import '../../domain/models/bill_model.dart';
+import '../../domain/models/payment_model.dart';
 import '../../domain/repositories/billing_repository.dart';
 import '../../domain/usecases/billing_usecases.dart';
 
@@ -119,6 +120,18 @@ final saveDraftBillUseCaseProvider = Provider<SaveDraftBillUseCase>((ref) {
   return SaveDraftBillUseCase(repo);
 });
 
+final completeSaleCheckoutUseCaseProvider =
+    Provider<CompleteSaleCheckoutUseCase>((ref) {
+  final repo = ref.watch(billingRepositoryProvider);
+  final connectivity = ref.watch(connectivityServiceProvider);
+  final validate = ref.watch(validateBillUseCaseProvider);
+  return CompleteSaleCheckoutUseCase(
+    repository: repo,
+    connectivityService: connectivity,
+    validateBillUseCase: validate,
+  );
+});
+
 class BillingNotifier extends StateNotifier<BillingState> {
   final CreateDraftBillUseCase _createDraftUseCase;
   final AddProductToBillUseCase _addProductUseCase;
@@ -129,6 +142,7 @@ class BillingNotifier extends StateNotifier<BillingState> {
   final RemoveCustomerFromBillUseCase _removeCustomerUseCase;
   final ValidateBillUseCase _validateBillUseCase;
   final SaveDraftBillUseCase _saveDraftUseCase;
+  final CompleteSaleCheckoutUseCase _completeCheckoutUseCase;
   final Ref _ref;
 
   BillingNotifier({
@@ -141,6 +155,7 @@ class BillingNotifier extends StateNotifier<BillingState> {
     required RemoveCustomerFromBillUseCase removeCustomerUseCase,
     required ValidateBillUseCase validateBillUseCase,
     required SaveDraftBillUseCase saveDraftUseCase,
+    required CompleteSaleCheckoutUseCase completeCheckoutUseCase,
     required Ref ref,
   })  : _createDraftUseCase = createDraftUseCase,
         _addProductUseCase = addProductUseCase,
@@ -151,6 +166,7 @@ class BillingNotifier extends StateNotifier<BillingState> {
         _removeCustomerUseCase = removeCustomerUseCase,
         _validateBillUseCase = validateBillUseCase,
         _saveDraftUseCase = saveDraftUseCase,
+        _completeCheckoutUseCase = completeCheckoutUseCase,
         _ref = ref,
         super(const BillingState());
 
@@ -329,7 +345,6 @@ class BillingNotifier extends StateNotifier<BillingState> {
     final activeShopId = authState.activeShopId ?? '';
     final userRole = authState.user?.role ?? 'cashier';
 
-    // Run Pre-Save Validation
     final validation = _validateBillUseCase.execute(
       bill: state.activeDraft!,
       activeShopId: activeShopId,
@@ -362,6 +377,59 @@ class BillingNotifier extends StateNotifier<BillingState> {
     }
   }
 
+  Future<bool> completeCheckout({
+    required String paymentMode, // 'cash', 'upi_qr', 'card'
+  }) async {
+    if (state.activeDraft == null) return false;
+
+    final authState = _ref.read(authNotifierProvider);
+    final activeShopId = authState.activeShopId ?? '';
+    final userRole = authState.user?.role ?? 'cashier';
+
+    final bill = state.activeDraft!;
+    final now = DateTime.now();
+    final paymentId =
+        'pay_${now.millisecondsSinceEpoch}_${bill.id.substring(0, 4)}';
+
+    final payment = PaymentModel(
+      id: paymentId,
+      shopId: bill.shopId,
+      billId: bill.id,
+      mode: paymentMode,
+      amountPaise: bill.totalPaise,
+      status: 'pending',
+      createdAt: now,
+    );
+
+    final idempotencyKey = 'checkout_${bill.id}_${now.millisecondsSinceEpoch}';
+
+    state = state.copyWith(isLoading: true, clearError: true);
+
+    final result = await _completeCheckoutUseCase.execute(
+      bill: bill,
+      payment: payment,
+      activeShopId: activeShopId,
+      userRole: userRole,
+      idempotencyKey: idempotencyKey,
+    );
+
+    if (result.isSuccess) {
+      final completed = result.dataOrNull!;
+      state = state.copyWith(
+        isLoading: false,
+        activeDraft: completed,
+        successMessage: 'Sale completed successfully!',
+      );
+      return true;
+    } else {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: result.failureOrNull?.message,
+      );
+      return false;
+    }
+  }
+
   void clearMessages() {
     state = state.copyWith(clearError: true, clearSuccess: true);
   }
@@ -383,6 +451,7 @@ final billingNotifierProvider =
     removeCustomerUseCase: ref.watch(removeCustomerFromBillUseCaseProvider),
     validateBillUseCase: ref.watch(validateBillUseCaseProvider),
     saveDraftUseCase: ref.watch(saveDraftBillUseCaseProvider),
+    completeCheckoutUseCase: ref.watch(completeSaleCheckoutUseCaseProvider),
     ref: ref,
   );
 });

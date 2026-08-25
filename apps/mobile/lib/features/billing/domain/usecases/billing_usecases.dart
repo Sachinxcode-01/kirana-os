@@ -1,8 +1,11 @@
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
+import '../../../../core/network/connectivity_service.dart';
+import '../../../../core/network/connectivity_status.dart';
 import '../../../products/domain/models/product_model.dart';
 import '../../../staff/domain/models/staff_member_model.dart';
 import '../models/bill_model.dart';
+import '../models/payment_model.dart';
 import '../repositories/billing_repository.dart';
 
 class CreateDraftBillUseCase {
@@ -366,5 +369,61 @@ class SaveDraftBillUseCase {
       );
     }
     return _repository.saveDraftBill(bill);
+  }
+}
+
+class CompleteSaleCheckoutUseCase {
+  final BillingRepository _repository;
+  final ConnectivityService _connectivityService;
+  final ValidateBillUseCase _validateBillUseCase;
+  DateTime? _lastCheckoutTime;
+
+  CompleteSaleCheckoutUseCase({
+    required BillingRepository repository,
+    required ConnectivityService connectivityService,
+    required ValidateBillUseCase validateBillUseCase,
+  })  : _repository = repository,
+        _connectivityService = connectivityService,
+        _validateBillUseCase = validateBillUseCase;
+
+  Future<Result<BillModel, Failure>> execute({
+    required BillModel bill,
+    required PaymentModel payment,
+    required String activeShopId,
+    required String userRole,
+    required String idempotencyKey,
+  }) async {
+    // 1. OFFLINE CHECKOUT BLOCKED
+    if (_connectivityService.currentStatus == ConnectivityStatus.offline) {
+      return const ErrorResult(
+        NetworkFailure('Reconnect to complete this sale.'),
+      );
+    }
+
+    // 2. Validate Bill & RBAC Permissions
+    final validation = _validateBillUseCase.execute(
+      bill: bill,
+      activeShopId: activeShopId,
+      userRole: userRole,
+    );
+    if (validation.isError) {
+      return ErrorResult(validation.failureOrNull!);
+    }
+
+    // 3. Double-tap duplicate submission prevention
+    final now = DateTime.now();
+    if (_lastCheckoutTime != null &&
+        now.difference(_lastCheckoutTime!).inMilliseconds < 500) {
+      return const ErrorResult(
+        ValidationFailure('Checkout transaction is already processing.'),
+      );
+    }
+    _lastCheckoutTime = now;
+
+    return _repository.completeSaleCheckout(
+      bill: bill,
+      payment: payment,
+      idempotencyKey: idempotencyKey,
+    );
   }
 }
