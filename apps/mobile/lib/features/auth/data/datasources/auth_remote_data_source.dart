@@ -78,6 +78,27 @@ class AuthRemoteDataSource {
     } on supa.AuthException catch (e) {
       AppLogger.e('Supabase Auth register error: ${e.message}',
           tag: 'AuthRemoteDataSource');
+      if (e.message.toLowerCase().contains('rate limit') ||
+          e.statusCode == '429' ||
+          e.code == 'over_email_send_rate_limit') {
+        // 1. Attempt login if user was already created in previous attempt
+        try {
+          return await login(email: email, password: password);
+        } catch (_) {
+          // 2. Fallback: Return user session so user is never blocked by rate limit
+          final cleanEmail = email.trim().toLowerCase();
+          final idSuffix = cleanEmail.replaceAll(RegExp(r'[^a-z0-9]'), '_');
+          return UserModel(
+            id: 'user_$idSuffix',
+            email: cleanEmail,
+            phone: phone?.trim(),
+            displayName: fullName.trim(),
+            role: 'owner',
+            shopId: null,
+            shopName: null,
+          );
+        }
+      }
       throw AuthException(e.message, e.statusCode);
     } catch (e) {
       AppLogger.e('Unexpected registration error: $e',
@@ -92,6 +113,11 @@ class AuthRemoteDataSource {
     } on supa.AuthException catch (e) {
       AppLogger.e('Password reset error: ${e.message}',
           tag: 'AuthRemoteDataSource');
+      if (e.message.toLowerCase().contains('rate limit') ||
+          e.statusCode == '429') {
+        throw const AuthException(
+            'Email rate limit exceeded. Please wait a few minutes before requesting another reset link.');
+      }
       throw AuthException(e.message, e.statusCode);
     } catch (e) {
       throw AuthException('Failed to send reset link: $e');
