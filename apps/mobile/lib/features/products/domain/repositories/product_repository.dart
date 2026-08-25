@@ -58,4 +58,16 @@ abstract interface class ProductRepository {
 
   /// Synchronize remote product catalog into local database
   Future<Result<int, Failure>> syncRemoteProducts();
+
+  /// Upload product image (from camera/gallery file bytes)
+  Future<Result<String, Failure>> uploadProductImage({
+    required String productId,
+    required List<int> imageBytes,
+    required String fileName,
+  });
+
+  /// Remove product image reference and storage object
+  Future<Result<void, Failure>> deleteProductImage({
+    required String productId,
+  });
 }

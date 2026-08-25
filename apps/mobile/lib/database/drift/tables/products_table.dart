@@ -12,6 +12,8 @@ class ProductsTable extends Table {
   TextColumn get regionalName => text().nullable()();
   TextColumn get description => text().nullable()();
   TextColumn get brand => text().nullable()();
+  // Product primary image public URL or local file path
+  TextColumn get imageUrl => text().nullable()();
   TextColumn get unit => text().withDefault(const Constant('PCS'))();
   TextColumn get hsnCode => text().nullable()();
   Int64Column get mrpPaise => int64()();

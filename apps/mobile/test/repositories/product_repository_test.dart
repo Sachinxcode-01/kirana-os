@@ -46,6 +46,23 @@ class MockProductRemoteDataSource implements ProductRemoteDataSource {
 
   @override
   Future<void> pushProduct(Map<String, dynamic> payload) async {}
+
+  @override
+  Future<String> uploadProductImage({
+    required String shopId,
+    required String productId,
+    required List<int> imageBytes,
+    required String fileName,
+  }) async {
+    return 'https://example.com/storage/products/$shopId/$productId/$fileName';
+  }
+
+  @override
+  Future<void> deleteProductImage({
+    required String shopId,
+    required String productId,
+    required String storagePath,
+  }) async {}
 }
 
 class MockConnectivityService implements ConnectivityService {

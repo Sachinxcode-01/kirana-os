@@ -181,6 +181,7 @@ class ProductRepositoryImpl implements ProductRepository {
           categoryId: Value(product.categoryId),
           name: Value(product.name),
           brand: Value(product.brand),
+          imageUrl: Value(product.imageUrl),
           unit: Value(product.unit),
           mrpPaise: Value(BigInt.from(product.mrpPaise)),
           sellingPricePaise: Value(BigInt.from(product.sellingPricePaise)),
@@ -320,6 +321,7 @@ class ProductRepositoryImpl implements ProductRepository {
           categoryId: Value(updated.categoryId),
           name: Value(updated.name),
           brand: Value(updated.brand),
+          imageUrl: Value(updated.imageUrl),
           unit: Value(updated.unit),
           mrpPaise: Value(BigInt.from(updated.mrpPaise)),
           sellingPricePaise: Value(BigInt.from(updated.sellingPricePaise)),
@@ -422,6 +424,7 @@ class ProductRepositoryImpl implements ProductRepository {
             categoryId: Value(raw['category_id'] as String?),
             name: Value(raw['name'] as String),
             brand: Value(raw['brand'] as String?),
+            imageUrl: Value(raw['image_url'] as String?),
             unit: Value(raw['unit'] as String? ?? 'PCS'),
             mrpPaise: Value(BigInt.from((raw['mrp_paise'] as num).toInt())),
             sellingPricePaise:
@@ -458,6 +461,193 @@ class ProductRepositoryImpl implements ProductRepository {
       }
 
       return Success(count);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<String, Failure>> uploadProductImage({
+    required String productId,
+    required List<int> imageBytes,
+    required String fileName,
+  }) async {
+    if (imageBytes.isEmpty) {
+      return const ErrorResult(ValidationFailure('Image file cannot be empty'));
+    }
+
+    if (imageBytes.length > 5 * 1024 * 1024) {
+      return const ErrorResult(
+          ValidationFailure('Image size exceeds maximum limit of 5MB'));
+    }
+
+    try {
+      final product = await _localDataSource.getProductById(productId);
+      if (product == null) {
+        return const ErrorResult(ValidationFailure('Product not found'));
+      }
+
+      String? publicUrl;
+      bool uploadedToCloud = false;
+
+      // 1. Try uploading to Supabase Storage if online
+      if (_connectivityService != null) {
+        final isOnline = await _connectivityService.isOnline();
+        if (isOnline) {
+          try {
+            publicUrl = await _remoteDataSource.uploadProductImage(
+              shopId: _shopId,
+              productId: productId,
+              imageBytes: imageBytes,
+              fileName: fileName,
+            );
+            uploadedToCloud = true;
+          } catch (cloudErr) {
+            AppLogger.w('Cloud image upload deferred: $cloudErr',
+                tag: 'ProductRepository');
+          }
+        }
+      }
+
+      // If offline or cloud upload failed, use placeholder reference
+      final finalImageUrl = publicUrl ??
+          'cached_local_image_${DateTime.now().millisecondsSinceEpoch}';
+
+      final now = DateTime.now();
+      final updatedProduct = product.copyWith(
+        imageUrl: finalImageUrl,
+        updatedAt: now,
+      );
+
+      // 2. Persist updated product with image to Drift SQLite
+      await _localDataSource.upsertProduct(
+        ProductsTableCompanion(
+          id: Value(updatedProduct.id),
+          shopId: Value(_shopId),
+          categoryId: Value(updatedProduct.categoryId),
+          name: Value(updatedProduct.name),
+          brand: Value(updatedProduct.brand),
+          imageUrl: Value(finalImageUrl),
+          unit: Value(updatedProduct.unit),
+          mrpPaise: Value(BigInt.from(updatedProduct.mrpPaise)),
+          sellingPricePaise:
+              Value(BigInt.from(updatedProduct.sellingPricePaise)),
+          purchasePricePaise:
+              Value(BigInt.from(updatedProduct.purchasePricePaise)),
+          currentStock: Value(updatedProduct.currentStock),
+          minStockAlert: Value(updatedProduct.minStockAlert),
+          description: Value(updatedProduct.description),
+          taxRatePercentage: Value(updatedProduct.taxRatePercentage),
+          isActive: Value(updatedProduct.isActive),
+          createdAt: Value(updatedProduct.createdAt),
+          updatedAt: Value(now),
+        ),
+      );
+
+      // 3. Enqueue sync operation if offline
+      if (!uploadedToCloud) {
+        final opId = _uuid.v4();
+        await _localDataSource.enqueueSyncOperation(
+          SyncQueueTableCompanion(
+            operationId: Value(opId),
+            shopId: Value(_shopId),
+            entityType: const Value('product_image'),
+            entityId: Value(productId),
+            operationType: const Value('UPLOAD_IMAGE'),
+            payload: Value(jsonEncode({
+              'product_id': productId,
+              'shop_id': _shopId,
+              'file_name': fileName,
+            })),
+            createdAt: Value(now),
+            status: const Value('PENDING'),
+          ),
+        );
+      }
+
+      return Success(finalImageUrl);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> deleteProductImage({
+    required String productId,
+  }) async {
+    try {
+      final product = await _localDataSource.getProductById(productId);
+      if (product == null) {
+        return const ErrorResult(ValidationFailure('Product not found'));
+      }
+
+      final now = DateTime.now();
+      final updatedProduct = product.copyWith(
+        imageUrl: null,
+        updatedAt: now,
+      );
+
+      // 1. Clear imageUrl in local Drift SQLite
+      await _localDataSource.upsertProduct(
+        ProductsTableCompanion(
+          id: Value(updatedProduct.id),
+          shopId: Value(_shopId),
+          categoryId: Value(updatedProduct.categoryId),
+          name: Value(updatedProduct.name),
+          brand: Value(updatedProduct.brand),
+          imageUrl: const Value(null),
+          unit: Value(updatedProduct.unit),
+          mrpPaise: Value(BigInt.from(updatedProduct.mrpPaise)),
+          sellingPricePaise:
+              Value(BigInt.from(updatedProduct.sellingPricePaise)),
+          purchasePricePaise:
+              Value(BigInt.from(updatedProduct.purchasePricePaise)),
+          currentStock: Value(updatedProduct.currentStock),
+          minStockAlert: Value(updatedProduct.minStockAlert),
+          description: Value(updatedProduct.description),
+          taxRatePercentage: Value(updatedProduct.taxRatePercentage),
+          isActive: Value(updatedProduct.isActive),
+          createdAt: Value(updatedProduct.createdAt),
+          updatedAt: Value(now),
+        ),
+      );
+
+      // 2. Remove from Supabase Storage if online
+      if (_connectivityService != null) {
+        final isOnline = await _connectivityService.isOnline();
+        if (isOnline) {
+          try {
+            await _remoteDataSource.deleteProductImage(
+              shopId: _shopId,
+              productId: productId,
+              storagePath: '$_shopId/$productId/primary.jpg',
+            );
+          } catch (cloudErr) {
+            AppLogger.w('Cloud image delete deferred: $cloudErr',
+                tag: 'ProductRepository');
+          }
+        } else {
+          // Enqueue delete sync operation
+          final opId = _uuid.v4();
+          await _localDataSource.enqueueSyncOperation(
+            SyncQueueTableCompanion(
+              operationId: Value(opId),
+              shopId: Value(_shopId),
+              entityType: const Value('product_image'),
+              entityId: Value(productId),
+              operationType: const Value('DELETE_IMAGE'),
+              payload: Value(jsonEncode({
+                'product_id': productId,
+                'shop_id': _shopId,
+              })),
+              createdAt: Value(now),
+              status: const Value('PENDING'),
+            ),
+          );
+        }
+      }
+
+      return const Success(null);
     } catch (e) {
       return ErrorResult(ErrorHandler.handleException(e));
     }

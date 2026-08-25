@@ -123,6 +123,28 @@ class MockProductRepository implements ProductRepository {
   Future<Result<int, Failure>> syncRemoteProducts() async {
     return const Success(0);
   }
+
+  @override
+  Future<Result<String, Failure>> uploadProductImage({
+    required String productId,
+    required List<int> imageBytes,
+    required String fileName,
+  }) async {
+    if (shouldFail) {
+      return ErrorResult(ValidationFailure(failureMessage));
+    }
+    return const Success('https://example.com/test.jpg');
+  }
+
+  @override
+  Future<Result<void, Failure>> deleteProductImage({
+    required String productId,
+  }) async {
+    if (shouldFail) {
+      return ErrorResult(ValidationFailure(failureMessage));
+    }
+    return const Success(null);
+  }
 }
 
 void main() {

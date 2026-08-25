@@ -95,6 +95,7 @@ class ProductLocalDataSource {
       categoryId: row.categoryId,
       categoryName: categoryName,
       brand: row.brand,
+      imageUrl: row.imageUrl,
       unit: row.unit,
       sellingPricePaise: row.sellingPricePaise.toInt(),
       purchasePricePaise: row.purchasePricePaise.toInt(),

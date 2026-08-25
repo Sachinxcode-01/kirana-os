@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import 'tables/shops_table.dart';
-import 'tables/products_table.dart';
+import 'tables/products_table.dart'; // Products schema with imageUrl column
 import 'tables/product_barcodes_table.dart';
 import 'tables/categories_table.dart';
 import 'tables/customers_table.dart';

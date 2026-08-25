@@ -8,8 +8,10 @@ import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
 import 'package:kirana_mobile/core/widgets/app_button.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:kirana_mobile/features/categories/presentation/providers/category_provider.dart';
 import 'package:kirana_mobile/features/barcodes/presentation/widgets/product_barcode_section.dart';
+import '../widgets/product_image_picker.dart';
 import '../../domain/models/product_model.dart';
 import '../providers/product_provider.dart';
 
@@ -388,6 +390,19 @@ class _ProductCard extends StatelessWidget {
     required this.onArchive,
   });
 
+  Widget _buildInitialAvatar(ProductModel product) {
+    return Center(
+      child: Text(
+        product.name.isNotEmpty ? product.name[0].toUpperCase() : 'P',
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: KiranaColors.secondary,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLowStock = product.currentStock <= product.minStockAlert &&
@@ -407,17 +422,27 @@ class _ProductCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Product Avatar / Initial
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: KiranaColors.secondaryContainer,
-                child: Text(
-                  product.name.isNotEmpty ? product.name[0].toUpperCase() : 'P',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: KiranaColors.secondary,
+              // Product Avatar / Thumbnail
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: KiranaColors.secondaryContainer,
+                    shape: BoxShape.circle,
                   ),
+                  child:
+                      product.imageUrl != null && product.imageUrl!.isNotEmpty
+                          ? (product.imageUrl!.startsWith('http')
+                              ? Image.network(
+                                  product.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _buildInitialAvatar(product),
+                                )
+                              : _buildInitialAvatar(product))
+                          : _buildInitialAvatar(product),
                 ),
               ),
               const SizedBox(width: KiranaSpacing.md),
@@ -602,6 +627,8 @@ class _ProductsScreenFormDialogState
   String? _selectedCategoryId;
   String _selectedUnit = 'PCS';
   String? _validationError;
+  XFile? _pendingImage;
+  bool _isImageRemoved = false;
 
   @override
   void initState() {
@@ -714,6 +741,29 @@ class _ProductsScreenFormDialogState
     }
 
     if (success && mounted) {
+      final notifier = ref.read(productNotifierProvider.notifier);
+      final targetProductId = widget.product?.id ??
+          ref
+              .read(productsStreamProvider)
+              .asData
+              ?.value
+              .firstWhere((p) => p.name == name)
+              .id;
+
+      if (targetProductId != null) {
+        if (_isImageRemoved) {
+          await notifier.deleteProductImage(targetProductId);
+        } else if (_pendingImage != null) {
+          final bytes = await _pendingImage!.readAsBytes();
+          await notifier.uploadProductImage(
+            productId: targetProductId,
+            imageBytes: bytes,
+            fileName: _pendingImage!.name,
+          );
+        }
+      }
+
+      if (!mounted) return;
       Navigator.pop(context);
       final state = ref.read(productNotifierProvider);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -766,6 +816,26 @@ class _ProductsScreenFormDialogState
                 ],
               ),
               const SizedBox(height: KiranaSpacing.sm),
+
+              Center(
+                child: ProductImagePicker(
+                  currentImageUrl: widget.product?.imageUrl,
+                  isLoading: actionState.isLoading,
+                  onImageSelected: (file) {
+                    setState(() {
+                      _pendingImage = file;
+                      _isImageRemoved = false;
+                    });
+                  },
+                  onImageRemoved: () {
+                    setState(() {
+                      _pendingImage = null;
+                      _isImageRemoved = true;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: KiranaSpacing.md),
 
               if (errorMessage != null) ...[
                 Container(

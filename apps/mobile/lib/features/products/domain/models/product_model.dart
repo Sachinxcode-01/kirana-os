@@ -5,6 +5,7 @@ class ProductModel {
   final String? categoryId;
   final String? categoryName;
   final String? brand;
+  final String? imageUrl;
   final String unit;
   final int sellingPricePaise;
   final int purchasePricePaise;
@@ -28,6 +29,7 @@ class ProductModel {
     this.categoryId,
     this.categoryName,
     this.brand,
+    this.imageUrl,
     this.unit = 'PCS',
     required this.sellingPricePaise,
     this.purchasePricePaise = 0,
@@ -52,6 +54,7 @@ class ProductModel {
     String? categoryId,
     String? categoryName,
     String? brand,
+    String? imageUrl,
     String? unit,
     int? sellingPricePaise,
     int? purchasePricePaise,
@@ -75,6 +78,7 @@ class ProductModel {
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
       brand: brand ?? this.brand,
+      imageUrl: imageUrl ?? this.imageUrl,
       unit: unit ?? this.unit,
       sellingPricePaise: sellingPricePaise ?? this.sellingPricePaise,
       purchasePricePaise: purchasePricePaise ?? this.purchasePricePaise,
@@ -103,6 +107,7 @@ class ProductModel {
           ? (json['categories'] as Map<String, dynamic>)['name'] as String?
           : null,
       brand: json['brand'] as String?,
+      imageUrl: json['image_url'] as String? ?? json['imageUrl'] as String?,
       unit: json['unit'] as String? ?? 'PCS',
       sellingPricePaise: (json['selling_price_paise'] as num).toInt(),
       purchasePricePaise: ((json['purchase_price_paise'] ?? 0) as num).toInt(),
@@ -134,6 +139,7 @@ class ProductModel {
       'name': name,
       'category_id': categoryId,
       'brand': brand,
+      'image_url': imageUrl,
       'unit': unit,
       'selling_price_paise': sellingPricePaise,
       'purchase_price_paise': purchasePricePaise,

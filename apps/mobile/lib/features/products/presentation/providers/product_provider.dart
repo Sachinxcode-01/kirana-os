@@ -178,6 +178,62 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
     );
   }
 
+  Future<String?> uploadProductImage({
+    required String productId,
+    required List<int> imageBytes,
+    required String fileName,
+  }) async {
+    if (state.isLoading) return null;
+    state = const ProductActionState(isLoading: true);
+
+    final result = await _repository.uploadProductImage(
+      productId: productId,
+      imageBytes: imageBytes,
+      fileName: fileName,
+    );
+
+    return result.fold(
+      (imageUrl) {
+        state = const ProductActionState(
+          isLoading: false,
+          successMessage: 'Product image uploaded successfully.',
+        );
+        return imageUrl;
+      },
+      (failure) {
+        state = ProductActionState(
+          isLoading: false,
+          errorMessage: failure.message,
+        );
+        return null;
+      },
+    );
+  }
+
+  Future<bool> deleteProductImage(String productId) async {
+    if (state.isLoading) return false;
+    state = const ProductActionState(isLoading: true);
+
+    final result = await _repository.deleteProductImage(productId: productId);
+
+    return result.fold(
+      (_) {
+        state = const ProductActionState(
+          isLoading: false,
+          successMessage: 'Product image deleted.',
+        );
+        return true;
+      },
+      (failure) {
+        state = ProductActionState(
+          isLoading: false,
+          errorMessage: failure.message,
+        );
+        return false;
+      },
+    );
+  }
+
   void clearMessages() {
     state = const ProductActionState();
   }

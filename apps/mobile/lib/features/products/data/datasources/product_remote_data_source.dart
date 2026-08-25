@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/utils/app_logger.dart';
@@ -135,6 +136,69 @@ class ProductRemoteDataSource {
       AppLogger.e('Failed to push remote product: $e',
           tag: 'ProductRemoteDataSource');
       throw const NetworkException('Failed to push product to cloud');
+    }
+  }
+
+  /// Upload product image to Supabase Storage bucket 'products'
+  /// Storage Path format: {shop_id}/{product_id}/{filename}
+  Future<String> uploadProductImage({
+    required String shopId,
+    required String productId,
+    required List<int> imageBytes,
+    required String fileName,
+  }) async {
+    try {
+      final storagePath = '$shopId/$productId/$fileName';
+
+      await _supabase.storage.from('products').uploadBinary(
+            storagePath,
+            Uint8List.fromList(imageBytes),
+            fileOptions: const supabase.FileOptions(
+              upsert: true,
+              contentType: 'image/jpeg',
+            ),
+          );
+
+      final publicUrl =
+          _supabase.storage.from('products').getPublicUrl(storagePath);
+      return publicUrl;
+    } on supabase.StorageException catch (e) {
+      if (e.statusCode == '42501') {
+        throw const PermissionDeniedException(
+            'You do not have permission to upload product images for this shop.');
+      }
+      if (e.message.contains('size') || e.statusCode == '413') {
+        throw const ValidationException(
+            'Image file size exceeds maximum limit of 5MB.');
+      }
+      throw DatabaseException(
+          'Storage upload error: ${e.message}', e.statusCode);
+    } catch (e) {
+      AppLogger.e('Product image upload failed: $e',
+          tag: 'ProductRemoteDataSource');
+      throw DatabaseException('Failed to upload product image: $e');
+    }
+  }
+
+  /// Delete product image from Supabase Storage bucket 'products'
+  Future<void> deleteProductImage({
+    required String shopId,
+    required String productId,
+    required String storagePath,
+  }) async {
+    try {
+      await _supabase.storage.from('products').remove([storagePath]);
+    } on supabase.StorageException catch (e) {
+      if (e.statusCode == '42501') {
+        throw const PermissionDeniedException(
+            'You do not have permission to delete product images for this shop.');
+      }
+      throw DatabaseException(
+          'Storage delete error: ${e.message}', e.statusCode);
+    } catch (e) {
+      AppLogger.e('Product image deletion failed: $e',
+          tag: 'ProductRemoteDataSource');
+      throw DatabaseException('Failed to delete product image: $e');
     }
   }
 }
