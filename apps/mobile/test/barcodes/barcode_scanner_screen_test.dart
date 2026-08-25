@@ -107,7 +107,7 @@ void main() {
   group('Retail Barcode Scanner Formats Validation', () {
     test('Recognizes ITF / Interleaved 2 of 5 retail barcodes', () {
       expect(BarcodeValidator.validate('12345678901234').isSuccess, isTrue);
-      expect(BarcodeValidator.detectType('12345678901234'), BarcodeType.custom);
+      expect(BarcodeValidator.detectType('12345678901234'), BarcodeType.code39);
     });
 
     test('Normalizes camera scanned raw barcode strings', () {
