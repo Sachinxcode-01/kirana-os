@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import 'package:kirana_mobile/core/errors/failure.dart';
 import 'package:kirana_mobile/core/errors/result.dart';
 import 'package:kirana_mobile/features/auth/data/datasources/auth_remote_data_source.dart';
