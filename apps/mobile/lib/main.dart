@@ -12,7 +12,7 @@ void main() async {
   try {
     await Supabase.initialize(
       url: config.supabaseUrl,
-      anonKey: config.supabaseAnonKey,
+      publishableKey: config.supabaseAnonKey,
       debug: config.enableDebugLogging,
     );
   } catch (e) {
