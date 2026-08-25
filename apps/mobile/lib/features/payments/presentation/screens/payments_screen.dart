@@ -5,14 +5,15 @@ import 'package:kirana_mobile/core/extensions/num_extensions.dart';
 import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
-import 'package:kirana_mobile/features/billing/presentation/screens/billing_screen.dart';
+import 'package:kirana_mobile/features/billing/presentation/providers/billing_provider.dart';
 
 class PaymentsScreen extends ConsumerWidget {
   const PaymentsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totalPaise = ref.watch(cartTotalPaiseProvider);
+    final billingState = ref.watch(billingNotifierProvider);
+    final totalPaise = billingState.activeDraft?.totalPaise ?? 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Select Payment Mode')),
@@ -47,7 +48,6 @@ class PaymentsScreen extends ConsumerWidget {
               subtitle: 'Exact cash or enter tendered amount',
               color: KiranaColors.success,
               onTap: () {
-                ref.read(cartProvider.notifier).clearCart();
                 context.go('/bills');
               },
             ),
@@ -58,7 +58,6 @@ class PaymentsScreen extends ConsumerWidget {
               subtitle: 'Customer scans with PhonePe, GPay, Paytm',
               color: KiranaColors.primary,
               onTap: () {
-                ref.read(cartProvider.notifier).clearCart();
                 context.go('/bills');
               },
             ),
@@ -69,7 +68,6 @@ class PaymentsScreen extends ConsumerWidget {
               subtitle: 'Record to customer credit ledger',
               color: KiranaColors.secondary,
               onTap: () {
-                ref.read(cartProvider.notifier).clearCart();
                 context.go('/bills');
               },
             ),
