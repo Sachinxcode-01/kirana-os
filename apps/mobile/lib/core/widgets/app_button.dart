@@ -85,9 +85,15 @@ class AppButton extends StatelessWidget {
                     Icon(icon, size: 20, color: fgColor),
                     const SizedBox(width: KiranaSpacing.sm),
                   ],
-                  Text(
-                    label,
-                    style: KiranaTypography.labelLarge.copyWith(color: fgColor),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        style: KiranaTypography.labelLarge
+                            .copyWith(color: fgColor),
+                      ),
+                    ),
                   ),
                 ],
               ),

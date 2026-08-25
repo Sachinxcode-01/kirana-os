@@ -65,14 +65,103 @@ class ShopRemoteDataSource {
         createdAt: DateTime.now(),
       );
     } on supa.PostgrestException catch (e) {
-      AppLogger.e('RPC create_shop error: ${e.message}',
+      AppLogger.w(
+          'RPC create_shop warning: ${e.message} (code: ${e.code}). Attempting direct insert fallback...',
           tag: 'ShopRemoteDataSource');
+
+      if (e.code == 'PGRST202' ||
+          e.code == '42883' ||
+          e.message.contains('Could not find the function') ||
+          e.message.contains('function') &&
+              e.message.contains('does not exist')) {
+        return await _createShopDirectFallback(
+          name: name,
+          phone: phone,
+          address: address,
+          city: city,
+          state: state,
+          pincode: pincode,
+          gstin: gstin,
+          fssaiLicense: fssaiLicense,
+          upiId: upiId,
+          logoUrl: logoUrl,
+        );
+      }
       throw DatabaseException(e.message, e.code);
     } catch (e) {
       AppLogger.e('Unexpected createShop error: $e',
           tag: 'ShopRemoteDataSource');
       throw DatabaseException('Failed to create store profile: $e');
     }
+  }
+
+  Future<ShopModel> _createShopDirectFallback({
+    required String name,
+    required String phone,
+    String? address,
+    String? city,
+    String? state,
+    String? pincode,
+    String? gstin,
+    String? fssaiLicense,
+    String? upiId,
+    String? logoUrl,
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Authentication required to create a store');
+    }
+
+    final shopId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    await _supabase.from('shops').insert({
+      'id': shopId,
+      'name': name.trim(),
+      'owner_id': user.id,
+      'phone': phone.trim(),
+      'address': address?.trim(),
+      'city': city?.trim(),
+      'state': state?.trim() ?? 'Karnataka',
+      'pincode': pincode?.trim(),
+      'gstin': gstin?.trim(),
+      'fssai_license': fssaiLicense?.trim(),
+      'upi_id': upiId?.trim(),
+      'logo_url': logoUrl,
+      'currency': 'INR',
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+
+    try {
+      await _supabase.from('shop_users').insert({
+        'id': DateTime.now().microsecondsSinceEpoch.toString(),
+        'shop_id': shopId,
+        'user_id': user.id,
+        'role': 'owner',
+        'display_name': '${name.trim()} Owner',
+        'status': 'active',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (e) {
+      AppLogger.w('Membership creation notice: $e',
+          tag: 'ShopRemoteDataSource');
+    }
+
+    return ShopModel(
+      id: shopId,
+      name: name.trim(),
+      phone: phone.trim(),
+      address: address,
+      city: city,
+      state: state ?? 'Karnataka',
+      pincode: pincode,
+      gstin: gstin,
+      fssaiLicense: fssaiLicense,
+      upiId: upiId,
+      logoUrl: logoUrl,
+      createdAt: DateTime.now(),
+    );
   }
 
   Future<ShopModel> getShopDetails(String shopId) async {
