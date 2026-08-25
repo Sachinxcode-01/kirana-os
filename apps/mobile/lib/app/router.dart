@@ -47,8 +47,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           loc == '/register' ||
           loc == '/forgot-password' ||
           loc == '/reset-password' ||
-          loc == '/auth' ||
-          loc == '/splash';
+          loc == '/auth';
 
       final isOnboardingRoute = loc == '/onboarding' || loc == '/shop-setup';
 
@@ -64,8 +63,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/onboarding';
       }
 
-      // 4. If authenticated with an active shop, prevent visiting auth/onboarding routes
-      if (isAuthRoute || isOnboardingRoute) {
+      // 4. If authenticated with an active shop, prevent visiting auth/onboarding/splash routes
+      if (isAuthRoute || isOnboardingRoute || loc == '/splash') {
         return '/dashboard';
       }
 

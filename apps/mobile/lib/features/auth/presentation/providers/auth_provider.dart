@@ -26,27 +26,31 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
   }
 
   Future<void> restoreSession() async {
-    final result = await _repository.restoreSession();
-    result.fold(
-      (user) {
-        if (user != null) {
-          if (user.shopId != null && user.shopId!.isNotEmpty) {
-            state = AuthStateModel.authenticatedWithShop(
-              user: user,
-              shopId: user.shopId!,
-              shopName: user.shopName ?? 'My Kirana Store',
-            );
+    try {
+      final result = await _repository.restoreSession();
+      result.fold(
+        (user) {
+          if (user != null) {
+            if (user.shopId != null && user.shopId!.isNotEmpty) {
+              state = AuthStateModel.authenticatedWithShop(
+                user: user,
+                shopId: user.shopId!,
+                shopName: user.shopName ?? 'My Kirana Store',
+              );
+            } else {
+              state = AuthStateModel.authenticatedWithoutShop(user);
+            }
           } else {
-            state = AuthStateModel.authenticatedWithoutShop(user);
+            state = AuthStateModel.unauthenticated();
           }
-        } else {
+        },
+        (failure) {
           state = AuthStateModel.unauthenticated();
-        }
-      },
-      (failure) {
-        state = AuthStateModel.unauthenticated();
-      },
-    );
+        },
+      );
+    } catch (_) {
+      state = AuthStateModel.unauthenticated();
+    }
   }
 
   Future<bool> login({required String email, required String password}) async {

@@ -35,6 +35,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
 
     _animController.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navigateBasedOnAuth(ref.read(authNotifierProvider));
+    });
   }
 
   @override
@@ -43,19 +47,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.dispose();
   }
 
+  void _navigateBasedOnAuth(AuthStateModel state) {
+    if (!state.isInitializing && mounted) {
+      if (!state.isAuthenticated) {
+        context.go('/login');
+      } else if (!state.hasActiveShop) {
+        context.go('/onboarding');
+      } else {
+        context.go('/dashboard');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    ref.listen<AuthStateModel>(authNotifierProvider, (previous, next) {
-      if (!next.isInitializing) {
-        if (!next.isAuthenticated) {
-          context.go('/login');
-        } else if (!next.hasActiveShop) {
-          context.go('/onboarding');
-        } else {
-          context.go('/dashboard');
-        }
-      }
-    });
+    ref.listen<AuthStateModel>(
+      authNotifierProvider,
+      (previous, next) => _navigateBasedOnAuth(next),
+    );
 
     return Scaffold(
       backgroundColor: KiranaColors.primary,
