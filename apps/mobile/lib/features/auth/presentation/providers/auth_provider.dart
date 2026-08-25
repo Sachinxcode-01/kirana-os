@@ -201,6 +201,26 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
     );
   }
 
+  Future<bool> requestAccountDeletion({
+    required String currentPassword,
+    String? reason,
+  }) async {
+    final result = await _repository.requestAccountDeletion(
+      currentPassword: currentPassword,
+      reason: reason,
+    );
+    return result.fold(
+      (_) {
+        state = AuthStateModel.unauthenticated();
+        return true;
+      },
+      (failure) {
+        state = AuthStateModel.error(failure.message);
+        return false;
+      },
+    );
+  }
+
   void updateActiveShop({
     required String shopId,
     required String shopName,

@@ -22,13 +22,6 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => const _ChangePasswordDialog(),
-    );
-  }
-
   void _showPhotoOptionsSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
@@ -263,7 +256,19 @@ class ProfileScreen extends ConsumerWidget {
           AppButton(
             label: 'Change Password',
             variant: AppButtonVariant.outlined,
-            onPressed: () => _showChangePasswordDialog(context, ref),
+            onPressed: () => context.push('/change-password'),
+          ),
+          const SizedBox(height: KiranaSpacing.md),
+
+          AppButton(
+            label: 'Request Account Deletion',
+            variant: AppButtonVariant.outlined,
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const _DeleteAccountDialog(),
+              );
+            },
           ),
           const SizedBox(height: KiranaSpacing.md),
 
@@ -499,44 +504,33 @@ class _PhotoOptionsSheet extends StatelessWidget {
   }
 }
 
-class _ChangePasswordDialog extends ConsumerStatefulWidget {
-  const _ChangePasswordDialog();
+class _DeleteAccountDialog extends ConsumerStatefulWidget {
+  const _DeleteAccountDialog();
 
   @override
-  ConsumerState<_ChangePasswordDialog> createState() =>
-      __ChangePasswordDialogState();
+  ConsumerState<_DeleteAccountDialog> createState() =>
+      _DeleteAccountDialogState();
 }
 
-class __ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
-  final _currentPasswordController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
+  final _passwordController = TextEditingController();
+  final _reasonController = TextEditingController();
   bool _isLoading = false;
   String? _error;
 
   @override
   void dispose() {
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
+    _passwordController.dispose();
+    _reasonController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleChangePassword() async {
-    final current = _currentPasswordController.text;
-    final newPass = _newPasswordController.text;
-    final confirm = _confirmPasswordController.text;
+  Future<void> _handleDeleteRequest() async {
+    final password = _passwordController.text;
+    final reason = _reasonController.text.trim();
 
-    if (current.isEmpty) {
-      setState(() => _error = 'Please enter your current password');
-      return;
-    }
-    if (newPass.length < 6) {
-      setState(() => _error = 'New password must be at least 6 characters');
-      return;
-    }
-    if (newPass != confirm) {
-      setState(() => _error = 'New passwords do not match');
+    if (password.isEmpty) {
+      setState(() => _error = 'Please enter your current password to confirm');
       return;
     }
 
@@ -545,9 +539,11 @@ class __ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
       _error = null;
     });
 
-    final success = await ref
-        .read(authNotifierProvider.notifier)
-        .changePassword(currentPassword: current, newPassword: newPass);
+    final success =
+        await ref.read(authNotifierProvider.notifier).requestAccountDeletion(
+              currentPassword: password,
+              reason: reason.isNotEmpty ? reason : null,
+            );
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -555,14 +551,17 @@ class __ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Password changed successfully!'),
+            content: Text(
+              'Account deletion request submitted securely. Session ended.',
+            ),
             backgroundColor: KiranaColors.secondary,
           ),
         );
+        context.go('/login');
       } else {
         final authState = ref.read(authNotifierProvider);
-        setState(() =>
-            _error = authState.errorMessage ?? 'Failed to change password');
+        setState(() => _error = authState.errorMessage ??
+            'Failed to process account deletion request.');
       }
     }
   }
@@ -570,12 +569,31 @@ class __ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Change Password'),
+      title: Row(
+        children: const [
+          Icon(Icons.warning_amber_rounded, color: KiranaColors.error),
+          SizedBox(width: KiranaSpacing.xs),
+          Text('Request Account Deletion'),
+        ],
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Container(
+              padding: const EdgeInsets.all(KiranaSpacing.sm),
+              decoration: BoxDecoration(
+                color: KiranaColors.errorContainer,
+                borderRadius: KiranaRadius.borderSm,
+              ),
+              child: Text(
+                'Notice: Account deletion will request account deactivation. Shop financial ledgers, bills, payments, and audit history will be safely retained in accordance with legal and accounting requirements.',
+                style: KiranaTypography.bodySmall
+                    .copyWith(color: KiranaColors.error),
+              ),
+            ),
+            const SizedBox(height: KiranaSpacing.md),
             if (_error != null) ...[
               Text(
                 _error!,
@@ -584,24 +602,18 @@ class __ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
               const SizedBox(height: KiranaSpacing.sm),
             ],
             AppTextField(
-              label: 'Current Password',
-              hint: 'Enter current password',
-              controller: _currentPasswordController,
+              label: 'Current Password *',
+              hint: 'Re-enter password for verification',
+              controller: _passwordController,
               obscureText: true,
+              readOnly: _isLoading,
             ),
             const SizedBox(height: KiranaSpacing.md),
             AppTextField(
-              label: 'New Password',
-              hint: 'Min 6 characters',
-              controller: _newPasswordController,
-              obscureText: true,
-            ),
-            const SizedBox(height: KiranaSpacing.md),
-            AppTextField(
-              label: 'Confirm New Password',
-              hint: 'Re-enter new password',
-              controller: _confirmPasswordController,
-              obscureText: true,
+              label: 'Reason for Deletion (Optional)',
+              hint: 'Help us improve KiranaOS',
+              controller: _reasonController,
+              readOnly: _isLoading,
             ),
           ],
         ),
@@ -612,14 +624,23 @@ class __ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: _isLoading ? null : _handleChangePassword,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: KiranaColors.error,
+          ),
+          onPressed: _isLoading ? null : _handleDeleteRequest,
           child: _isLoading
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
-              : const Text('Update Password'),
+              : const Text(
+                  'Confirm Request',
+                  style: TextStyle(color: Colors.white),
+                ),
         ),
       ],
     );

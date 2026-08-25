@@ -148,4 +148,20 @@ class AuthRepositoryImpl implements AuthRepository {
       return ErrorResult(ErrorHandler.handle(e));
     }
   }
+
+  @override
+  Future<Result<void, Failure>> requestAccountDeletion({
+    required String currentPassword,
+    String? reason,
+  }) async {
+    try {
+      await _remoteDataSource.requestAccountDeletion(
+        currentPassword: currentPassword,
+        reason: reason,
+      );
+      return const Success(null);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handle(e));
+    }
+  }
 }

@@ -9,6 +9,7 @@ import 'package:kirana_mobile/features/auth/presentation/screens/login_screen.da
 import 'package:kirana_mobile/features/auth/presentation/screens/register_screen.dart';
 import 'package:kirana_mobile/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:kirana_mobile/features/auth/presentation/screens/reset_password_screen.dart';
+import 'package:kirana_mobile/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:kirana_mobile/features/barcode/presentation/screens/barcode_screen.dart';
 import 'package:kirana_mobile/features/billing/presentation/screens/billing_screen.dart';
 import 'package:kirana_mobile/features/categories/presentation/screens/categories_screen.dart';
@@ -197,6 +198,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: '/change-password',
+            builder: (context, state) => const ChangePasswordScreen(),
           ),
           GoRoute(
             path: '/settings',

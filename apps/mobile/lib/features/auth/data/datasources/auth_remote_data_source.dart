@@ -205,6 +205,58 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> requestAccountDeletion({
+    required String currentPassword,
+    String? reason,
+  }) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null || user.email == null) {
+        throw const AuthException('No active session. Please sign in again.');
+      }
+
+      // Re-authenticate user
+      await _supabase.auth.signInWithPassword(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      // Record deletion request in metadata safely without destroying shop financial ledgers
+      await _supabase.auth.updateUser(
+        supa.UserAttributes(
+          data: {
+            'deletion_requested': true,
+            'deletion_requested_at': DateTime.now().toUtc().toIso8601String(),
+            if (reason != null && reason.isNotEmpty)
+              'deletion_reason': reason.trim(),
+          },
+        ),
+      );
+
+      try {
+        await _supabase
+            .from('shop_users')
+            .update({'status': 'deletion_requested'}).eq('user_id', user.id);
+      } catch (e) {
+        AppLogger.w(
+            'Notice: Could not update shop_users status to deletion_requested: $e',
+            tag: 'AuthRemoteDataSource');
+      }
+
+      // Sign out cleanly
+      await signOut();
+    } on supa.AuthException catch (e) {
+      AppLogger.e('Delete account request error: ${e.message}',
+          tag: 'AuthRemoteDataSource');
+      if (e.message.toLowerCase().contains('invalid login credentials')) {
+        throw const AuthException('Current password is incorrect.');
+      }
+      throw AuthException(e.message, e.statusCode);
+    } catch (e) {
+      throw AuthException('Failed to process account deletion request: $e');
+    }
+  }
+
   Future<UserModel?> getCurrentUser() async {
     try {
       final user = _supabase.auth.currentUser;

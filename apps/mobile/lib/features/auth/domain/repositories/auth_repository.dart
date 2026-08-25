@@ -39,4 +39,9 @@ abstract interface class AuthRepository {
   Future<Result<bool, Failure>> verifyQuickPin(String pin);
 
   Future<Result<void, Failure>> setQuickPin(String pin);
+
+  Future<Result<void, Failure>> requestAccountDeletion({
+    required String currentPassword,
+    String? reason,
+  });
 }

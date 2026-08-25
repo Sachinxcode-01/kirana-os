@@ -109,6 +109,18 @@ class MockAuthRepository implements AuthRepository {
   Future<Result<void, Failure>> setQuickPin(String pin) async {
     return const Success(null);
   }
+
+  @override
+  Future<Result<void, Failure>> requestAccountDeletion({
+    required String currentPassword,
+    String? reason,
+  }) async {
+    if (shouldFail) {
+      return const ErrorResult(AuthFailure('Current password is incorrect.'));
+    }
+    mockUser = null;
+    return const Success(null);
+  }
 }
 
 class FakeAuthRemoteDataSource extends AuthRemoteDataSource {
