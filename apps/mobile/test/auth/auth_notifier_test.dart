@@ -112,7 +112,7 @@ class MockAuthRepository implements AuthRepository {
 
 class FakeAuthRemoteDataSource extends AuthRemoteDataSource {
   @override
-  Stream<dynamic> get onAuthStateChange => const Stream.empty();
+  Stream<supa.AuthState> get onAuthStateChange => const Stream.empty();
 }
 
 void main() {
