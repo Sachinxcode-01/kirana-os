@@ -23,10 +23,16 @@ class AppConfig {
   bool get isProduction => environment == Environment.prod;
   bool get isDevelopment => environment == Environment.dev;
 
-  /// Development environment preset (configured with local or development endpoints).
+  /// Development environment preset (configured with project endpoints).
   static AppConfig dev({
-    String supabaseUrl = 'https://mock.supabase.co',
-    String supabaseAnonKey = 'mock-anon-key',
+    String supabaseUrl = const String.fromEnvironment(
+      'SUPABASE_URL',
+      defaultValue: 'https://ehjijetpbnsqswlxmzjv.supabase.co',
+    ),
+    String supabaseAnonKey = const String.fromEnvironment(
+      'SUPABASE_ANON_KEY',
+      defaultValue: 'sb_publishable_JdqSYHkZizc6aMM_oC8x4w_f96bbOvH',
+    ),
     bool enableDebugLogging = true,
   }) {
     return AppConfig(
