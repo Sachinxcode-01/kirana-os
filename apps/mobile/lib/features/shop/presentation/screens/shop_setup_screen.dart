@@ -342,7 +342,7 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
           ),
           const SizedBox(height: KiranaSpacing.xs),
           DropdownButtonFormField<String>(
-            value: _selectedLocality,
+            initialValue: _selectedLocality,
             decoration: const InputDecoration(
               filled: true,
               fillColor: KiranaColors.surfaceVariant,
