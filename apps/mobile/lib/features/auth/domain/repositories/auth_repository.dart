@@ -15,11 +15,20 @@ abstract interface class AuthRepository {
     String? phone,
   });
 
+  Future<Result<void, Failure>> resendVerificationEmail({
+    required String email,
+  });
+
   Future<Result<void, Failure>> sendPasswordResetEmail({
     required String email,
   });
 
   Future<Result<void, Failure>> updatePassword({
+    required String newPassword,
+  });
+
+  Future<Result<void, Failure>> changePassword({
+    required String currentPassword,
     required String newPassword,
   });
 

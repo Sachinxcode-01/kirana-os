@@ -23,7 +23,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isResendingEmail = false;
   String? _localError;
+  String? _infoMessage;
 
   @override
   void dispose() {
@@ -45,7 +47,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    setState(() => _localError = null);
+    setState(() {
+      _localError = null;
+      _infoMessage = null;
+    });
 
     final success = await ref.read(authNotifierProvider.notifier).login(
           email: email,
@@ -62,6 +67,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _handleResendVerification() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() =>
+          _localError = 'Please enter your email to resend verification link');
+      return;
+    }
+
+    setState(() {
+      _isResendingEmail = true;
+      _localError = null;
+      _infoMessage = null;
+    });
+
+    final success = await ref
+        .read(authNotifierProvider.notifier)
+        .resendVerificationEmail(email);
+
+    if (mounted) {
+      setState(() {
+        _isResendingEmail = false;
+        if (success) {
+          _infoMessage =
+              'Verification email sent to $email. Please check your inbox.';
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
@@ -71,6 +105,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isOffline = connectivity == ConnectivityStatus.offline;
 
     final errorMessage = _localError ?? authState.errorMessage;
+    final isUnconfirmedEmail = errorMessage != null &&
+        errorMessage.toLowerCase().contains('email not confirmed');
 
     return Scaffold(
       body: Center(
@@ -133,9 +169,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           SizedBox(width: KiranaSpacing.sm),
                           Expanded(
                             child: Text(
-                              "You're offline. Reconnect to log in with new credentials.",
+                              "You're offline. Connect to internet to log in with new credentials.",
                               style: TextStyle(
                                   fontSize: 12, color: KiranaColors.neutral800),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: KiranaSpacing.lg),
+                  ],
+
+                  // Info Banner
+                  if (_infoMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(KiranaSpacing.md),
+                      decoration: BoxDecoration(
+                        color: KiranaColors.secondaryContainer,
+                        borderRadius: KiranaRadius.borderMd,
+                        border: Border.all(color: KiranaColors.secondary),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_outline,
+                              size: 20, color: KiranaColors.secondary),
+                          const SizedBox(width: KiranaSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              _infoMessage!,
+                              style: const TextStyle(
+                                  fontSize: 13, color: KiranaColors.secondary),
                             ),
                           ),
                         ],
@@ -153,18 +216,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         borderRadius: KiranaRadius.borderMd,
                         border: Border.all(color: KiranaColors.error),
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.error_outline,
-                              size: 20, color: KiranaColors.error),
-                          const SizedBox(width: KiranaSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              errorMessage,
-                              style: const TextStyle(
-                                  fontSize: 13, color: KiranaColors.error),
-                            ),
+                          Row(
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  size: 20, color: KiranaColors.error),
+                              const SizedBox(width: KiranaSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  errorMessage,
+                                  style: const TextStyle(
+                                      fontSize: 13, color: KiranaColors.error),
+                                ),
+                              ),
+                            ],
                           ),
+                          if (isUnconfirmedEmail) ...[
+                            const SizedBox(height: KiranaSpacing.sm),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 30),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: _isResendingEmail
+                                    ? null
+                                    : _handleResendVerification,
+                                icon: _isResendingEmail
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.send_rounded, size: 14),
+                                label: const Text(
+                                  'Resend Verification Email',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -219,7 +318,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   AppButton(
                     label: 'Sign In',
                     isLoading: authState.isAuthenticating,
-                    onPressed: authState.isAuthenticating ? null : _handleLogin,
+                    onPressed: authState.isAuthenticating || isOffline
+                        ? null
+                        : _handleLogin,
                   ),
                   const SizedBox(height: KiranaSpacing.xl),
 

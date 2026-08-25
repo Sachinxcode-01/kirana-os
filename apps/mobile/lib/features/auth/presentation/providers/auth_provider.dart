@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import '../../../../app/app_providers.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../domain/models/auth_state_model.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
@@ -20,9 +23,55 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 class AuthNotifier extends StateNotifier<AuthStateModel> {
   final AuthRepository _repository;
+  final AuthRemoteDataSource _remoteDataSource;
+  StreamSubscription<supa.AuthState>? _authSubscription;
 
-  AuthNotifier(this._repository) : super(AuthStateModel.initializing()) {
+  AuthNotifier(this._repository, this._remoteDataSource)
+      : super(AuthStateModel.initializing()) {
+    _initAuthListener();
+  }
+
+  void _initAuthListener() {
     restoreSession();
+    try {
+      _authSubscription = _remoteDataSource.onAuthStateChange.listen(
+        (data) async {
+          final event = data.event;
+          AppLogger.d('Auth state change event: $event', tag: 'AuthNotifier');
+
+          switch (event) {
+            case supa.AuthChangeEvent.signedIn:
+            case supa.AuthChangeEvent.tokenRefreshed:
+            case supa.AuthChangeEvent.userUpdated:
+              await restoreSession();
+              break;
+            case supa.AuthChangeEvent.signedOut:
+              state = AuthStateModel.unauthenticated();
+              break;
+            case supa.AuthChangeEvent.passwordRecovery:
+              // Keep authenticated or prompt reset screen
+              break;
+            case supa.AuthChangeEvent.initialSession:
+              // Handled by restoreSession()
+              break;
+            default:
+              break;
+          }
+        },
+        onError: (error) {
+          AppLogger.e('Auth subscription error: $error', tag: 'AuthNotifier');
+        },
+      );
+    } catch (e) {
+      AppLogger.w('Failed to listen to auth state changes: $e',
+          tag: 'AuthNotifier');
+    }
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> restoreSession() async {
@@ -102,14 +151,54 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
     );
   }
 
+  Future<bool> resendVerificationEmail(String email) async {
+    final result = await _repository.resendVerificationEmail(email: email);
+    return result.fold(
+      (_) => true,
+      (failure) {
+        state = AuthStateModel.error(failure.message);
+        return false;
+      },
+    );
+  }
+
   Future<bool> sendPasswordReset(String email) async {
     final result = await _repository.sendPasswordResetEmail(email: email);
-    return result.isSuccess;
+    return result.fold(
+      (_) => true,
+      (failure) {
+        state = AuthStateModel.error(failure.message);
+        return false;
+      },
+    );
   }
 
   Future<bool> updatePassword(String newPassword) async {
     final result = await _repository.updatePassword(newPassword: newPassword);
-    return result.isSuccess;
+    return result.fold(
+      (_) => true,
+      (failure) {
+        state = AuthStateModel.error(failure.message);
+        return false;
+      },
+    );
+  }
+
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final result = await _repository.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+    return result.fold(
+      (_) => true,
+      (failure) {
+        state = AuthStateModel.error(failure.message);
+        return false;
+      },
+    );
   }
 
   void updateActiveShop({
@@ -138,5 +227,6 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AuthStateModel>((ref) {
   final repository = ref.watch(authRepositoryProvider);
-  return AuthNotifier(repository);
+  final remoteDataSource = ref.watch(authRemoteDataSourceProvider);
+  return AuthNotifier(repository, remoteDataSource);
 });

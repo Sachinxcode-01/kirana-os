@@ -6,11 +6,19 @@ import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
 import 'package:kirana_mobile/core/widgets/app_button.dart';
+import 'package:kirana_mobile/core/widgets/app_text_field.dart';
 import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:kirana_mobile/features/shop/presentation/providers/shop_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => const _ChangePasswordDialog(),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -140,6 +148,13 @@ class ProfileScreen extends ConsumerWidget {
 
           // Actions
           AppButton(
+            label: 'Change Password',
+            variant: AppButtonVariant.outlined,
+            onPressed: () => _showChangePasswordDialog(context, ref),
+          ),
+          const SizedBox(height: KiranaSpacing.md),
+
+          AppButton(
             label: 'Store Settings & Invoice Config',
             variant: AppButtonVariant.outlined,
             onPressed: () => context.push('/settings'),
@@ -182,6 +197,133 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ChangePasswordDialog extends ConsumerStatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  ConsumerState<_ChangePasswordDialog> createState() =>
+      __ChangePasswordDialogState();
+}
+
+class __ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleChangePassword() async {
+    final current = _currentPasswordController.text;
+    final newPass = _newPasswordController.text;
+    final confirm = _confirmPasswordController.text;
+
+    if (current.isEmpty) {
+      setState(() => _error = 'Please enter your current password');
+      return;
+    }
+    if (newPass.length < 6) {
+      setState(() => _error = 'New password must be at least 6 characters');
+      return;
+    }
+    if (newPass != confirm) {
+      setState(() => _error = 'New passwords do not match');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final success = await ref
+        .read(authNotifierProvider.notifier)
+        .changePassword(currentPassword: current, newPassword: newPass);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (success) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password changed successfully!'),
+            backgroundColor: KiranaColors.secondary,
+          ),
+        );
+      } else {
+        final authState = ref.read(authNotifierProvider);
+        setState(() =>
+            _error = authState.errorMessage ?? 'Failed to change password');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Change Password'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_error != null) ...[
+              Text(
+                _error!,
+                style: const TextStyle(color: KiranaColors.error, fontSize: 13),
+              ),
+              const SizedBox(height: KiranaSpacing.sm),
+            ],
+            AppTextField(
+              label: 'Current Password',
+              hint: 'Enter current password',
+              controller: _currentPasswordController,
+              obscureText: true,
+            ),
+            const SizedBox(height: KiranaSpacing.md),
+            AppTextField(
+              label: 'New Password',
+              hint: 'Min 6 characters',
+              controller: _newPasswordController,
+              obscureText: true,
+            ),
+            const SizedBox(height: KiranaSpacing.md),
+            AppTextField(
+              label: 'Confirm New Password',
+              hint: 'Re-enter new password',
+              controller: _confirmPasswordController,
+              obscureText: true,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _handleChangePassword,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Update Password'),
+        ),
+      ],
     );
   }
 }

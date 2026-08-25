@@ -13,11 +13,14 @@ class AuthRemoteDataSource {
     try {
       return supa.Supabase.instance.client;
     } catch (e) {
-      AppLogger.w('Supabase instance not initialized, using offline fallback',
+      AppLogger.w('Supabase instance not initialized',
           tag: 'AuthRemoteDataSource');
       throw const NetworkException('Supabase connection not initialized');
     }
   }
+
+  Stream<supa.AuthState> get onAuthStateChange =>
+      _supabase.auth.onAuthStateChange;
 
   Future<UserModel> login({
     required String email,
@@ -40,7 +43,13 @@ class AuthRemoteDataSource {
           tag: 'AuthRemoteDataSource');
       if (e.message.toLowerCase().contains('email not confirmed')) {
         throw AuthException(
-          'Email not confirmed. Please check your inbox to confirm your email, or turn off "Confirm email" in Supabase Authentication settings.',
+          'Email not confirmed. Please check your inbox to verify your email address.',
+          e.statusCode,
+        );
+      }
+      if (e.message.toLowerCase().contains('invalid login credentials')) {
+        throw AuthException(
+          'Invalid email or password. Please try again.',
           e.statusCode,
         );
       }
@@ -87,29 +96,42 @@ class AuthRemoteDataSource {
       if (e.message.toLowerCase().contains('rate limit') ||
           e.statusCode == '429' ||
           e.code == 'over_email_send_rate_limit') {
-        // 1. Attempt login if user was already created in previous attempt
-        try {
-          return await login(email: email, password: password);
-        } catch (_) {
-          // 2. Fallback: Return user session so user is never blocked by rate limit
-          final cleanEmail = email.trim().toLowerCase();
-          final idSuffix = cleanEmail.replaceAll(RegExp(r'[^a-z0-9]'), '_');
-          return UserModel(
-            id: 'user_$idSuffix',
-            email: cleanEmail,
-            phone: phone?.trim(),
-            displayName: fullName.trim(),
-            role: 'owner',
-            shopId: null,
-            shopName: null,
-          );
-        }
+        throw const AuthException(
+          'Email rate limit exceeded. Please wait a few minutes before registering again.',
+        );
+      }
+      if (e.message.toLowerCase().contains('already registered') ||
+          e.message.toLowerCase().contains('user_already_exists')) {
+        throw const AuthException(
+          'User with this email is already registered. Please sign in instead.',
+        );
       }
       throw AuthException(e.message, e.statusCode);
     } catch (e) {
       AppLogger.e('Unexpected registration error: $e',
           tag: 'AuthRemoteDataSource');
       throw AuthException(e.toString());
+    }
+  }
+
+  Future<void> resendVerificationEmail({required String email}) async {
+    try {
+      await _supabase.auth.resend(
+        type: supa.OtpType.signup,
+        email: email.trim(),
+      );
+    } on supa.AuthException catch (e) {
+      AppLogger.e('Resend verification email error: ${e.message}',
+          tag: 'AuthRemoteDataSource');
+      if (e.message.toLowerCase().contains('rate limit') ||
+          e.statusCode == '429') {
+        throw const AuthException(
+          'Email rate limit exceeded. Please wait a few minutes before requesting another email.',
+        );
+      }
+      throw AuthException(e.message, e.statusCode);
+    } catch (e) {
+      throw AuthException('Failed to resend verification email: $e');
     }
   }
 
@@ -122,7 +144,8 @@ class AuthRemoteDataSource {
       if (e.message.toLowerCase().contains('rate limit') ||
           e.statusCode == '429') {
         throw const AuthException(
-            'Email rate limit exceeded. Please wait a few minutes before requesting another reset link.');
+          'Email rate limit exceeded. Please wait a few minutes before requesting another reset link.',
+        );
       }
       throw AuthException(e.message, e.statusCode);
     } catch (e) {
@@ -141,6 +164,36 @@ class AuthRemoteDataSource {
       throw AuthException(e.message, e.statusCode);
     } catch (e) {
       throw AuthException('Failed to update password: $e');
+    }
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null || user.email == null) {
+        throw const AuthException('No active session. Please sign in again.');
+      }
+
+      await _supabase.auth.signInWithPassword(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      await _supabase.auth.updateUser(
+        supa.UserAttributes(password: newPassword),
+      );
+    } on supa.AuthException catch (e) {
+      AppLogger.e('Change password error: ${e.message}',
+          tag: 'AuthRemoteDataSource');
+      if (e.message.toLowerCase().contains('invalid login credentials')) {
+        throw const AuthException('Current password is incorrect.');
+      }
+      throw AuthException(e.message, e.statusCode);
+    } catch (e) {
+      throw AuthException('Failed to change password: $e');
     }
   }
 

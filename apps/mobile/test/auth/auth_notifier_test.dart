@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kirana_mobile/core/errors/failure.dart';
 import 'package:kirana_mobile/core/errors/result.dart';
+import 'package:kirana_mobile/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:kirana_mobile/features/auth/domain/models/auth_state_model.dart';
 import 'package:kirana_mobile/features/auth/domain/repositories/auth_repository.dart';
 import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
@@ -53,6 +54,15 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Result<void, Failure>> resendVerificationEmail(
+      {required String email}) async {
+    if (shouldFail) {
+      return const ErrorResult(AuthFailure('Email rate limit exceeded'));
+    }
+    return const Success(null);
+  }
+
+  @override
   Future<Result<void, Failure>> logout() async {
     mockUser = null;
     return const Success(null);
@@ -79,6 +89,17 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Result<void, Failure>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (shouldFail) {
+      return const ErrorResult(AuthFailure('Current password is incorrect.'));
+    }
+    return const Success(null);
+  }
+
+  @override
   Future<Result<bool, Failure>> verifyQuickPin(String pin) async {
     return Success(pin == '1234');
   }
@@ -89,18 +110,25 @@ class MockAuthRepository implements AuthRepository {
   }
 }
 
+class FakeAuthRemoteDataSource extends AuthRemoteDataSource {
+  @override
+  Stream<dynamic> get onAuthStateChange => const Stream.empty();
+}
+
 void main() {
   late MockAuthRepository mockRepo;
+  late FakeAuthRemoteDataSource fakeRemoteDS;
   late AuthNotifier notifier;
 
   setUp(() {
     mockRepo = MockAuthRepository();
+    fakeRemoteDS = FakeAuthRemoteDataSource();
   });
 
   group('AuthNotifier & State Machine Lifecycle Tests', () {
     test('Initializes with unauthenticated when no session exists', () async {
       mockRepo.mockUser = null;
-      notifier = AuthNotifier(mockRepo);
+      notifier = AuthNotifier(mockRepo, fakeRemoteDS);
       await notifier.restoreSession();
 
       expect(notifier.state.status, AuthStatus.unauthenticated);
@@ -118,7 +146,7 @@ void main() {
         shopName: 'Gupta Provision Store',
       );
 
-      notifier = AuthNotifier(mockRepo);
+      notifier = AuthNotifier(mockRepo, fakeRemoteDS);
       await notifier.restoreSession();
 
       expect(notifier.state.status, AuthStatus.authenticatedWithShop);
@@ -139,7 +167,7 @@ void main() {
         shopName: null,
       );
 
-      notifier = AuthNotifier(mockRepo);
+      notifier = AuthNotifier(mockRepo, fakeRemoteDS);
       await notifier.restoreSession();
 
       expect(notifier.state.status, AuthStatus.authenticatedWithoutShop);
@@ -148,7 +176,7 @@ void main() {
     });
 
     test('Login success updates state and sets active shop', () async {
-      notifier = AuthNotifier(mockRepo);
+      notifier = AuthNotifier(mockRepo, fakeRemoteDS);
       final success = await notifier.login(
         email: 'owner@store.com',
         password: 'Password123!',
@@ -162,7 +190,7 @@ void main() {
 
     test('Login failure maps error message into state', () async {
       mockRepo.shouldFail = true;
-      notifier = AuthNotifier(mockRepo);
+      notifier = AuthNotifier(mockRepo, fakeRemoteDS);
 
       final success = await notifier.login(
         email: 'wrong@store.com',
@@ -176,7 +204,7 @@ void main() {
 
     test('Registration creates user without shop and prompts onboarding',
         () async {
-      notifier = AuthNotifier(mockRepo);
+      notifier = AuthNotifier(mockRepo, fakeRemoteDS);
       final success = await notifier.register(
         email: 'newuser@store.com',
         password: 'SecurePassword123',
@@ -190,6 +218,15 @@ void main() {
       expect(notifier.state.user?.displayName, 'Suresh Kumar');
     });
 
+    test('Change password success returns true', () async {
+      notifier = AuthNotifier(mockRepo, fakeRemoteDS);
+      final success = await notifier.changePassword(
+        currentPassword: 'OldPassword123',
+        newPassword: 'NewPassword123',
+      );
+      expect(success, isTrue);
+    });
+
     test('Logout clears user session and resets to unauthenticated', () async {
       mockRepo.mockUser = const UserModel(
         id: 'u_1',
@@ -198,7 +235,7 @@ void main() {
         shopId: 'shop_1',
       );
 
-      notifier = AuthNotifier(mockRepo);
+      notifier = AuthNotifier(mockRepo, fakeRemoteDS);
       await notifier.restoreSession();
       expect(notifier.state.isAuthenticated, isTrue);
 

@@ -24,6 +24,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _registrationSuccess = false;
   String? _localError;
 
   @override
@@ -70,7 +71,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
 
     if (success && mounted) {
-      context.go('/onboarding');
+      final authState = ref.read(authNotifierProvider);
+      if (authState.isAuthenticated) {
+        context.go('/onboarding');
+      } else {
+        setState(() => _registrationSuccess = true);
+      }
     }
   }
 
@@ -88,123 +94,160 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           padding: const EdgeInsets.all(KiranaSpacing.xl),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: _registrationSuccess
+                ? _buildVerificationSuccessView()
+                : _buildFormView(authState, errorMessage),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormView(AuthStateModel authState, String? errorMessage) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Join KiranaOS',
+          style: KiranaTypography.headlineMedium.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: KiranaSpacing.xs),
+        Text(
+          'Setup your store owner account to start billing',
+          style: KiranaTypography.bodyMedium.copyWith(
+            color: KiranaColors.neutral600,
+          ),
+        ),
+        const SizedBox(height: KiranaSpacing.xl),
+        if (errorMessage != null) ...[
+          Container(
+            padding: const EdgeInsets.all(KiranaSpacing.md),
+            decoration: BoxDecoration(
+              color: KiranaColors.errorContainer,
+              borderRadius: KiranaRadius.borderMd,
+              border: Border.all(color: KiranaColors.error),
+            ),
+            child: Row(
               children: [
-                Text(
-                  'Join KiranaOS',
-                  style: KiranaTypography.headlineMedium.copyWith(
-                    fontWeight: FontWeight.bold,
+                const Icon(Icons.error_outline,
+                    size: 20, color: KiranaColors.error),
+                const SizedBox(width: KiranaSpacing.sm),
+                Expanded(
+                  child: Text(
+                    errorMessage,
+                    style: const TextStyle(
+                        fontSize: 13, color: KiranaColors.error),
                   ),
-                ),
-                const SizedBox(height: KiranaSpacing.xs),
-                Text(
-                  'Setup your store owner account to start billing',
-                  style: KiranaTypography.bodyMedium.copyWith(
-                    color: KiranaColors.neutral600,
-                  ),
-                ),
-                const SizedBox(height: KiranaSpacing.xl),
-                if (errorMessage != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(KiranaSpacing.md),
-                    decoration: BoxDecoration(
-                      color: KiranaColors.errorContainer,
-                      borderRadius: KiranaRadius.borderMd,
-                      border: Border.all(color: KiranaColors.error),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline,
-                            size: 20, color: KiranaColors.error),
-                        const SizedBox(width: KiranaSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            errorMessage,
-                            style: const TextStyle(
-                                fontSize: 13, color: KiranaColors.error),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: KiranaSpacing.lg),
-                ],
-                AppTextField(
-                  label: 'Full Name *',
-                  hint: 'e.g. Ramesh Gupta',
-                  controller: _nameController,
-                  prefixIcon: const Icon(Icons.person_outline),
-                ),
-                const SizedBox(height: KiranaSpacing.lg),
-                AppTextField(
-                  label: 'Email Address *',
-                  hint: 'owner@store.com',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: const Icon(Icons.email_outlined),
-                ),
-                const SizedBox(height: KiranaSpacing.lg),
-                AppTextField(
-                  label: 'Phone Number (Optional)',
-                  hint: '10-digit mobile number',
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                ),
-                const SizedBox(height: KiranaSpacing.lg),
-                AppTextField(
-                  label: 'Password (min 6 characters) *',
-                  hint: 'Enter strong password',
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                ),
-                const SizedBox(height: KiranaSpacing.lg),
-                AppTextField(
-                  label: 'Confirm Password *',
-                  hint: 'Re-enter password',
-                  controller: _confirmPasswordController,
-                  obscureText: _obscurePassword,
-                  prefixIcon: const Icon(Icons.lock_outline),
-                ),
-                const SizedBox(height: KiranaSpacing.xxl),
-                AppButton(
-                  label: 'Create Account & Continue',
-                  isLoading: authState.isAuthenticating,
-                  onPressed:
-                      authState.isAuthenticating ? null : _handleRegister,
-                ),
-                const SizedBox(height: KiranaSpacing.lg),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Already have an account? ',
-                        style: TextStyle(color: KiranaColors.neutral600)),
-                    TextButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text('Sign In',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: KiranaColors.primary)),
-                    ),
-                  ],
                 ),
               ],
             ),
           ),
+          const SizedBox(height: KiranaSpacing.lg),
+        ],
+        AppTextField(
+          label: 'Full Name *',
+          hint: 'e.g. Ramesh Gupta',
+          controller: _nameController,
+          prefixIcon: const Icon(Icons.person_outline),
         ),
-      ),
+        const SizedBox(height: KiranaSpacing.lg),
+        AppTextField(
+          label: 'Email Address *',
+          hint: 'owner@store.com',
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          prefixIcon: const Icon(Icons.email_outlined),
+        ),
+        const SizedBox(height: KiranaSpacing.lg),
+        AppTextField(
+          label: 'Phone Number (Optional)',
+          hint: '10-digit mobile number',
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          prefixIcon: const Icon(Icons.phone_outlined),
+        ),
+        const SizedBox(height: KiranaSpacing.lg),
+        AppTextField(
+          label: 'Password (min 6 characters) *',
+          hint: 'Enter strong password',
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          prefixIcon: const Icon(Icons.lock_outline),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+            ),
+            onPressed: () {
+              setState(() => _obscurePassword = !_obscurePassword);
+            },
+          ),
+        ),
+        const SizedBox(height: KiranaSpacing.lg),
+        AppTextField(
+          label: 'Confirm Password *',
+          hint: 'Re-enter password',
+          controller: _confirmPasswordController,
+          obscureText: _obscurePassword,
+          prefixIcon: const Icon(Icons.lock_outline),
+        ),
+        const SizedBox(height: KiranaSpacing.xxl),
+        AppButton(
+          label: 'Create Account & Continue',
+          isLoading: authState.isAuthenticating,
+          onPressed: authState.isAuthenticating ? null : _handleRegister,
+        ),
+        const SizedBox(height: KiranaSpacing.lg),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('Already have an account? ',
+                style: TextStyle(color: KiranaColors.neutral600)),
+            TextButton(
+              onPressed: () => context.go('/login'),
+              child: const Text('Sign In',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: KiranaColors.primary)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVerificationSuccessView() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Center(
+          child: Icon(Icons.mark_email_read_outlined,
+              size: 64, color: KiranaColors.secondary),
+        ),
+        const SizedBox(height: KiranaSpacing.lg),
+        Text(
+          'Account Created!',
+          style: KiranaTypography.headlineMedium
+              .copyWith(fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: KiranaSpacing.sm),
+        Text(
+          'We have sent a verification email to ${_emailController.text.trim()}. Please verify your email before signing in.',
+          style: KiranaTypography.bodyMedium
+              .copyWith(color: KiranaColors.neutral700),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: KiranaSpacing.xxl),
+        AppButton(
+          label: 'Proceed to Sign In',
+          onPressed: () => context.go('/login'),
+        ),
+      ],
     );
   }
 }

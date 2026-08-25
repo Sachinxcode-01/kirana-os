@@ -55,6 +55,18 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Result<void, Failure>> resendVerificationEmail({
+    required String email,
+  }) async {
+    try {
+      await _remoteDataSource.resendVerificationEmail(email: email);
+      return const Success(null);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handle(e));
+    }
+  }
+
+  @override
   Future<Result<void, Failure>> sendPasswordResetEmail({
     required String email,
   }) async {
@@ -72,6 +84,22 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       await _remoteDataSource.updatePassword(newPassword: newPassword);
+      return const Success(null);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handle(e));
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _remoteDataSource.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
       return const Success(null);
     } catch (e) {
       return ErrorResult(ErrorHandler.handle(e));

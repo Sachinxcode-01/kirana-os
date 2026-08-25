@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kirana_mobile/core/extensions/context_extensions.dart';
 import 'package:kirana_mobile/core/theme/colors.dart';
+import 'package:kirana_mobile/features/auth/domain/models/auth_state_model.dart';
 import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:kirana_mobile/features/auth/presentation/screens/login_screen.dart';
 import 'package:kirana_mobile/features/auth/presentation/screens/register_screen.dart';
@@ -30,15 +31,30 @@ import 'package:kirana_mobile/features/shop/presentation/screens/shop_setup_scre
 import 'package:kirana_mobile/features/splash/presentation/screens/splash_screen.dart';
 import 'package:kirana_mobile/features/suppliers/presentation/screens/suppliers_screen.dart';
 
+class AuthListenable extends ChangeNotifier {
+  AuthListenable(this._ref) {
+    _ref.listen<AuthStateModel>(authNotifierProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+  final Ref _ref;
+}
+
+final authListenableProvider = Provider<AuthListenable>((ref) {
+  return AuthListenable(ref);
+});
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authNotifierProvider);
+  final authListenable = ref.watch(authListenableProvider);
 
   return GoRouter(
+    refreshListenable: authListenable,
     initialLocation: '/splash',
     redirect: (context, state) {
+      final authState = ref.read(authNotifierProvider);
       final loc = state.matchedLocation;
 
-      // 1. If initializing, allow splash
+      // 1. If initializing, show splash screen
       if (authState.isInitializing) {
         return loc == '/splash' ? null : '/splash';
       }
@@ -51,7 +67,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final isOnboardingRoute = loc == '/onboarding' || loc == '/shop-setup';
 
-      // 2. If unauthenticated, redirect to /login
+      // 2. If unauthenticated, allow auth routes or redirect to /login
       if (!authState.isAuthenticated) {
         if (isAuthRoute) return null;
         return '/login';
@@ -63,7 +79,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/onboarding';
       }
 
-      // 4. If authenticated with an active shop, prevent visiting auth/onboarding/splash routes
+      // 4. If authenticated with active shop, prevent visiting splash, auth, or onboarding routes
       if (isAuthRoute || isOnboardingRoute || loc == '/splash') {
         return '/dashboard';
       }
