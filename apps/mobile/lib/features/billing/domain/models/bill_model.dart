@@ -93,6 +93,17 @@ class BillModel {
   final String billNumber;
   final String status; // 'draft', 'completed', 'cancelled'
   final List<BillItemModel> items;
+
+  // Optional Customer Attachment
+  final String? customerId;
+  final String? customerName;
+  final String? customerPhone;
+
+  // Discount configuration
+  final String discountType; // 'none', 'percentage', 'fixed'
+  final double
+      discountValue; // percentage (0..100) or fixed amount in rupees/paise
+
   final int subtotalPaise;
   final int taxTotalPaise;
   final int discountPaise;
@@ -108,6 +119,11 @@ class BillModel {
     required this.billNumber,
     this.status = 'draft',
     this.items = const [],
+    this.customerId,
+    this.customerName,
+    this.customerPhone,
+    this.discountType = 'none',
+    this.discountValue = 0.0,
     this.subtotalPaise = 0,
     this.taxTotalPaise = 0,
     this.discountPaise = 0,
@@ -119,6 +135,7 @@ class BillModel {
 
   bool get isDraft => status == 'draft';
   bool get isCompleted => status == 'completed';
+  bool get hasCustomer => customerId != null && customerId!.isNotEmpty;
 
   BillModel copyWith({
     String? id,
@@ -127,6 +144,12 @@ class BillModel {
     String? billNumber,
     String? status,
     List<BillItemModel>? items,
+    String? customerId,
+    bool clearCustomer = false,
+    String? customerName,
+    String? customerPhone,
+    String? discountType,
+    double? discountValue,
     int? subtotalPaise,
     int? taxTotalPaise,
     int? discountPaise,
@@ -142,6 +165,12 @@ class BillModel {
       billNumber: billNumber ?? this.billNumber,
       status: status ?? this.status,
       items: items ?? this.items,
+      customerId: clearCustomer ? null : (customerId ?? this.customerId),
+      customerName: clearCustomer ? null : (customerName ?? this.customerName),
+      customerPhone:
+          clearCustomer ? null : (customerPhone ?? this.customerPhone),
+      discountType: discountType ?? this.discountType,
+      discountValue: discountValue ?? this.discountValue,
       subtotalPaise: subtotalPaise ?? this.subtotalPaise,
       taxTotalPaise: taxTotalPaise ?? this.taxTotalPaise,
       discountPaise: discountPaise ?? this.discountPaise,
@@ -158,6 +187,11 @@ class BillModel {
         'cashier_id': cashierId,
         'bill_number': billNumber,
         'status': status,
+        'customer_id': customerId,
+        'customer_name': customerName,
+        'customer_phone': customerPhone,
+        'discount_type': discountType,
+        'discount_value': discountValue,
         'subtotal_paise': subtotalPaise,
         'tax_total_paise': taxTotalPaise,
         'discount_paise': discountPaise,
@@ -176,6 +210,11 @@ class BillModel {
       cashierId: json['cashier_id'] as String,
       billNumber: json['bill_number'] as String,
       status: json['status'] as String? ?? 'draft',
+      customerId: json['customer_id'] as String?,
+      customerName: json['customer_name'] as String?,
+      customerPhone: json['customer_phone'] as String?,
+      discountType: json['discount_type'] as String? ?? 'none',
+      discountValue: (json['discount_value'] as num?)?.toDouble() ?? 0.0,
       subtotalPaise: (json['subtotal_paise'] as num?)?.toInt() ?? 0,
       taxTotalPaise: (json['tax_total_paise'] as num?)?.toInt() ?? 0,
       discountPaise: (json['discount_paise'] as num?)?.toInt() ?? 0,

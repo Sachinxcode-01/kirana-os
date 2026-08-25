@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../app/app_providers.dart';
 import '../../../../core/extensions/num_extensions.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../database/drift/database.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../../staff/domain/models/staff_member_model.dart';
@@ -35,8 +37,75 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      builder: (ctx) => const _ProductPickerSheet(),
+    );
+  }
+
+  void _showCustomerPickerSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: KiranaColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => const _CustomerPickerSheet(),
+    );
+  }
+
+  void _showDiscountSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: KiranaColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => const _DiscountConfigurationSheet(),
+    );
+  }
+
+  void _showExactQuantityDialog(
+      BuildContext context, String itemId, double currentQty, String unit) {
+    final controller = TextEditingController(
+      text: currentQty % 1 == 0
+          ? currentQty.toInt().toString()
+          : currentQty.toString(),
+    );
+
+    showDialog(
+      context: context,
       builder: (ctx) {
-        return const _ProductPickerSheet();
+        return AlertDialog(
+          title: Text('Enter Quantity ($unit)'),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Quantity',
+              suffixText: unit,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newQty = double.tryParse(controller.text.trim());
+                if (newQty != null) {
+                  ref
+                      .read(billingNotifierProvider.notifier)
+                      .updateQuantity(itemId, newQty);
+                }
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        );
       },
     );
   }
@@ -131,13 +200,27 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             onPressed: billingState.isLoading || activeDraft == null
                 ? null
                 : () async {
-                    await ref
+                    final success = await ref
                         .read(billingNotifierProvider.notifier)
                         .saveDraft();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Draft saved locally')),
-                      );
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Draft saved locally')),
+                        );
+                      } else if (ref
+                              .read(billingNotifierProvider)
+                              .errorMessage !=
+                          null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(ref
+                                .read(billingNotifierProvider)
+                                .errorMessage!),
+                            backgroundColor: KiranaColors.error,
+                          ),
+                        );
+                      }
                     }
                   },
           ),
@@ -147,9 +230,65 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Top Search & Quick Add Bar
+                // 1. Customer Attachment Banner / Selector Card
+                if (activeDraft != null)
+                  Container(
+                    margin: const EdgeInsets.all(KiranaSpacing.md),
+                    padding: const EdgeInsets.all(KiranaSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: KiranaColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: KiranaColors.outlineVariant),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_outline,
+                            color: KiranaColors.primary),
+                        const SizedBox(width: KiranaSpacing.xs),
+                        Expanded(
+                          child: activeDraft.hasCustomer
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      activeDraft.customerName ?? 'Customer',
+                                      style: KiranaTypography.labelLarge,
+                                    ),
+                                    if (activeDraft.customerPhone != null)
+                                      Text(
+                                        activeDraft.customerPhone!,
+                                        style: KiranaTypography.bodySmall,
+                                      ),
+                                  ],
+                                )
+                              : Text(
+                                  'No customer attached',
+                                  style: KiranaTypography.bodySmall.copyWith(
+                                    color: KiranaColors.textSecondary,
+                                  ),
+                                ),
+                        ),
+                        if (activeDraft.hasCustomer)
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: () => ref
+                                .read(billingNotifierProvider.notifier)
+                                .removeCustomer(),
+                          )
+                        else
+                          TextButton.icon(
+                            onPressed: () => _showCustomerPickerSheet(context),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Attach'),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                // 2. Top Search & Add Product Bar
                 Padding(
-                  padding: const EdgeInsets.all(KiranaSpacing.md),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: KiranaSpacing.md),
                   child: Row(
                     children: [
                       Expanded(
@@ -170,13 +309,14 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                       ElevatedButton.icon(
                         onPressed: () => _showAddProductDialog(context),
                         icon: const Icon(Icons.add),
-                        label: const Text('Add Product'),
+                        label: const Text('Add Item'),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: KiranaSpacing.xs),
 
-                // Cart Items List
+                // 3. Cart Items List
                 Expanded(
                   child: (activeDraft == null || activeDraft.items.isEmpty)
                       ? Center(
@@ -256,12 +396,33 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                               .updateQuantity(
                                                   item.id, item.quantity - 1),
                                         ),
-                                        Text(
-                                          item.quantity % 1 == 0
-                                              ? item.quantity.toInt().toString()
-                                              : item.quantity
-                                                  .toStringAsFixed(2),
-                                          style: KiranaTypography.labelLarge,
+                                        InkWell(
+                                          onTap: () => _showExactQuantityDialog(
+                                              context,
+                                              item.id,
+                                              item.quantity,
+                                              item.unit),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: KiranaSpacing.xs,
+                                                vertical: KiranaSpacing.xxs),
+                                            decoration: BoxDecoration(
+                                              border: Border.all(
+                                                  color: KiranaColors.outline),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              item.quantity % 1 == 0
+                                                  ? item.quantity
+                                                      .toInt()
+                                                      .toString()
+                                                  : item.quantity
+                                                      .toStringAsFixed(2),
+                                              style:
+                                                  KiranaTypography.labelLarge,
+                                            ),
+                                          ),
                                         ),
                                         IconButton(
                                           icon: const Icon(
@@ -297,7 +458,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                         ),
                 ),
 
-                // Deterministic Totals Summary Footer
+                // 4. Deterministic Totals & Discount Summary Footer
                 if (activeDraft != null)
                   Container(
                     padding: const EdgeInsets.all(KiranaSpacing.md),
@@ -325,6 +486,44 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                 style: KiranaTypography.bodyMedium,
                               ),
                             ],
+                          ),
+                          // Discount Row
+                          Padding(
+                            padding:
+                                const EdgeInsets.only(top: KiranaSpacing.xxs),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text('Discount',
+                                        style: KiranaTypography.bodySmall),
+                                    const SizedBox(width: KiranaSpacing.xxs),
+                                    InkWell(
+                                      onTap: () => _showDiscountSheet(context),
+                                      child: Text(
+                                        activeDraft.discountType == 'none'
+                                            ? '(Apply)'
+                                            : '(${activeDraft.discountType == 'percentage' ? '${activeDraft.discountValue.toStringAsFixed(0)}%' : 'Fixed'})',
+                                        style:
+                                            KiranaTypography.bodySmall.copyWith(
+                                          color: KiranaColors.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '- ${activeDraft.discountPaise.toRupeesString()}',
+                                  style: KiranaTypography.bodyMedium.copyWith(
+                                    color: activeDraft.discountPaise > 0
+                                        ? KiranaColors.success
+                                        : KiranaColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           if (activeDraft.taxTotalPaise > 0)
                             Padding(
@@ -367,14 +566,31 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                 label: 'SAVE DRAFT',
                                 icon: Icons.save_outlined,
                                 onPressed: () async {
-                                  await ref
+                                  final success = await ref
                                       .read(billingNotifierProvider.notifier)
                                       .saveDraft();
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text('Draft saved locally')),
-                                    );
+                                    if (success) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content:
+                                                Text('Draft saved locally')),
+                                      );
+                                    } else if (ref
+                                            .read(billingNotifierProvider)
+                                            .errorMessage !=
+                                        null) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(ref
+                                              .read(billingNotifierProvider)
+                                              .errorMessage!),
+                                          backgroundColor: KiranaColors.error,
+                                        ),
+                                      );
+                                    }
                                   }
                                 },
                               ),
@@ -446,6 +662,195 @@ class _ProductPickerSheet extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _CustomerPickerSheet extends ConsumerWidget {
+  const _CustomerPickerSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final db = ref.watch(databaseProvider);
+    final shopId = ref.watch(activeShopIdProvider);
+
+    return StreamBuilder<List<CustomerData>>(
+      stream: db.customersDao.watchCustomers(shopId, ''),
+      builder: (context, snapshot) {
+        final customers = snapshot.data ?? [];
+
+        return Container(
+          padding: const EdgeInsets.all(KiranaSpacing.md),
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Attach Customer', style: KiranaTypography.titleLarge),
+              const SizedBox(height: KiranaSpacing.sm),
+              if (customers.isEmpty)
+                const Expanded(
+                  child: Center(
+                    child: Text('No saved customers found.'),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: customers.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (ctx, index) {
+                      final cust = customers[index];
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.person),
+                        ),
+                        title: Text(cust.name),
+                        subtitle: Text(cust.phone),
+                        onTap: () {
+                          ref
+                              .read(billingNotifierProvider.notifier)
+                              .attachCustomer(
+                                customerId: cust.id,
+                                customerName: cust.name,
+                                customerPhone: cust.phone,
+                              );
+                          Navigator.of(context).pop();
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DiscountConfigurationSheet extends ConsumerStatefulWidget {
+  const _DiscountConfigurationSheet();
+
+  @override
+  ConsumerState<_DiscountConfigurationSheet> createState() =>
+      __DiscountConfigurationSheetState();
+}
+
+class __DiscountConfigurationSheetState
+    extends ConsumerState<_DiscountConfigurationSheet> {
+  String _discountType = 'percentage';
+  final _valController = TextEditingController(text: '0');
+
+  @override
+  Widget build(BuildContext context) {
+    final activeDraft = ref.watch(billingNotifierProvider).activeDraft;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: KiranaSpacing.md,
+        right: KiranaSpacing.md,
+        top: KiranaSpacing.md,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Apply Bill Discount', style: KiranaTypography.titleLarge),
+          const SizedBox(height: KiranaSpacing.md),
+          Row(
+            children: [
+              ChoiceChip(
+                label: const Text('Percentage (%)'),
+                selected: _discountType == 'percentage',
+                onSelected: (val) {
+                  if (val) setState(() => _discountType = 'percentage');
+                },
+              ),
+              const SizedBox(width: KiranaSpacing.sm),
+              ChoiceChip(
+                label: const Text('Fixed Amount (₹)'),
+                selected: _discountType == 'fixed',
+                onSelected: (val) {
+                  if (val) setState(() => _discountType = 'fixed');
+                },
+              ),
+              const SizedBox(width: KiranaSpacing.sm),
+              ChoiceChip(
+                label: const Text('None'),
+                selected: _discountType == 'none',
+                onSelected: (val) {
+                  if (val) setState(() => _discountType = 'none');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: KiranaSpacing.md),
+          if (_discountType != 'none')
+            TextField(
+              controller: _valController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: _discountType == 'percentage'
+                    ? 'Discount Percentage (%)'
+                    : 'Discount Amount (₹)',
+                helperText: _discountType == 'percentage'
+                    ? 'Enter 0% to 100%'
+                    : 'Enter amount in Rupees (Max ₹${((activeDraft?.subtotalPaise ?? 0) / 100).toStringAsFixed(2)})',
+              ),
+            ),
+          const SizedBox(height: KiranaSpacing.lg),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (_discountType == 'none') {
+                    ref.read(billingNotifierProvider.notifier).applyDiscount(
+                        discountType: 'none', discountValue: 0.0);
+                    Navigator.of(context).pop();
+                    return;
+                  }
+
+                  final rawVal =
+                      double.tryParse(_valController.text.trim()) ?? 0.0;
+                  final discountValue = _discountType == 'fixed'
+                      ? (rawVal * 100)
+                          .roundToDouble() // convert rupees to paise
+                      : rawVal;
+
+                  final success =
+                      ref.read(billingNotifierProvider.notifier).applyDiscount(
+                            discountType: _discountType,
+                            discountValue: discountValue,
+                          );
+
+                  if (success) {
+                    Navigator.of(context).pop();
+                  } else {
+                    final err = ref.read(billingNotifierProvider).errorMessage;
+                    if (err != null && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(err),
+                          backgroundColor: KiranaColors.error,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Apply'),
+              ),
+            ],
+          ),
+          const SizedBox(height: KiranaSpacing.md),
+        ],
+      ),
     );
   }
 }

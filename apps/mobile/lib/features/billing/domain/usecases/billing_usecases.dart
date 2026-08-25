@@ -17,7 +17,6 @@ class CreateDraftBillUseCase {
     required String userRole,
     String? billNumber,
   }) async {
-    // 1. RBAC authorization check
     final role = StaffRoleExtension.fromString(userRole);
     if (role == StaffRole.inventoryStaff) {
       return const ErrorResult(
@@ -27,7 +26,6 @@ class CreateDraftBillUseCase {
       );
     }
 
-    // 2. Double-tap submission prevention (ignore calls within 500ms)
     final now = DateTime.now();
     if (_lastCreationTime != null &&
         now.difference(_lastCreationTime!).inMilliseconds < 500) {
@@ -51,9 +49,24 @@ class CalculateBillTotalsUseCase {
     required bool isTaxEnabled,
     double defaultTaxPercentage = 0.0,
   }) {
+    // 1. Calculate raw Subtotal from items
     int subtotal = 0;
-    int taxTotal = 0;
+    for (final item in bill.items) {
+      subtotal += (item.unitPricePaise * item.quantity).round();
+    }
 
+    // 2. Compute Discount in Paise from Subtotal
+    int discountPaise = 0;
+    if (bill.discountType == 'percentage') {
+      final cappedValue = bill.discountValue.clamp(0.0, 100.0);
+      discountPaise =
+          ((subtotal * (cappedValue / 100.0))).round().clamp(0, subtotal);
+    } else if (bill.discountType == 'fixed') {
+      discountPaise = bill.discountValue.toInt().clamp(0, subtotal);
+    }
+
+    // 3. Compute Tax in Paise
+    int taxTotal = 0;
     final updatedItems = bill.items.map((item) {
       final itemSubtotal = (item.unitPricePaise * item.quantity).round();
       final effectiveTaxRate = isTaxEnabled ? item.taxRate : 0.0;
@@ -64,7 +77,6 @@ class CalculateBillTotalsUseCase {
 
       final itemTotal = itemSubtotal + itemTax;
 
-      subtotal += itemSubtotal;
       taxTotal += itemTax;
 
       return item.copyWith(
@@ -74,12 +86,14 @@ class CalculateBillTotalsUseCase {
       );
     }).toList();
 
+    // 4. Calculate Grand Total: Subtotal - Discount + Tax
     final grandTotal =
-        (subtotal + taxTotal - bill.discountPaise).clamp(0, 999999999);
+        (subtotal - discountPaise + taxTotal).clamp(0, 999999999);
 
     return bill.copyWith(
       items: updatedItems,
       subtotalPaise: subtotal,
+      discountPaise: discountPaise,
       taxTotalPaise: taxTotal,
       totalPaise: grandTotal,
       updatedAt: DateTime.now(),
@@ -210,6 +224,133 @@ class RemoveBillItemUseCase {
       isTaxEnabled: isTaxEnabled,
       defaultTaxPercentage: defaultTaxPercentage,
     );
+  }
+}
+
+class ApplyBillDiscountUseCase {
+  final CalculateBillTotalsUseCase _calculator;
+
+  ApplyBillDiscountUseCase(this._calculator);
+
+  Result<BillModel, Failure> execute({
+    required BillModel bill,
+    required String discountType, // 'none', 'percentage', 'fixed'
+    required double discountValue,
+    required bool isTaxEnabled,
+    double defaultTaxPercentage = 0.0,
+  }) {
+    if (discountType == 'percentage') {
+      if (discountValue < 0.0 || discountValue > 100.0) {
+        return const ErrorResult(
+          ValidationFailure('Percentage discount must be between 0% and 100%.'),
+        );
+      }
+    } else if (discountType == 'fixed') {
+      if (discountValue < 0.0) {
+        return const ErrorResult(
+          ValidationFailure('Discount amount cannot be negative.'),
+        );
+      }
+      if (discountValue > bill.subtotalPaise) {
+        return const ErrorResult(
+          ValidationFailure('Discount amount cannot exceed the bill subtotal.'),
+        );
+      }
+    } else if (discountType != 'none') {
+      return const ErrorResult(
+        ValidationFailure('Invalid discount type specified.'),
+      );
+    }
+
+    final updatedBill = bill.copyWith(
+      discountType: discountType,
+      discountValue: discountValue,
+    );
+
+    final calculated = _calculator.execute(
+      bill: updatedBill,
+      isTaxEnabled: isTaxEnabled,
+      defaultTaxPercentage: defaultTaxPercentage,
+    );
+
+    return Success(calculated);
+  }
+}
+
+class AttachCustomerToBillUseCase {
+  BillModel execute({
+    required BillModel bill,
+    required String customerId,
+    required String customerName,
+    required String customerPhone,
+  }) {
+    return bill.copyWith(
+      customerId: customerId,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
+
+class RemoveCustomerFromBillUseCase {
+  BillModel execute(BillModel bill) {
+    return bill.copyWith(
+      clearCustomer: true,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
+
+class ValidateBillUseCase {
+  Result<void, Failure> execute({
+    required BillModel bill,
+    required String activeShopId,
+    required String userRole,
+  }) {
+    final role = StaffRoleExtension.fromString(userRole);
+    if (role == StaffRole.inventoryStaff) {
+      return const ErrorResult(
+        PermissionDeniedFailure(
+          'Inventory staff members are not authorized to process bills.',
+        ),
+      );
+    }
+
+    if (bill.shopId != activeShopId) {
+      return const ErrorResult(
+        PermissionDeniedFailure(
+            'Cannot modify bill belonging to another shop.'),
+      );
+    }
+
+    if (bill.items.isEmpty) {
+      return const ErrorResult(
+        ValidationFailure('Bill must contain at least one product item.'),
+      );
+    }
+
+    for (final item in bill.items) {
+      if (item.quantity <= 0) {
+        return ErrorResult(
+          ValidationFailure(
+              'Invalid quantity for product "${item.productName}".'),
+        );
+      }
+      if (item.unitPricePaise < 0) {
+        return ErrorResult(
+          ValidationFailure('Invalid price for product "${item.productName}".'),
+        );
+      }
+    }
+
+    if (bill.discountPaise < 0 || bill.discountPaise > bill.subtotalPaise) {
+      return const ErrorResult(
+        ValidationFailure('Invalid discount applied to bill.'),
+      );
+    }
+
+    return const Success(null);
   }
 }
 

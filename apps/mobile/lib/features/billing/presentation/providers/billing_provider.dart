@@ -94,6 +94,26 @@ final removeBillItemUseCaseProvider = Provider<RemoveBillItemUseCase>((ref) {
   return RemoveBillItemUseCase(calc);
 });
 
+final applyBillDiscountUseCaseProvider =
+    Provider<ApplyBillDiscountUseCase>((ref) {
+  final calc = ref.watch(calculateBillTotalsUseCaseProvider);
+  return ApplyBillDiscountUseCase(calc);
+});
+
+final attachCustomerToBillUseCaseProvider =
+    Provider<AttachCustomerToBillUseCase>((ref) {
+  return AttachCustomerToBillUseCase();
+});
+
+final removeCustomerFromBillUseCaseProvider =
+    Provider<RemoveCustomerFromBillUseCase>((ref) {
+  return RemoveCustomerFromBillUseCase();
+});
+
+final validateBillUseCaseProvider = Provider<ValidateBillUseCase>((ref) {
+  return ValidateBillUseCase();
+});
+
 final saveDraftBillUseCaseProvider = Provider<SaveDraftBillUseCase>((ref) {
   final repo = ref.watch(billingRepositoryProvider);
   return SaveDraftBillUseCase(repo);
@@ -104,6 +124,10 @@ class BillingNotifier extends StateNotifier<BillingState> {
   final AddProductToBillUseCase _addProductUseCase;
   final UpdateBillItemQuantityUseCase _updateQuantityUseCase;
   final RemoveBillItemUseCase _removeItemUseCase;
+  final ApplyBillDiscountUseCase _applyDiscountUseCase;
+  final AttachCustomerToBillUseCase _attachCustomerUseCase;
+  final RemoveCustomerFromBillUseCase _removeCustomerUseCase;
+  final ValidateBillUseCase _validateBillUseCase;
   final SaveDraftBillUseCase _saveDraftUseCase;
   final Ref _ref;
 
@@ -112,12 +136,20 @@ class BillingNotifier extends StateNotifier<BillingState> {
     required AddProductToBillUseCase addProductUseCase,
     required UpdateBillItemQuantityUseCase updateQuantityUseCase,
     required RemoveBillItemUseCase removeItemUseCase,
+    required ApplyBillDiscountUseCase applyDiscountUseCase,
+    required AttachCustomerToBillUseCase attachCustomerUseCase,
+    required RemoveCustomerFromBillUseCase removeCustomerUseCase,
+    required ValidateBillUseCase validateBillUseCase,
     required SaveDraftBillUseCase saveDraftUseCase,
     required Ref ref,
   })  : _createDraftUseCase = createDraftUseCase,
         _addProductUseCase = addProductUseCase,
         _updateQuantityUseCase = updateQuantityUseCase,
         _removeItemUseCase = removeItemUseCase,
+        _applyDiscountUseCase = applyDiscountUseCase,
+        _attachCustomerUseCase = attachCustomerUseCase,
+        _removeCustomerUseCase = removeCustomerUseCase,
+        _validateBillUseCase = validateBillUseCase,
         _saveDraftUseCase = saveDraftUseCase,
         _ref = ref,
         super(const BillingState());
@@ -221,8 +253,93 @@ class BillingNotifier extends StateNotifier<BillingState> {
     _autoSave(updatedDraft);
   }
 
-  Future<void> saveDraft() async {
+  bool applyDiscount({
+    required String discountType, // 'none', 'percentage', 'fixed'
+    required double discountValue,
+  }) {
+    if (state.activeDraft == null) return false;
+
+    final settingsState = _ref.read(shopSettingsNotifierProvider);
+    final isTaxEnabled = settingsState.settings?.isTaxEnabled ?? false;
+    final defaultTax = settingsState.settings?.defaultTaxPercentage ?? 0.0;
+
+    final result = _applyDiscountUseCase.execute(
+      bill: state.activeDraft!,
+      discountType: discountType,
+      discountValue: discountValue,
+      isTaxEnabled: isTaxEnabled,
+      defaultTaxPercentage: defaultTax,
+    );
+
+    if (result.isSuccess) {
+      final updated = result.dataOrNull!;
+      state = state.copyWith(
+        activeDraft: updated,
+        successMessage: 'Discount applied successfully.',
+        clearError: true,
+      );
+      _autoSave(updated);
+      return true;
+    } else {
+      state = state.copyWith(errorMessage: result.failureOrNull?.message);
+      return false;
+    }
+  }
+
+  void attachCustomer({
+    required String customerId,
+    required String customerName,
+    required String customerPhone,
+  }) {
     if (state.activeDraft == null) return;
+
+    final updated = _attachCustomerUseCase.execute(
+      bill: state.activeDraft!,
+      customerId: customerId,
+      customerName: customerName,
+      customerPhone: customerPhone,
+    );
+
+    state = state.copyWith(
+      activeDraft: updated,
+      successMessage: 'Customer "$customerName" attached.',
+      clearError: true,
+    );
+
+    _autoSave(updated);
+  }
+
+  void removeCustomer() {
+    if (state.activeDraft == null) return;
+
+    final updated = _removeCustomerUseCase.execute(state.activeDraft!);
+    state = state.copyWith(
+      activeDraft: updated,
+      successMessage: 'Customer removed from bill.',
+      clearError: true,
+    );
+
+    _autoSave(updated);
+  }
+
+  Future<bool> saveDraft() async {
+    if (state.activeDraft == null) return false;
+
+    final authState = _ref.read(authNotifierProvider);
+    final activeShopId = authState.activeShopId ?? '';
+    final userRole = authState.user?.role ?? 'cashier';
+
+    // Run Pre-Save Validation
+    final validation = _validateBillUseCase.execute(
+      bill: state.activeDraft!,
+      activeShopId: activeShopId,
+      userRole: userRole,
+    );
+
+    if (validation.isError) {
+      state = state.copyWith(errorMessage: validation.failureOrNull?.message);
+      return false;
+    }
 
     state = state.copyWith(isLoading: true, clearError: true);
 
@@ -235,11 +352,13 @@ class BillingNotifier extends StateNotifier<BillingState> {
         activeDraft: saved,
         successMessage: 'Draft bill ${saved.billNumber} saved successfully.',
       );
-    } else if (result.isError) {
+      return true;
+    } else {
       state = state.copyWith(
         isLoading: false,
         errorMessage: result.failureOrNull?.message,
       );
+      return false;
     }
   }
 
@@ -259,6 +378,10 @@ final billingNotifierProvider =
     addProductUseCase: ref.watch(addProductToBillUseCaseProvider),
     updateQuantityUseCase: ref.watch(updateBillItemQuantityUseCaseProvider),
     removeItemUseCase: ref.watch(removeBillItemUseCaseProvider),
+    applyDiscountUseCase: ref.watch(applyBillDiscountUseCaseProvider),
+    attachCustomerUseCase: ref.watch(attachCustomerToBillUseCaseProvider),
+    removeCustomerUseCase: ref.watch(removeCustomerFromBillUseCaseProvider),
+    validateBillUseCase: ref.watch(validateBillUseCaseProvider),
     saveDraftUseCase: ref.watch(saveDraftBillUseCaseProvider),
     ref: ref,
   );
