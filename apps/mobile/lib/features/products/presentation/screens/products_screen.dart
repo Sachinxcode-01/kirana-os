@@ -12,7 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:kirana_mobile/features/categories/presentation/providers/category_provider.dart';
 import 'package:kirana_mobile/features/barcodes/presentation/widgets/product_barcode_section.dart';
 import '../widgets/product_image_picker.dart';
-import '../../inventory/presentation/widgets/stock_adjustment_sheet.dart';
+import 'package:kirana_mobile/features/inventory/presentation/widgets/stock_adjustment_sheet.dart';
 import '../../domain/models/product_model.dart';
 import '../providers/product_provider.dart';
 

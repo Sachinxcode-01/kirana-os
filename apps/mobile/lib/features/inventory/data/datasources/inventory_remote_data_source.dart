@@ -1,8 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
-import 'package:kirana_mobile/core/errors/exceptions.dart';
+import 'package:kirana_mobile/core/errors/app_exception.dart';
 import 'package:kirana_mobile/core/utils/app_logger.dart';
-import '../models/inventory_movement_model.dart';
-import '../models/stock_adjustment_request.dart';
+import '../../domain/models/inventory_movement_model.dart';
+import '../../domain/models/stock_adjustment_request.dart';
 
 class InventoryRemoteDataSource {
   final supa.SupabaseClient? _client;

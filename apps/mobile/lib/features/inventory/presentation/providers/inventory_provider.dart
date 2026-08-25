@@ -1,9 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kirana_mobile/database/drift/database.dart';
+import 'package:kirana_mobile/app/app_providers.dart';
 import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:kirana_mobile/features/products/data/datasources/product_local_data_source.dart';
 import 'package:kirana_mobile/features/products/domain/models/product_model.dart';
-import 'package:kirana_mobile/features/shop/presentation/providers/shop_provider.dart';
 import '../../data/datasources/inventory_local_data_source.dart';
 import '../../data/datasources/inventory_remote_data_source.dart';
 import '../../data/repositories/inventory_repository_impl.dart';
@@ -13,7 +12,7 @@ import '../../domain/repositories/inventory_repository.dart';
 
 final inventoryLocalDataSourceProvider =
     Provider.autoDispose<InventoryLocalDataSource>((ref) {
-  final db = ref.watch(appDatabaseProvider);
+  final db = ref.watch(databaseProvider);
   return InventoryLocalDataSource(db);
 });
 
@@ -25,7 +24,7 @@ final inventoryRemoteDataSourceProvider =
 final inventoryRepositoryProvider = Provider<InventoryRepository>((ref) {
   final localDS = ref.watch(inventoryLocalDataSourceProvider);
   final remoteDS = ref.watch(inventoryRemoteDataSourceProvider);
-  final db = ref.watch(appDatabaseProvider);
+  final db = ref.watch(databaseProvider);
   final productLocalDS = ProductLocalDataSource(db);
 
   return InventoryRepositoryImpl(
@@ -39,10 +38,10 @@ final inventoryRepositoryProvider = Provider<InventoryRepository>((ref) {
 final lowStockProductsProvider =
     FutureProvider.autoDispose<List<ProductModel>>((ref) async {
   final repo = ref.watch(inventoryRepositoryProvider);
-  final shop = ref.watch(activeShopProvider);
-  if (shop == null) return [];
+  final shopId = ref.watch(activeShopIdProvider);
+  if (shopId.isEmpty) return [];
 
-  final result = await repo.getLowStockProducts(shop.id);
+  final result = await repo.getLowStockProducts(shopId);
   return result.dataOrNull ?? [];
 });
 
@@ -127,8 +126,7 @@ final inventoryHistoryProvider = StateNotifierProvider.family
     .autoDispose<InventoryHistoryNotifier, InventoryHistoryState, String?>(
         (ref, productId) {
   final repo = ref.watch(inventoryRepositoryProvider);
-  final shop = ref.watch(activeShopProvider);
-  final shopId = shop?.id ?? '';
+  final shopId = ref.watch(activeShopIdProvider);
 
   return InventoryHistoryNotifier(repo, shopId, productId);
 });

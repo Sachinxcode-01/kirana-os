@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kirana_mobile/app/app_providers.dart';
 import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
@@ -8,7 +9,6 @@ import 'package:kirana_mobile/core/widgets/app_button.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
 import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:kirana_mobile/features/products/domain/models/product_model.dart';
-import 'package:kirana_mobile/features/shop/presentation/providers/shop_provider.dart';
 import '../../domain/models/inventory_movement_model.dart';
 import '../../domain/models/stock_adjustment_request.dart';
 import '../providers/inventory_provider.dart';
@@ -76,10 +76,10 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
       return;
     }
 
-    final shop = ref.read(activeShopProvider);
+    final shopId = ref.read(activeShopIdProvider);
     final user = ref.read(authNotifierProvider).user;
 
-    if (shop == null) {
+    if (shopId.isEmpty) {
       setState(() {
         _errorMessage = 'Active shop session missing';
       });
@@ -92,7 +92,7 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
 
     final request = StockAdjustmentRequest(
       productId: widget.product.id,
-      shopId: shop.id,
+      shopId: shopId,
       adjustmentType: _selectedType,
       quantity: qty,
       reason: _selectedReason,
