@@ -112,9 +112,11 @@ class ShopRemoteDataSource {
     String? logoUrl,
   }) async {
     final user = _supabase.auth.currentUser;
-    final userId = user?.id ?? 'user_demo_1';
-
-    final shopId = DateTime.now().millisecondsSinceEpoch.toString();
+    if (user == null) {
+      throw const AuthException('Authentication required to create a shop');
+    }
+    final userId = user.id;
+    final shopId = 'shop_${DateTime.now().millisecondsSinceEpoch}';
 
     try {
       await _supabase.from('shops').insert({

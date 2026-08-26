@@ -150,27 +150,38 @@ class _ShopSetupScreenState extends ConsumerState<ShopSetupScreen> {
     return true;
   }
 
-  Future<void> _submitShopCreation() async {
-    final success = await ref.read(shopNotifierProvider.notifier).createShop(
-          name: _nameController.text.trim(),
-          phone: _phoneController.text.trim(),
-          address: _addressController.text.trim(),
-          city: _cityController.text.trim(),
-          stateName: _stateController.text.trim(),
-          pincode: _pincodeController.text.trim(),
-          gstin: _gstinController.text.trim().isEmpty
-              ? null
-              : _gstinController.text.trim(),
-          fssaiLicense: _fssaiController.text.trim().isEmpty
-              ? null
-              : _fssaiController.text.trim(),
-          upiId: _upiController.text.trim().isEmpty
-              ? null
-              : _upiController.text.trim(),
-        );
+  bool _isSubmitting = false;
 
-    if (success && mounted) {
-      context.go('/dashboard');
+  Future<void> _submitShopCreation() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+
+    try {
+      final success = await ref.read(shopNotifierProvider.notifier).createShop(
+            name: _nameController.text.trim(),
+            phone: _phoneController.text.trim(),
+            address: _addressController.text.trim(),
+            city: _cityController.text.trim(),
+            stateName: _stateController.text.trim(),
+            pincode: _pincodeController.text.trim(),
+            gstin: _gstinController.text.trim().isEmpty
+                ? null
+                : _gstinController.text.trim(),
+            fssaiLicense: _fssaiController.text.trim().isEmpty
+                ? null
+                : _fssaiController.text.trim(),
+            upiId: _upiController.text.trim().isEmpty
+                ? null
+                : _upiController.text.trim(),
+          );
+
+      if (success && mounted) {
+        context.go('/dashboard');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
