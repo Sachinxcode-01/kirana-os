@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kirana_mobile/app/app_providers.dart';
 import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
@@ -105,6 +106,96 @@ class ShopNotifier extends StateNotifier<ShopSetupState> {
           isLoading: false,
           errorMessage: failure.message,
         );
+        return false;
+      },
+    );
+  }
+
+  Future<bool> updateShopProfile({
+    required String shopId,
+    required String name,
+    required String phone,
+    String? address,
+    String? city,
+    String? stateName,
+    String? pincode,
+    String? gstin,
+    String? fssaiLicense,
+    String? upiId,
+    String? receiptName,
+  }) async {
+    state = const ShopSetupState(isLoading: true, errorMessage: null);
+    final repo = _ref.read(shopRepositoryProvider);
+    final result = await repo.updateShopProfile(
+      shopId: shopId,
+      name: name,
+      phone: phone,
+      address: address,
+      city: city,
+      state: stateName,
+      pincode: pincode,
+      gstin: gstin,
+      fssaiLicense: fssaiLicense,
+      upiId: upiId,
+      receiptName: receiptName,
+    );
+
+    return result.fold(
+      (shop) {
+        state = ShopSetupState(isLoading: false, createdShop: shop);
+        _ref.read(authNotifierProvider.notifier).updateActiveShop(
+              shopId: shop.id,
+              shopName: shop.name,
+            );
+        _ref.invalidate(currentShopDetailsProvider(shopId));
+        return true;
+      },
+      (failure) {
+        state = ShopSetupState(isLoading: false, errorMessage: failure.message);
+        return false;
+      },
+    );
+  }
+
+  Future<String?> uploadShopLogo({
+    required String shopId,
+    required Uint8List imageBytes,
+    required String fileName,
+  }) async {
+    state = const ShopSetupState(isLoading: true, errorMessage: null);
+    final repo = _ref.read(shopRepositoryProvider);
+    final result = await repo.uploadShopLogo(
+      shopId: shopId,
+      imageBytes: imageBytes,
+      fileName: fileName,
+    );
+
+    return result.fold(
+      (url) {
+        state = const ShopSetupState(isLoading: false);
+        _ref.invalidate(currentShopDetailsProvider(shopId));
+        return url;
+      },
+      (failure) {
+        state = ShopSetupState(isLoading: false, errorMessage: failure.message);
+        return null;
+      },
+    );
+  }
+
+  Future<bool> removeShopLogo(String shopId) async {
+    state = const ShopSetupState(isLoading: true, errorMessage: null);
+    final repo = _ref.read(shopRepositoryProvider);
+    final result = await repo.removeShopLogo(shopId);
+
+    return result.fold(
+      (success) {
+        state = const ShopSetupState(isLoading: false);
+        _ref.invalidate(currentShopDetailsProvider(shopId));
+        return success;
+      },
+      (failure) {
+        state = ShopSetupState(isLoading: false, errorMessage: failure.message);
         return false;
       },
     );

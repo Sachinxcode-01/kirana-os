@@ -97,6 +97,7 @@ class MockOnboardingShopRepository implements ShopRepository {
     String? gstin,
     String? fssaiLicense,
     String? upiId,
+    String? receiptName,
   }) async {
     if (isOffline) {
       return const ErrorResult(
@@ -114,9 +115,23 @@ class MockOnboardingShopRepository implements ShopRepository {
       gstin: gstin,
       fssaiLicense: fssaiLicense,
       upiId: upiId,
+      receiptName: receiptName,
       createdAt: DateTime.now(),
     );
     return Success(createdShop!);
+  }
+
+  @override
+  Future<Result<bool, Failure>> removeShopLogo(String shopId) async {
+    if (isOffline) {
+      return const ErrorResult(
+        NetworkFailure('Internet connection required'),
+      );
+    }
+    if (createdShop != null) {
+      createdShop = createdShop!.copyWith(clearLogoUrl: true);
+    }
+    return const Success(true);
   }
 
   @override

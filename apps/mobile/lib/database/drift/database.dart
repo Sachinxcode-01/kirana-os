@@ -51,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -61,6 +61,10 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (Migrator m, int from, int to) async {
           if (from < 2) {
             await m.createTable(userProfilesTable);
+          }
+          if (from < 3) {
+            await m.addColumn(shopsTable, shopsTable.logoUrl);
+            await m.addColumn(shopsTable, shopsTable.receiptName);
           }
         },
         beforeOpen: (details) async {

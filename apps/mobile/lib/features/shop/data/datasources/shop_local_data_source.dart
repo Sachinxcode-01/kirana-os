@@ -22,6 +22,8 @@ class ShopLocalDataSource {
             state: Value(shop.state),
             pincode: Value(shop.pincode),
             upiId: Value(shop.upiId),
+            logoUrl: Value(shop.logoUrl),
+            receiptName: Value(shop.receiptName),
             currency: Value(shop.currency),
             createdAt: Value(shop.createdAt),
             updatedAt: Value(DateTime.now()),
@@ -47,6 +49,8 @@ class ShopLocalDataSource {
       state: shop.state,
       pincode: shop.pincode,
       upiId: shop.upiId,
+      logoUrl: shop.logoUrl,
+      receiptName: shop.receiptName,
       currency: shop.currency,
       createdAt: shop.createdAt,
     );

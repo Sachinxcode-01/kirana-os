@@ -72,6 +72,7 @@ class MockShopRepositorySuccess implements ShopRepository {
     String? gstin,
     String? fssaiLicense,
     String? upiId,
+    String? receiptName,
   }) async {
     return Success(
       ShopModel(
@@ -85,6 +86,7 @@ class MockShopRepositorySuccess implements ShopRepository {
         gstin: gstin,
         fssaiLicense: fssaiLicense,
         upiId: upiId,
+        receiptName: receiptName,
         createdAt: DateTime.now(),
       ),
     );
@@ -97,6 +99,11 @@ class MockShopRepositorySuccess implements ShopRepository {
     required String fileName,
   }) async {
     return const Success('https://example.com/logo.png');
+  }
+
+  @override
+  Future<Result<bool, Failure>> removeShopLogo(String shopId) async {
+    return const Success(true);
   }
 }
 
@@ -138,6 +145,7 @@ class MockShopRepositoryOffline implements ShopRepository {
     String? gstin,
     String? fssaiLicense,
     String? upiId,
+    String? receiptName,
   }) async {
     return const ErrorResult(
       NetworkFailure('Shop setup requires an internet connection.'),
@@ -150,6 +158,13 @@ class MockShopRepositoryOffline implements ShopRepository {
     required dynamic imageBytes,
     required String fileName,
   }) async {
+    return const ErrorResult(
+      NetworkFailure('Shop setup requires an internet connection.'),
+    );
+  }
+
+  @override
+  Future<Result<bool, Failure>> removeShopLogo(String shopId) async {
     return const ErrorResult(
       NetworkFailure('Shop setup requires an internet connection.'),
     );

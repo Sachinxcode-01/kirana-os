@@ -17,6 +17,8 @@ class ShopsTable extends Table {
   TextColumn get state => text().withDefault(const Constant('Karnataka'))();
   TextColumn get pincode => text().nullable()();
   TextColumn get upiId => text().nullable()();
+  TextColumn get logoUrl => text().nullable()();
+  TextColumn get receiptName => text().nullable()();
   TextColumn get currency => text().withDefault(const Constant('INR'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();

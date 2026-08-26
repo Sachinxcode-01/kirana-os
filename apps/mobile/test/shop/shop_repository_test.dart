@@ -60,6 +60,7 @@ class MockShopRemoteDataSource implements ShopRemoteDataSource {
     String? gstin,
     String? fssaiLicense,
     String? upiId,
+    String? receiptName,
   }) async {
     return ShopModel(
       id: shopId,
@@ -72,6 +73,7 @@ class MockShopRemoteDataSource implements ShopRemoteDataSource {
       gstin: gstin,
       fssaiLicense: fssaiLicense,
       upiId: upiId,
+      receiptName: receiptName,
       createdAt: DateTime.now(),
     );
   }
@@ -83,6 +85,11 @@ class MockShopRemoteDataSource implements ShopRemoteDataSource {
     required String fileName,
   }) async {
     return 'https://supabase.co/storage/v1/object/public/products/$shopId/logo.jpg';
+  }
+
+  @override
+  Future<bool> removeShopLogo(String shopId) async {
+    return true;
   }
 }
 

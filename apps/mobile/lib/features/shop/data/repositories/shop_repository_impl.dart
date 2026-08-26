@@ -100,6 +100,7 @@ class ShopRepositoryImpl implements ShopRepository {
     String? gstin,
     String? fssaiLicense,
     String? upiId,
+    String? receiptName,
   }) async {
     try {
       final updated = await _remoteDataSource.updateShopProfile(
@@ -113,6 +114,7 @@ class ShopRepositoryImpl implements ShopRepository {
         gstin: gstin,
         fssaiLicense: fssaiLicense,
         upiId: upiId,
+        receiptName: receiptName,
       );
 
       await _localDataSource.saveShop(updated, ownerId: 'current_user');
@@ -142,7 +144,34 @@ class ShopRepositoryImpl implements ShopRepository {
         bytes: imageBytes,
         fileName: fileName,
       );
+
+      // Update local cached shop logo
+      final existing = await _localDataSource.getShopById(shopId);
+      if (existing != null) {
+        await _localDataSource.saveShop(
+          existing.copyWith(logoUrl: url),
+          ownerId: 'current_user',
+        );
+      }
+
       return Success(url);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handle(e));
+    }
+  }
+
+  @override
+  Future<Result<bool, Failure>> removeShopLogo(String shopId) async {
+    try {
+      final success = await _remoteDataSource.removeShopLogo(shopId);
+      final existing = await _localDataSource.getShopById(shopId);
+      if (existing != null) {
+        await _localDataSource.saveShop(
+          existing.copyWith(logoUrl: null),
+          ownerId: 'current_user',
+        );
+      }
+      return Success(success);
     } catch (e) {
       return ErrorResult(ErrorHandler.handle(e));
     }

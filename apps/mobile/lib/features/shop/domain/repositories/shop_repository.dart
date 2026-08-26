@@ -30,6 +30,7 @@ abstract interface class ShopRepository {
     String? gstin,
     String? fssaiLicense,
     String? upiId,
+    String? receiptName,
   });
 
   Future<Result<String, Failure>> uploadShopLogo({
@@ -37,4 +38,6 @@ abstract interface class ShopRepository {
     required Uint8List imageBytes,
     required String fileName,
   });
+
+  Future<Result<bool, Failure>> removeShopLogo(String shopId);
 }

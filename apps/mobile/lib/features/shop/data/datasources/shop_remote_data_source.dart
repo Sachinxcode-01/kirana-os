@@ -206,22 +206,29 @@ class ShopRemoteDataSource {
     String? gstin,
     String? fssaiLicense,
     String? upiId,
+    String? receiptName,
   }) async {
     try {
+      final updateData = <String, dynamic>{
+        'name': name.trim(),
+        'phone': phone.trim(),
+        'address': address?.trim(),
+        'city': city?.trim(),
+        'state': state?.trim() ?? 'Karnataka',
+        'pincode': pincode?.trim(),
+        'gstin': gstin?.trim(),
+        'fssai_license': fssaiLicense?.trim(),
+        'upi_id': upiId?.trim(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      if (receiptName != null) {
+        updateData['receipt_name'] = receiptName.trim();
+      }
+
       final response = await _supabase
           .from('shops')
-          .update({
-            'name': name.trim(),
-            'phone': phone.trim(),
-            'address': address?.trim(),
-            'city': city?.trim(),
-            'state': state?.trim() ?? 'Karnataka',
-            'pincode': pincode?.trim(),
-            'gstin': gstin?.trim(),
-            'fssai_license': fssaiLicense?.trim(),
-            'upi_id': upiId?.trim(),
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          })
+          .update(updateData)
           .eq('id', shopId)
           .select()
           .single();
@@ -241,17 +248,61 @@ class ShopRemoteDataSource {
   }) async {
     try {
       final cleanName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9\._-]'), '_');
-      final path = '$shopId/logo_$cleanName';
-      await _supabase.storage.from('products').uploadBinary(
+      final path = '$shopId/branding/logo_$cleanName';
+
+      // Upload to 'shops' storage bucket
+      await _supabase.storage.from('shops').uploadBinary(
             path,
             bytes,
             fileOptions: const supa.FileOptions(upsert: true),
           );
 
-      return _supabase.storage.from('products').getPublicUrl(path);
+      final publicUrl = _supabase.storage.from('shops').getPublicUrl(path);
+
+      // Update logo_url column in public.shops table
+      await _supabase.from('shops').update({
+        'logo_url': publicUrl,
+        'updated_at': DateTime.now().toUtc().toIso8601String()
+      }).eq('id', shopId);
+
+      return publicUrl;
     } catch (e) {
-      AppLogger.w('Shop logo upload failed: $e', tag: 'ShopRemoteDataSource');
-      throw StorageException('Logo upload failed: $e');
+      AppLogger.w(
+          'Shop logo upload warning (shops bucket): $e. Trying fallback bucket...',
+          tag: 'ShopRemoteDataSource');
+      try {
+        final cleanName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9\._-]'), '_');
+        final path = '$shopId/logo_$cleanName';
+        await _supabase.storage.from('products').uploadBinary(
+              path,
+              bytes,
+              fileOptions: const supa.FileOptions(upsert: true),
+            );
+        final publicUrl = _supabase.storage.from('products').getPublicUrl(path);
+
+        await _supabase.from('shops').update({
+          'logo_url': publicUrl,
+          'updated_at': DateTime.now().toUtc().toIso8601String()
+        }).eq('id', shopId);
+
+        return publicUrl;
+      } catch (e2) {
+        throw StorageException('Logo upload failed: $e2');
+      }
+    }
+  }
+
+  Future<bool> removeShopLogo(String shopId) async {
+    try {
+      await _supabase.from('shops').update({
+        'logo_url': null,
+        'updated_at': DateTime.now().toUtc().toIso8601String()
+      }).eq('id', shopId);
+      return true;
+    } catch (e) {
+      AppLogger.e('Failed to remove shop logo: $e',
+          tag: 'ShopRemoteDataSource');
+      throw DatabaseException('Failed to remove shop logo: $e');
     }
   }
 
@@ -269,6 +320,7 @@ class ShopRemoteDataSource {
       pincode: data['pincode'] as String?,
       upiId: data['upi_id'] as String?,
       logoUrl: data['logo_url'] as String?,
+      receiptName: data['receipt_name'] as String?,
       currency: data['currency'] as String? ?? 'INR',
       createdAt: data['created_at'] != null
           ? DateTime.parse(data['created_at'] as String)
