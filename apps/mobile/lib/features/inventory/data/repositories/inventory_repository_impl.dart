@@ -1,11 +1,14 @@
 import 'package:drift/drift.dart';
+import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
+import '../../../../core/network/connectivity_service.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../database/drift/database.dart';
 import '../../../products/data/datasources/product_local_data_source.dart';
 import '../../../products/domain/models/product_model.dart';
+import '../../domain/models/adjustment_reason.dart';
 import '../../domain/models/inventory_movement_model.dart';
 import '../../domain/models/stock_adjustment_request.dart';
 import '../../domain/models/stock_status.dart';
@@ -17,14 +20,17 @@ class InventoryRepositoryImpl implements InventoryRepository {
   final InventoryLocalDataSource _localDataSource;
   final InventoryRemoteDataSource _remoteDataSource;
   final ProductLocalDataSource _productLocalDataSource;
+  final ConnectivityService? _connectivityService;
 
   InventoryRepositoryImpl({
     required InventoryLocalDataSource localDataSource,
     required InventoryRemoteDataSource remoteDataSource,
     required ProductLocalDataSource productLocalDataSource,
+    ConnectivityService? connectivityService,
   })  : _localDataSource = localDataSource,
         _remoteDataSource = remoteDataSource,
-        _productLocalDataSource = productLocalDataSource;
+        _productLocalDataSource = productLocalDataSource,
+        _connectivityService = connectivityService;
 
   @override
   Future<Result<ProductModel, Failure>> getStockDetails(
@@ -44,55 +50,73 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<Result<InventoryMovementModel, Failure>> adjustStock(
       StockAdjustmentRequest request) async {
-    // 1. Validation
+    // 1. Client-side Validation
+    if (request.productId.trim().isEmpty) {
+      return const ErrorResult(ValidationFailure('Valid product is required'));
+    }
+
     if (request.quantity <= 0 &&
         request.adjustmentType != InventoryAdjustmentType.adjustment) {
       return const ErrorResult(
           ValidationFailure('Quantity must be greater than zero'));
     }
 
-    if (request.productId.trim().isEmpty) {
-      return const ErrorResult(ValidationFailure('Valid product is required'));
+    final reasonStr = request.reason.trim();
+    if (reasonStr.isEmpty) {
+      return const ErrorResult(
+          ValidationFailure('Adjustment reason is required'));
+    }
+
+    if (request.parsedReason == AdjustmentReason.other) {
+      final note = request.note?.trim();
+      if (note == null || note.isEmpty) {
+        return const ErrorResult(ValidationFailure(
+            'Reason "Other" requires a short explanation in notes'));
+      }
+    }
+
+    // 2. OFFLINE CHECK - Stock adjustments require server connectivity
+    if (_connectivityService != null) {
+      final isOnline = await _connectivityService.isOnline();
+      if (!isOnline) {
+        return const ErrorResult(
+            NetworkFailure('Internet connection required to adjust stock.'));
+      }
     }
 
     try {
-      // Fetch current product state
-      final productData =
-          await _productLocalDataSource.getProductById(request.productId);
-      if (productData == null) {
-        return const ErrorResult(DatabaseFailure('Product not found'));
-      }
+      // 3. Server-Authoritative Transaction via RPC
+      final remoteMovement = await _remoteDataSource.adjustStock(request);
 
-      final currentStock = productData.currentStock;
-      final delta = request.calculateDelta(currentStock);
-
-      if (request.adjustmentType == InventoryAdjustmentType.stockOut &&
-          currentStock + delta < 0) {
-        AppLogger.w('Stock adjustment warning: insufficient stock available',
-            tag: 'InventoryRepositoryImpl');
-      }
-
-      // 2. Perform local atomic update first (Offline-First)
-      final localMovement = await _localDataSource.recordMovementAndStockUpdate(
-        shopId: request.shopId,
-        productId: request.productId,
-        quantityDelta: delta,
-        reason: request.adjustmentType.dbReason,
-        performedBy: request.userId,
-        note: request.note,
-      );
-
-      // 3. Attempt server-authoritative remote sync
+      // 4. Update local Drift cache on successful RPC
       try {
-        await _remoteDataSource.adjustStock(request);
-      } catch (remoteError) {
+        await _localDataSource.recordMovementAndStockUpdate(
+          movementId: remoteMovement.id,
+          shopId: request.shopId,
+          productId: request.productId,
+          quantityDelta: remoteMovement.quantityDelta,
+          reason: remoteMovement.reason,
+          adjustmentReason: remoteMovement.adjustmentReason ?? request.reason,
+          performedBy: request.userId,
+          referenceId: remoteMovement.referenceId,
+          note: request.note,
+          idempotencyKey:
+              remoteMovement.idempotencyKey ?? request.idempotencyKey,
+          previousQuantity: remoteMovement.previousQuantity,
+          newBalance: remoteMovement.balanceAfter,
+        );
+      } catch (localError) {
         AppLogger.w(
-            'Remote stock adjustment notice (queued locally): $remoteError',
+            'Failed to update local cache after stock adjustment RPC: $localError',
             tag: 'InventoryRepositoryImpl');
       }
 
-      return Success(localMovement);
+      return Success(remoteMovement);
     } catch (e) {
+      AppLogger.e('Stock adjustment error: $e', tag: 'InventoryRepositoryImpl');
+      if (e is DatabaseException) {
+        return ErrorResult(DatabaseFailure(e.message));
+      }
       return ErrorResult(ErrorHandler.handle(e));
     }
   }

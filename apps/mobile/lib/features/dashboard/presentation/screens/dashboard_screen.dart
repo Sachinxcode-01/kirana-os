@@ -13,6 +13,7 @@ import 'package:kirana_mobile/features/dashboard/domain/models/dashboard_metrics
 import 'package:kirana_mobile/features/dashboard/presentation/providers/dashboard_provider.dart';
 
 import 'package:kirana_mobile/features/dashboard/presentation/widgets/dashboard_session_header.dart';
+import 'package:kirana_mobile/features/inventory/presentation/widgets/low_stock_dashboard_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -156,11 +157,17 @@ class DashboardScreen extends ConsumerWidget {
                 color: metrics.lowStockItemsCount > 0
                     ? KiranaColors.error
                     : KiranaColors.neutral500,
-                onTap: () => context.push('/inventory'),
+                onTap: () => context.push('/inventory/low-stock'),
               ),
             ],
           ),
-          const SizedBox(height: KiranaSpacing.xxl),
+          const SizedBox(height: KiranaSpacing.lg),
+
+          // Low Stock Dashboard Card
+          LowStockDashboardCard(
+            onTap: () => context.push('/inventory/low-stock'),
+          ),
+          const SizedBox(height: KiranaSpacing.xl),
 
           // Quick Action Buttons
           Text(

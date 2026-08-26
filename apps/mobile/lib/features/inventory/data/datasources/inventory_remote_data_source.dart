@@ -24,34 +24,34 @@ class InventoryRemoteDataSource {
     final user = _supabase.auth.currentUser;
     final userId = user?.id ?? request.userId;
 
+    final delta = request.calculateDelta(0);
+    final idempotencyKey = request.idempotencyKey ??
+        'adj_${request.productId}_${DateTime.now().millisecondsSinceEpoch}';
+
     try {
       final response = await _supabase.rpc('adjust_product_stock', params: {
         'p_shop_id': request.shopId,
         'p_product_id': request.productId,
-        'p_quantity_delta': request.calculateDelta(0),
+        'p_quantity_delta': delta,
         'p_reason': request.adjustmentType.dbReason,
         'p_performed_by': userId,
         'p_note': request.note,
+        'p_idempotency_key': idempotencyKey,
+        'p_adjustment_reason': request.reason,
       });
 
       final Map<String, dynamic> data =
           Map<String, dynamic>.from(response as Map);
 
-      return InventoryMovementModel(
-        id: data['movement_id'] as String? ??
-            DateTime.now().millisecondsSinceEpoch.toString(),
-        shopId: request.shopId,
-        productId: request.productId,
-        quantityDelta: (data['quantity_delta'] as num).toDouble(),
-        balanceAfter: (data['new_stock'] as num).toDouble(),
-        reason: data['reason'] as String? ?? request.adjustmentType.dbReason,
-        performedBy: userId,
-        note: request.note,
-        createdAt: DateTime.now(),
-      );
+      return InventoryMovementModel.fromJson({
+        ...data,
+        'shop_id': request.shopId,
+        'product_id': request.productId,
+        'idempotency_key': idempotencyKey,
+      });
     } on supa.PostgrestException catch (e) {
       AppLogger.w(
-          'RPC adjust_product_stock warning: ${e.message} (code: ${e.code})',
+          'RPC adjust_product_stock error: ${e.message} (code: ${e.code})',
           tag: 'InventoryRemoteDataSource');
       throw DatabaseException(e.message, e.code);
     } catch (e) {
@@ -88,20 +88,10 @@ class InventoryRemoteDataSource {
         final productData = map['products'] as Map<String, dynamic>?;
         final productName = productData?['name'] as String?;
 
-        return InventoryMovementModel(
-          id: map['id'] as String,
-          shopId: map['shop_id'] as String,
-          productId: map['product_id'] as String,
-          productName: productName,
-          quantityDelta: (map['quantity_delta'] as num).toDouble(),
-          balanceAfter: (map['balance_after'] as num).toDouble(),
-          reason: map['reason'] as String? ?? 'adjustment',
-          referenceId: map['reference_id'] as String?,
-          performedBy: map['performed_by'] as String? ?? 'user',
-          createdAt: map['created_at'] != null
-              ? DateTime.parse(map['created_at'] as String)
-              : DateTime.now(),
-        );
+        return InventoryMovementModel.fromJson({
+          ...map,
+          'product_name': productName,
+        });
       }).toList();
     } on supa.PostgrestException catch (e) {
       throw DatabaseException(e.message, e.code);

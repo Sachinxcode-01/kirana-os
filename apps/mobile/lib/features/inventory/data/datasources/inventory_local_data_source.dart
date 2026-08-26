@@ -13,8 +13,13 @@ class InventoryLocalDataSource {
     required double quantityDelta,
     required String reason,
     required String performedBy,
+    String? adjustmentReason,
     String? referenceId,
     String? note,
+    String? idempotencyKey,
+    double? previousQuantity,
+    double? newBalance,
+    String? movementId,
   }) async {
     return await _db.transaction(() async {
       final productQuery = _db.select(_db.productsTable)
@@ -25,8 +30,8 @@ class InventoryLocalDataSource {
         throw Exception('Product $productId not found in local database');
       }
 
-      final previousStock = product.currentStock;
-      final newStock = previousStock + quantityDelta;
+      final prevStock = previousQuantity ?? product.currentStock;
+      final newStock = newBalance ?? (prevStock + quantityDelta);
 
       // Update product current stock
       await (_db.update(_db.productsTable)
@@ -39,17 +44,22 @@ class InventoryLocalDataSource {
       );
 
       // Create movement log entry
-      final movementId = DateTime.now().microsecondsSinceEpoch.toString();
+      final finalMovementId =
+          movementId ?? DateTime.now().microsecondsSinceEpoch.toString();
       final now = DateTime.now();
 
-      await _db.into(_db.inventoryMovementsTable).insert(
+      await _db.into(_db.inventoryMovementsTable).insertOnConflictUpdate(
             InventoryMovementsTableCompanion.insert(
-              id: movementId,
+              id: finalMovementId,
               shopId: shopId,
               productId: productId,
+              previousQuantity: Value(prevStock),
               quantityDelta: quantityDelta,
               balanceAfter: newStock,
               reason: reason,
+              adjustmentReason: Value(adjustmentReason),
+              notes: Value(note),
+              idempotencyKey: Value(idempotencyKey),
               performedBy: performedBy,
               referenceId: Value(referenceId),
               createdAt: Value(now),
@@ -57,16 +67,19 @@ class InventoryLocalDataSource {
           );
 
       return InventoryMovementModel(
-        id: movementId,
+        id: finalMovementId,
         shopId: shopId,
         productId: productId,
         productName: product.name,
+        previousQuantity: prevStock,
         quantityDelta: quantityDelta,
         balanceAfter: newStock,
         reason: reason,
+        adjustmentReason: adjustmentReason,
         referenceId: referenceId,
         performedBy: performedBy,
         note: note,
+        idempotencyKey: idempotencyKey,
         createdAt: now,
       );
     });
@@ -110,11 +123,16 @@ class InventoryLocalDataSource {
         shopId: movement.shopId,
         productId: movement.productId,
         productName: product.name,
+        previousQuantity: movement.previousQuantity ??
+            (movement.balanceAfter - movement.quantityDelta),
         quantityDelta: movement.quantityDelta,
         balanceAfter: movement.balanceAfter,
         reason: movement.reason,
+        adjustmentReason: movement.adjustmentReason,
         referenceId: movement.referenceId,
         performedBy: movement.performedBy,
+        note: movement.notes,
+        idempotencyKey: movement.idempotencyKey,
         createdAt: movement.createdAt,
       );
     }).toList();

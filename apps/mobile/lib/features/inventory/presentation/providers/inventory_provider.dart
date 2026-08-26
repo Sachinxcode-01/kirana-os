@@ -27,11 +27,13 @@ final inventoryRepositoryProvider = Provider<InventoryRepository>((ref) {
   final remoteDS = ref.watch(inventoryRemoteDataSourceProvider);
   final db = ref.watch(databaseProvider);
   final productLocalDS = ProductLocalDataSource(db);
+  final connectivityService = ref.watch(connectivityServiceProvider);
 
   return InventoryRepositoryImpl(
     localDataSource: localDS,
     remoteDataSource: remoteDS,
     productLocalDataSource: productLocalDS,
+    connectivityService: connectivityService,
   );
 });
 

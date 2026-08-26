@@ -3,8 +3,10 @@ import '../../../../core/extensions/num_extensions.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
+import '../../../../core/widgets/app_button.dart';
 import '../../../products/domain/models/product_model.dart';
 import '../../domain/models/stock_overview_model.dart';
+import 'stock_adjustment_sheet.dart';
 
 class StockDetailsModal extends StatelessWidget {
   final ProductModel product;
@@ -192,7 +194,7 @@ class StockDetailsModal extends StatelessWidget {
                 Expanded(
                   child: Text(
                     status == StockStatus.outOfStock
-                        ? 'Product is currently out of stock. Inward new purchase to replenish inventory.'
+                        ? 'Product is currently out of stock. Inward new purchase or adjust stock to replenish.'
                         : status == StockStatus.lowStock
                             ? 'Stock level is below safety minimum threshold (${product.minStockAlert} ${product.unit}).'
                             : 'Stock inventory level is healthy.',
@@ -202,6 +204,17 @@ class StockDetailsModal extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: KiranaSpacing.lg),
+
+          // Stock Details -> Adjust Stock Action Button
+          AppButton(
+            label: 'Adjust Stock',
+            icon: Icons.edit_note_rounded,
+            onPressed: () {
+              Navigator.of(context).pop();
+              StockAdjustmentSheet.show(context, product);
+            },
           ),
         ],
       ),

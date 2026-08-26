@@ -1,4 +1,5 @@
 import 'inventory_movement_model.dart';
+import 'adjustment_reason.dart';
 
 class StockAdjustmentRequest {
   final String productId;
@@ -8,6 +9,7 @@ class StockAdjustmentRequest {
   final String reason;
   final String? note;
   final String userId;
+  final String? idempotencyKey;
 
   const StockAdjustmentRequest({
     required this.productId,
@@ -17,7 +19,10 @@ class StockAdjustmentRequest {
     required this.reason,
     this.note,
     required this.userId,
+    this.idempotencyKey,
   });
+
+  AdjustmentReason get parsedReason => AdjustmentReason.fromString(reason);
 
   double calculateDelta(double currentStock) {
     switch (adjustmentType) {
@@ -29,4 +34,10 @@ class StockAdjustmentRequest {
         return quantity - currentStock;
     }
   }
+
+  double calculateNewStock(double currentStock) {
+    return currentStock + calculateDelta(currentStock);
+  }
+
+  bool isDecrease() => adjustmentType == InventoryAdjustmentType.stockOut;
 }

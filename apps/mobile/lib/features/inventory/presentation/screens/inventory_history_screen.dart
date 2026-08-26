@@ -17,7 +17,7 @@ class InventoryHistoryScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inventory History'),
+        title: const Text('Adjustment & Stock History'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -60,6 +60,7 @@ class InventoryHistoryScreen extends ConsumerWidget {
                       final item = historyState.movements[index];
                       final isPositive = item.isPositive;
                       final type = item.type;
+                      final prevQty = item.computedPreviousQuantity;
 
                       return Card(
                         elevation: 1,
@@ -110,36 +111,57 @@ class InventoryHistoryScreen extends ConsumerWidget {
                                 ],
                               ),
                               const SizedBox(height: KiranaSpacing.xs),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Delta: ${isPositive ? "+" : ""}${item.quantityDelta % 1 == 0 ? item.quantityDelta.toInt() : item.quantityDelta}',
-                                    style: KiranaTypography.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: isPositive
-                                          ? KiranaColors.secondary
-                                          : KiranaColors.error,
+
+                              // Stock Progression: Previous -> Delta -> New
+                              Container(
+                                padding: const EdgeInsets.all(KiranaSpacing.xs),
+                                decoration: BoxDecoration(
+                                  color: KiranaColors.surfaceVariant
+                                      .withValues(alpha: 0.5),
+                                  borderRadius: KiranaRadius.borderSm,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _HistoryQtyCol(
+                                      label: 'Previous',
+                                      value:
+                                          '${prevQty % 1 == 0 ? prevQty.toInt() : prevQty.toStringAsFixed(2)}',
                                     ),
-                                  ),
-                                  Text(
-                                    'Balance After: ${item.balanceAfter % 1 == 0 ? item.balanceAfter.toInt() : item.balanceAfter}',
-                                    style: KiranaTypography.bodySmall.copyWith(
-                                      color: KiranaColors.textSecondary,
+                                    Text(
+                                      '${isPositive ? "+" : ""}${item.quantityDelta % 1 == 0 ? item.quantityDelta.toInt() : item.quantityDelta.toStringAsFixed(2)}',
+                                      style:
+                                          KiranaTypography.labelLarge.copyWith(
+                                        color: isPositive
+                                            ? KiranaColors.secondary
+                                            : KiranaColors.error,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                    _HistoryQtyCol(
+                                      label: 'New Quantity',
+                                      value:
+                                          '${item.balanceAfter % 1 == 0 ? item.balanceAfter.toInt() : item.balanceAfter.toStringAsFixed(2)}',
+                                      valueColor: KiranaColors.primary,
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: KiranaSpacing.xs),
+
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Reason: ${item.reason}',
-                                    style: KiranaTypography.bodySmall.copyWith(
-                                      color: KiranaColors.neutral600,
+                                  Expanded(
+                                    child: Text(
+                                      'Reason: ${item.displayReason}',
+                                      style:
+                                          KiranaTypography.bodySmall.copyWith(
+                                        color: KiranaColors.neutral700,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                   Text(
@@ -153,15 +175,45 @@ class InventoryHistoryScreen extends ConsumerWidget {
                               ),
                               if (item.note != null &&
                                   item.note!.isNotEmpty) ...[
-                                const SizedBox(height: KiranaSpacing.xs),
+                                const SizedBox(height: 4),
                                 Text(
-                                  'Note: ${item.note}',
+                                  'Notes: ${item.note}',
                                   style: KiranaTypography.bodySmall.copyWith(
                                     fontStyle: FontStyle.italic,
                                     color: KiranaColors.textSecondary,
                                   ),
                                 ),
                               ],
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'User: ${item.performedByName ?? item.performedBy}',
+                                    style: KiranaTypography.bodySmall.copyWith(
+                                      color: KiranaColors.neutral500,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.lock_clock,
+                                          size: 12,
+                                          color: KiranaColors.neutral400),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        'Immutable Record',
+                                        style:
+                                            KiranaTypography.bodySmall.copyWith(
+                                          color: KiranaColors.neutral400,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -184,14 +236,14 @@ class InventoryHistoryScreen extends ConsumerWidget {
           ),
           const SizedBox(height: KiranaSpacing.md),
           Text(
-            'No Inventory History Found',
+            'No Adjustment History Found',
             style: KiranaTypography.titleLarge.copyWith(
               color: KiranaColors.textSecondary,
             ),
           ),
           const SizedBox(height: KiranaSpacing.xs),
           const Text(
-            'Stock adjustments and inward transactions will appear here.',
+            'Completed stock adjustments will appear here as immutable records.',
             style: KiranaTypography.bodyMedium,
           ),
         ],
@@ -201,5 +253,39 @@ class InventoryHistoryScreen extends ConsumerWidget {
 
   String _formatDate(DateTime dt) {
     return '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, "0")}:${dt.minute.toString().padLeft(2, "0")}';
+  }
+}
+
+class _HistoryQtyCol extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _HistoryQtyCol({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: KiranaTypography.bodySmall.copyWith(
+            fontSize: 10,
+            color: KiranaColors.textSecondary,
+          ),
+        ),
+        Text(
+          value,
+          style: KiranaTypography.labelLarge.copyWith(
+            fontWeight: FontWeight.bold,
+            color: valueColor ?? KiranaColors.textPrimary,
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -164,7 +164,6 @@ class ShopRemoteDataSource {
       AppLogger.w('Direct insert notice: $e', tag: 'ShopRemoteDataSource');
     }
 
-
     return ShopModel(
       id: shopId,
       name: name.trim(),

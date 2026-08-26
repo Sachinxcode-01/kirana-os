@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kirana_mobile/app/app_providers.dart';
+import 'package:kirana_mobile/core/network/connectivity_status.dart';
 import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
@@ -9,6 +10,7 @@ import 'package:kirana_mobile/core/widgets/app_button.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
 import 'package:kirana_mobile/features/auth/presentation/providers/auth_provider.dart';
 import 'package:kirana_mobile/features/products/domain/models/product_model.dart';
+import '../../domain/models/adjustment_reason.dart';
 import '../../domain/models/inventory_movement_model.dart';
 import '../../domain/models/stock_adjustment_request.dart';
 import '../providers/inventory_provider.dart';
@@ -44,19 +46,10 @@ class StockAdjustmentSheet extends ConsumerStatefulWidget {
 
 class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
   InventoryAdjustmentType _selectedType = InventoryAdjustmentType.stockIn;
-  final _quantityController = TextEditingController();
+  final _quantityController = TextEditingController(text: '1');
   final _noteController = TextEditingController();
-  String _selectedReason = 'Stock Purchase / Restock';
+  AdjustmentReason _selectedReason = AdjustmentReason.physicalCountCorrection;
   String? _errorMessage;
-
-  final List<String> _reasons = [
-    'Stock Purchase / Restock',
-    'Customer Return',
-    'Damaged / Expired Stock',
-    'Audit Adjustment',
-    'Internal Consumption',
-    'Other',
-  ];
 
   @override
   void dispose() {
@@ -65,7 +58,39 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
     super.dispose();
   }
 
-  Future<void> _submitAdjustment() async {
+  void _incrementQty() {
+    final current = double.tryParse(_quantityController.text.trim()) ?? 0.0;
+    setState(() {
+      _quantityController.text = (current + 1.0).toStringAsFixed(
+        widget.product.isLoose ? 2 : 0,
+      );
+      _errorMessage = null;
+    });
+  }
+
+  void _decrementQty() {
+    final current = double.tryParse(_quantityController.text.trim()) ?? 0.0;
+    if (current > 1.0) {
+      setState(() {
+        _quantityController.text = (current - 1.0).toStringAsFixed(
+          widget.product.isLoose ? 2 : 0,
+        );
+        _errorMessage = null;
+      });
+    }
+  }
+
+  double _getCalculatedNewStock(double qty) {
+    final currentStock = widget.product.currentStock;
+    if (_selectedType == InventoryAdjustmentType.stockIn) {
+      return currentStock + qty;
+    } else if (_selectedType == InventoryAdjustmentType.stockOut) {
+      return currentStock - qty;
+    }
+    return qty;
+  }
+
+  Future<void> _handleConfirmSubmit() async {
     final qtyText = _quantityController.text.trim();
     final qty = double.tryParse(qtyText);
 
@@ -75,6 +100,82 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
       });
       return;
     }
+
+    final newStock = _getCalculatedNewStock(qty);
+    if (_selectedType == InventoryAdjustmentType.stockOut && newStock < 0) {
+      setState(() {
+        _errorMessage =
+            'Stock decrease cannot exceed current stock (${widget.product.currentStock} ${widget.product.unit}). New stock cannot be negative.';
+      });
+      return;
+    }
+
+    if (_selectedReason == AdjustmentReason.other) {
+      final noteText = _noteController.text.trim();
+      if (noteText.isEmpty) {
+        setState(() {
+          _errorMessage =
+              'Short explanation is required when selecting "Other" as the reason.';
+        });
+        return;
+      }
+    }
+
+    // Show Confirmation Modal before applying
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: KiranaRadius.borderLg,
+        ),
+        title: const Text('Confirm Stock Adjustment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Product: ${widget.product.name}'),
+            const SizedBox(height: 4),
+            Text('Adjustment Type: ${_selectedType.label}'),
+            Text(
+                'Adjustment Quantity: ${_selectedType == InventoryAdjustmentType.stockOut ? "-" : "+"}$qty ${widget.product.unit}'),
+            const Divider(height: 16),
+            Text(
+              'Current Stock: ${widget.product.currentStock} ${widget.product.unit}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'New Calculated Stock: $newStock ${widget.product.unit}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: newStock <= widget.product.minStockAlert
+                    ? KiranaColors.warning
+                    : KiranaColors.secondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('Reason: ${_selectedReason.label}'),
+            if (_noteController.text.trim().isNotEmpty)
+              Text('Notes: ${_noteController.text.trim()}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: KiranaColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Confirm & Apply'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
 
     final shopId = ref.read(activeShopIdProvider);
     final user = ref.read(authNotifierProvider).user;
@@ -95,7 +196,7 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
       shopId: shopId,
       adjustmentType: _selectedType,
       quantity: qty,
-      reason: _selectedReason,
+      reason: _selectedReason.label,
       note: _noteController.text.trim().isNotEmpty
           ? _noteController.text.trim()
           : null,
@@ -108,8 +209,10 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Stock updated successfully!'),
+        SnackBar(
+          content: Text(
+            'Stock adjusted successfully! New stock: $newStock ${widget.product.unit}',
+          ),
           backgroundColor: KiranaColors.secondary,
         ),
       );
@@ -122,8 +225,19 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
   Widget build(BuildContext context) {
     final adjustmentState = ref.watch(stockAdjustmentNotifierProvider);
     final isLoading = adjustmentState.isLoading;
+
+    final connectivityAsync = ref.watch(connectivityStatusStreamProvider);
+    final isOffline =
+        connectivityAsync.asData?.value == ConnectivityStatus.offline;
+
     final userRole = ref.watch(authNotifierProvider).user?.role ?? 'owner';
     final isCashier = userRole == 'cashier';
+
+    final currentStock = widget.product.currentStock;
+    final qty = double.tryParse(_quantityController.text.trim()) ?? 0.0;
+    final newStock = _getCalculatedNewStock(qty);
+    final isNegativeStock =
+        _selectedType == InventoryAdjustmentType.stockOut && newStock < 0;
 
     return Container(
       decoration: const BoxDecoration(
@@ -147,6 +261,8 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
               ),
             ),
             const SizedBox(height: KiranaSpacing.md),
+
+            // Header Title
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -154,7 +270,7 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Stock Adjustment',
+                      'Adjust Stock',
                       style: KiranaTypography.headlineMedium.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -173,8 +289,38 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: KiranaSpacing.lg),
+            const SizedBox(height: KiranaSpacing.md),
 
+            // Offline Banner Block
+            if (isOffline) ...[
+              Container(
+                padding: const EdgeInsets.all(KiranaSpacing.md),
+                decoration: BoxDecoration(
+                  color: KiranaColors.warningContainer,
+                  borderRadius: KiranaRadius.borderMd,
+                  border: Border.all(color: KiranaColors.warning),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.wifi_off_rounded,
+                        color: KiranaColors.warning),
+                    const SizedBox(width: KiranaSpacing.md),
+                    Expanded(
+                      child: Text(
+                        'Internet connection required to adjust stock.',
+                        style: KiranaTypography.bodySmall.copyWith(
+                          color: KiranaColors.warning,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: KiranaSpacing.lg),
+            ],
+
+            // Cashier Permission Restriction Banner
             if (isCashier) ...[
               Container(
                 padding: const EdgeInsets.all(KiranaSpacing.md),
@@ -184,11 +330,11 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.lock, color: KiranaColors.error),
+                    const Icon(Icons.lock_rounded, color: KiranaColors.error),
                     const SizedBox(width: KiranaSpacing.md),
                     Expanded(
                       child: Text(
-                        'Cashier role restricted: Manual inventory adjustments require Manager or Owner authorization.',
+                        'Cashier role restricted: Stock adjustments require Manager or Owner authorization.',
                         style: KiranaTypography.bodySmall.copyWith(
                           color: KiranaColors.error,
                           fontWeight: FontWeight.w600,
@@ -201,73 +347,177 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
               const SizedBox(height: KiranaSpacing.lg),
             ],
 
-            // Action Selection Tabs
+            // Stock Calculation Preview Card
+            Container(
+              padding: const EdgeInsets.all(KiranaSpacing.md),
+              decoration: BoxDecoration(
+                color: KiranaColors.surfaceVariant.withValues(alpha: 0.6),
+                borderRadius: KiranaRadius.borderMd,
+                border: Border.all(
+                  color: isNegativeStock
+                      ? KiranaColors.error
+                      : KiranaColors.outline,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        'Current Stock',
+                        style: KiranaTypography.labelSmall.copyWith(
+                          color: KiranaColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$currentStock ${widget.product.unit}',
+                        style: KiranaTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    _selectedType == InventoryAdjustmentType.stockIn
+                        ? Icons.add_circle_outline
+                        : Icons.remove_circle_outline,
+                    color: _selectedType == InventoryAdjustmentType.stockIn
+                        ? KiranaColors.secondary
+                        : KiranaColors.error,
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        'Adjustment',
+                        style: KiranaTypography.labelSmall.copyWith(
+                          color: KiranaColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_selectedType == InventoryAdjustmentType.stockOut ? "-" : "+"}$qty ${widget.product.unit}',
+                        style: KiranaTypography.titleMedium.copyWith(
+                          color:
+                              _selectedType == InventoryAdjustmentType.stockIn
+                                  ? KiranaColors.secondary
+                                  : KiranaColors.error,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Icon(Icons.arrow_forward_rounded,
+                      color: KiranaColors.neutral500),
+                  Column(
+                    children: [
+                      Text(
+                        'New Stock',
+                        style: KiranaTypography.labelSmall.copyWith(
+                          color: KiranaColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$newStock ${widget.product.unit}',
+                        style: KiranaTypography.titleMedium.copyWith(
+                          color: isNegativeStock
+                              ? KiranaColors.error
+                              : KiranaColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: KiranaSpacing.lg),
+
+            // Increase / Decrease Adjustment Type Selector
             Row(
               children: [
                 Expanded(
                   child: _TabButton(
-                    label: '+ Add Stock',
+                    label: '+ INCREASE STOCK',
                     isSelected:
                         _selectedType == InventoryAdjustmentType.stockIn,
                     activeColor: KiranaColors.secondary,
-                    onTap: isCashier
+                    onTap: isCashier || isOffline
                         ? null
-                        : () => setState(() =>
-                            _selectedType = InventoryAdjustmentType.stockIn),
+                        : () => setState(() {
+                              _selectedType = InventoryAdjustmentType.stockIn;
+                              _errorMessage = null;
+                            }),
                   ),
                 ),
-                const SizedBox(width: KiranaSpacing.xs),
+                const SizedBox(width: KiranaSpacing.sm),
                 Expanded(
                   child: _TabButton(
-                    label: '- Remove Stock',
+                    label: '- DECREASE STOCK',
                     isSelected:
                         _selectedType == InventoryAdjustmentType.stockOut,
                     activeColor: KiranaColors.error,
-                    onTap: isCashier
+                    onTap: isCashier || isOffline
                         ? null
-                        : () => setState(() =>
-                            _selectedType = InventoryAdjustmentType.stockOut),
-                  ),
-                ),
-                const SizedBox(width: KiranaSpacing.xs),
-                Expanded(
-                  child: _TabButton(
-                    label: 'Set Stock',
-                    isSelected:
-                        _selectedType == InventoryAdjustmentType.adjustment,
-                    activeColor: KiranaColors.primary,
-                    onTap: isCashier
-                        ? null
-                        : () => setState(() =>
-                            _selectedType = InventoryAdjustmentType.adjustment),
+                        : () => setState(() {
+                              _selectedType = InventoryAdjustmentType.stockOut;
+                              _errorMessage = null;
+                            }),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: KiranaSpacing.lg),
 
-            // Quantity Field
-            AppTextField(
-              label: _selectedType == InventoryAdjustmentType.adjustment
-                  ? 'New Exact Stock Count (${widget.product.unit})'
-                  : 'Quantity to ${_selectedType == InventoryAdjustmentType.stockIn ? "Add" : "Remove"} (${widget.product.unit})',
-              hint: 'e.g. 10',
-              controller: _quantityController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              readOnly: isCashier || isLoading,
-            ),
-            const SizedBox(height: KiranaSpacing.lg),
-
-            // Reason Selector
+            // Quantity Stepper + Input Field
             Text(
-              'Adjustment Reason',
+              'Adjustment Quantity (${widget.product.unit})',
               style: KiranaTypography.labelLarge.copyWith(
                 color: KiranaColors.textSecondary,
               ),
             ),
             const SizedBox(height: KiranaSpacing.xs),
-            DropdownButtonFormField<String>(
+            Row(
+              children: [
+                IconButton.outlined(
+                  icon: const Icon(Icons.remove),
+                  onPressed: isCashier || isOffline || isLoading
+                      ? null
+                      : _decrementQty,
+                ),
+                const SizedBox(width: KiranaSpacing.xs),
+                Expanded(
+                  child: AppTextField(
+                    hint: 'e.g. 10',
+                    controller: _quantityController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    readOnly: isCashier || isOffline || isLoading,
+                    onChanged: (_) => setState(() => _errorMessage = null),
+                  ),
+                ),
+                const SizedBox(width: KiranaSpacing.xs),
+                IconButton.outlined(
+                  icon: const Icon(Icons.add),
+                  onPressed: isCashier || isOffline || isLoading
+                      ? null
+                      : _incrementQty,
+                ),
+              ],
+            ),
+            const SizedBox(height: KiranaSpacing.lg),
+
+            // Reason Selector
+            Text(
+              'Predefined Reason',
+              style: KiranaTypography.labelLarge.copyWith(
+                color: KiranaColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: KiranaSpacing.xs),
+            DropdownButtonFormField<AdjustmentReason>(
               initialValue: _selectedReason,
               decoration: const InputDecoration(
                 filled: true,
@@ -281,47 +531,72 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
                   borderSide: BorderSide(color: KiranaColors.outline),
                 ),
               ),
-              items: _reasons.map((r) {
-                return DropdownMenuItem<String>(
-                  value: r,
-                  child: Text(r, style: KiranaTypography.bodyMedium),
+              items: AdjustmentReason.values.map((reason) {
+                return DropdownMenuItem<AdjustmentReason>(
+                  value: reason,
+                  child: Text(
+                    reason.label,
+                    style: KiranaTypography.bodyMedium,
+                  ),
                 );
               }).toList(),
-              onChanged: isCashier
+              onChanged: isCashier || isOffline || isLoading
                   ? null
                   : (val) {
-                      if (val != null) setState(() => _selectedReason = val);
+                      if (val != null) {
+                        setState(() {
+                          _selectedReason = val;
+                          _errorMessage = null;
+                        });
+                      }
                     },
             ),
             const SizedBox(height: KiranaSpacing.lg),
 
-            // Optional Note Field
+            // Notes / Explanation Field (Required if "Other")
             AppTextField(
-              label: 'Note / Reference (Optional)',
-              hint: 'e.g. Invoice #PO-9821 or damaged packaging',
+              label: _selectedReason == AdjustmentReason.other
+                  ? 'Explanation / Notes (Required for "Other")'
+                  : 'Notes / Reference (Optional)',
+              hint: _selectedReason == AdjustmentReason.other
+                  ? 'Provide a clear explanation for this stock change'
+                  : 'e.g. Physical audit record #AUD-992',
               controller: _noteController,
-              readOnly: isCashier || isLoading,
+              readOnly: isCashier || isOffline || isLoading,
+              onChanged: (_) => setState(() => _errorMessage = null),
             ),
             const SizedBox(height: KiranaSpacing.lg),
 
+            // Error Display
             if (_errorMessage != null || adjustmentState.hasError) ...[
-              Text(
-                _errorMessage ??
-                    adjustmentState.error
-                        .toString()
-                        .replaceAll('Exception: ', ''),
-                style: KiranaTypography.bodySmall.copyWith(
-                  color: KiranaColors.error,
-                  fontWeight: FontWeight.w600,
+              Container(
+                padding: const EdgeInsets.all(KiranaSpacing.sm),
+                decoration: BoxDecoration(
+                  color: KiranaColors.errorContainer,
+                  borderRadius: KiranaRadius.borderSm,
+                ),
+                child: Text(
+                  _errorMessage ??
+                      adjustmentState.error
+                          .toString()
+                          .replaceAll('Exception: ', ''),
+                  style: KiranaTypography.bodySmall.copyWith(
+                    color: KiranaColors.error,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(height: KiranaSpacing.md),
             ],
 
+            // Action Confirm Button
             AppButton(
               label: 'Confirm Adjustment',
+              icon: Icons.check_circle_outline_rounded,
               isLoading: isLoading,
-              onPressed: isCashier || isLoading ? null : _submitAdjustment,
+              onPressed: isCashier || isOffline || isLoading || isNegativeStock
+                  ? null
+                  : _handleConfirmSubmit,
             ),
           ],
         ),
