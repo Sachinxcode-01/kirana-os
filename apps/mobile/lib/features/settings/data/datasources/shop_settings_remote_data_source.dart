@@ -37,7 +37,10 @@ class ShopSettingsRemoteDataSource {
             'state': settings.state,
             'pincode': settings.pincode,
             'gstin': settings.gstin,
+            'currency_code': settings.currencyCode,
+            'currency_symbol': settings.currencySymbol,
             'currency': settings.currencySymbol,
+            'decimal_precision': settings.decimalPrecision,
             'is_tax_enabled': settings.isTaxEnabled,
             'default_tax_percentage': settings.defaultTaxPercentage,
             'bill_prefix': settings.billPrefix,
@@ -45,6 +48,8 @@ class ShopSettingsRemoteDataSource {
             'show_shop_address': settings.showShopAddress,
             'show_customer_details': settings.showCustomerDetails,
             'show_tax_information': settings.showTaxInformation,
+            'business_hours':
+                settings.businessHours.map((k, v) => MapEntry(k, v.toJson())),
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', settings.shopId)
