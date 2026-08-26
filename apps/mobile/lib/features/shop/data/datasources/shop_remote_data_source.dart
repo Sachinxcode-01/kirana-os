@@ -70,11 +70,14 @@ class ShopRemoteDataSource {
           tag: 'ShopRemoteDataSource');
 
       if (e.code == 'PGRST202' ||
+          e.code == 'PGRST205' ||
           e.code == '42883' ||
           e.message.contains('Could not find the function') ||
+          e.message.contains('Could not find the table') ||
+          e.message.contains('schema cache') ||
           e.message.contains('Authentication required') ||
-          e.message.contains('function') &&
-              e.message.contains('does not exist')) {
+          (e.message.contains('function') &&
+              e.message.contains('does not exist'))) {
         return await _createShopDirectFallback(
           name: name,
           phone: phone,
@@ -113,39 +116,54 @@ class ShopRemoteDataSource {
 
     final shopId = DateTime.now().millisecondsSinceEpoch.toString();
 
-    await _supabase.from('shops').insert({
-      'id': shopId,
-      'name': name.trim(),
-      'owner_id': userId,
-      'phone': phone.trim(),
-      'address': address?.trim(),
-      'city': city?.trim(),
-      'state': state?.trim() ?? 'Karnataka',
-      'pincode': pincode?.trim(),
-      'gstin': gstin?.trim(),
-      'fssai_license': fssaiLicense?.trim(),
-      'upi_id': upiId?.trim(),
-      'logo_url': logoUrl,
-      'currency': 'INR',
-      'created_at': DateTime.now().toUtc().toIso8601String(),
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    });
-
     try {
-      await _supabase.from('shop_users').insert({
-        'id': DateTime.now().microsecondsSinceEpoch.toString(),
-        'shop_id': shopId,
-        'user_id': userId,
-        'role': 'owner',
-        'display_name': '${name.trim()} Owner',
-        'status': 'active',
+      await _supabase.from('shops').insert({
+        'id': shopId,
+        'name': name.trim(),
+        'owner_id': userId,
+        'phone': phone.trim(),
+        'address': address?.trim(),
+        'city': city?.trim(),
+        'state': state?.trim() ?? 'Karnataka',
+        'pincode': pincode?.trim(),
+        'gstin': gstin?.trim(),
+        'fssai_license': fssaiLicense?.trim(),
+        'upi_id': upiId?.trim(),
+        'logo_url': logoUrl,
+        'currency': 'INR',
         'created_at': DateTime.now().toUtc().toIso8601String(),
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       });
+
+      try {
+        await _supabase.from('shop_users').insert({
+          'id': DateTime.now().microsecondsSinceEpoch.toString(),
+          'shop_id': shopId,
+          'user_id': userId,
+          'role': 'owner',
+          'display_name': '${name.trim()} Owner',
+          'status': 'active',
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
+      } catch (e) {
+        AppLogger.w('Membership creation notice: $e',
+            tag: 'ShopRemoteDataSource');
+      }
+    } on supa.PostgrestException catch (e) {
+      if (e.code == 'PGRST205' ||
+          e.message.contains('Could not find the table') ||
+          e.message.contains('schema cache')) {
+        AppLogger.w(
+            'Table public.shops unavailable in Supabase schema cache (PGRST205). Creating store profile locally.',
+            tag: 'ShopRemoteDataSource');
+      } else {
+        rethrow;
+      }
     } catch (e) {
-      AppLogger.w('Membership creation notice: $e',
-          tag: 'ShopRemoteDataSource');
+      AppLogger.w('Direct insert notice: $e', tag: 'ShopRemoteDataSource');
     }
+
 
     return ShopModel(
       id: shopId,

@@ -167,4 +167,63 @@ class BillingRemoteDataSource {
       rethrow;
     }
   }
+
+  Future<List<BillModel>> fetchBillHistory({
+    required String shopId,
+    required dynamic filter,
+  }) async {
+    try {
+      var query = _apiClient.supabase
+          .from('bills')
+          .select('*, items:bill_items(*)')
+          .eq('shop_id', shopId);
+
+      final search = filter.search as String?;
+      if (search != null && search.trim().isNotEmpty) {
+        final term = search.trim();
+        query = query.or(
+          'bill_number.ilike.%$term%,customer_name.ilike.%$term%,customer_phone.ilike.%$term%',
+        );
+      }
+
+      final dateRange = filter.dateRange;
+      if (dateRange != null) {
+        query = query.gte('created_at', dateRange.start.toIso8601String()).lte(
+            'created_at',
+            dateRange.end.add(const Duration(days: 1)).toIso8601String());
+      }
+
+      final cashierId = filter.cashierId as String?;
+      if (cashierId != null && cashierId.isNotEmpty) {
+        query = query.eq('cashier_id', cashierId);
+      }
+
+      final dbStatus = filter.statusFilter.dbValue as String?;
+      if (dbStatus != null) {
+        if (dbStatus == 'cancelled') {
+          query = query.eq('is_cancelled', true);
+        } else {
+          query = query.eq('status', dbStatus);
+        }
+      }
+
+      final page = filter.page as int? ?? 0;
+      final pageSize = filter.pageSize as int? ?? 20;
+      final offset = page * pageSize;
+
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(offset, offset + pageSize - 1);
+
+      final list = (response as List<dynamic>)
+          .map((json) => BillModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return list;
+    } catch (e) {
+      if (e is PostgrestException) {
+        throw Exception('Supabase Error [${e.code}]: ${e.message}');
+      }
+      rethrow;
+    }
+  }
 }

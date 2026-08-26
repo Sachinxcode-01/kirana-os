@@ -3,6 +3,8 @@ import '../../../../core/errors/result.dart';
 import '../models/bill_model.dart';
 import '../models/payment_model.dart';
 
+import '../../domain/models/bill_history_filter.dart';
+
 abstract interface class BillingRepository {
   Future<Result<BillModel, Failure>> createDraftBill({
     required String shopId,
@@ -23,4 +25,11 @@ abstract interface class BillingRepository {
   });
 
   Stream<List<BillModel>> watchShopDrafts(String shopId);
+
+  Future<Result<BillHistoryResult, Failure>> getBillHistory({
+    required String shopId,
+    required String userRole,
+    required String currentUserId,
+    required BillHistoryFilter filter,
+  });
 }

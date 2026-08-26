@@ -4,6 +4,8 @@ import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../../../../core/network/connectivity_status.dart';
+import '../../../staff/domain/models/staff_member_model.dart';
+import '../../domain/models/bill_history_filter.dart';
 import '../../domain/models/bill_model.dart';
 import '../../domain/models/payment_model.dart';
 import '../../domain/repositories/billing_repository.dart';
@@ -157,5 +159,76 @@ class BillingRepositoryImpl implements BillingRepository {
   Stream<List<BillModel>> watchShopDrafts(String shopId) async* {
     final drafts = await _localDataSource.getShopDrafts(shopId);
     yield drafts;
+  }
+
+  @override
+  Future<Result<BillHistoryResult, Failure>> getBillHistory({
+    required String shopId,
+    required String userRole,
+    required String currentUserId,
+    required BillHistoryFilter filter,
+  }) async {
+    try {
+      // 1. Shop isolation check
+      if (shopId.trim().isEmpty) {
+        return const ErrorResult(
+          ValidationFailure('Active Shop ID is required to fetch bills.'),
+        );
+      }
+
+      // 2. Role-based Cashier Visibility Filter
+      final role = StaffRoleExtension.fromString(userRole);
+      BillHistoryFilter effectiveFilter = filter;
+      if (role == StaffRole.cashier &&
+          (filter.cashierId != null && filter.cashierId != currentUserId)) {
+        return const ErrorResult(
+          PermissionDeniedFailure(
+            'Cashiers are only authorized to view their own created bills.',
+          ),
+        );
+      } else if (role == StaffRole.cashier && filter.cashierId == null) {
+        // Automatically default cashier role to currentUserId
+        effectiveFilter = filter.copyWith(cashierId: currentUserId);
+      }
+
+      // 3. Online Remote Fetch with Offline Local Fallback
+      if (_connectivityService.currentStatus != ConnectivityStatus.offline) {
+        try {
+          final remoteBills = await _remoteDataSource.fetchBillHistory(
+            shopId: shopId,
+            filter: effectiveFilter,
+          );
+
+          // Cache remote bills into local Drift store
+          await _localDataSource.cacheBills(remoteBills);
+
+          return Success(BillHistoryResult(
+            bills: remoteBills,
+            hasMore: remoteBills.length >= effectiveFilter.pageSize,
+            totalCount: remoteBills.length,
+            isOffline: false,
+            isPartialOfflineHistory: false,
+          ));
+        } catch (_) {
+          // If remote request fails, fallback to local cached store
+        }
+      }
+
+      // 4. Offline / Fallback Local Query
+      final localBills = await _localDataSource.getHistoricalBills(
+        shopId: shopId,
+        filter: effectiveFilter,
+      );
+
+      return Success(BillHistoryResult(
+        bills: localBills,
+        hasMore: localBills.length >= effectiveFilter.pageSize,
+        totalCount: localBills.length,
+        isOffline: true,
+        isPartialOfflineHistory: true,
+      ));
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handle(e));
+    }
   }
 }

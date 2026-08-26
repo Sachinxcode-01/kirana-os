@@ -63,4 +63,78 @@ class BillingDao extends DatabaseAccessor<AppDatabase> with _$BillingDaoMixin {
           ..limit(50))
         .watch();
   }
+
+  /// Query historical bills with filtering and pagination
+  Future<List<BillData>> getHistoricalBills({
+    required String shopId,
+    String? search,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? cashierId,
+    String? status,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final query = select(billsTable)..where((t) => t.shopId.equals(shopId));
+
+    if (search != null && search.trim().isNotEmpty) {
+      final term = '%${search.trim()}%';
+      query.where((t) => t.billNumber.like(term));
+    }
+
+    if (startDate != null) {
+      query.where((t) => t.createdAt.isBiggerOrEqualValue(startDate));
+    }
+
+    if (endDate != null) {
+      query.where((t) => t.createdAt.isSmallerOrEqualValue(endDate));
+    }
+
+    if (cashierId != null && cashierId.isNotEmpty) {
+      query.where((t) => t.cashierId.equals(cashierId));
+    }
+
+    if (status != null && status.isNotEmpty) {
+      if (status == 'cancelled') {
+        query.where((t) => t.isCancelled.equals(true));
+      } else if (status == 'completed') {
+        query.where((t) =>
+            t.isCancelled.equals(false) & t.paymentStatus.equals('paid'));
+      }
+    }
+
+    query
+      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+      ..limit(limit, offset: offset);
+
+    return query.get();
+  }
+
+  /// Get bill items for a specific bill ID
+  Future<List<BillItemData>> getBillItemsForBill(String billId) {
+    return (select(billItemsTable)..where((t) => t.billId.equals(billId)))
+        .get();
+  }
+
+  /// Get payments for a specific bill ID
+  Future<List<PaymentData>> getPaymentsForBill(String billId) {
+    return (select(paymentsTable)..where((t) => t.billId.equals(billId))).get();
+  }
+
+  /// Save / update completed bill into local Drift database
+  Future<void> upsertCompletedBill({
+    required BillsTableCompanion bill,
+    List<BillItemsTableCompanion> items = const [],
+    List<PaymentsTableCompanion> payments = const [],
+  }) async {
+    await transaction(() async {
+      await into(billsTable).insertOnConflictUpdate(bill);
+      for (final item in items) {
+        await into(billItemsTable).insertOnConflictUpdate(item);
+      }
+      for (final payment in payments) {
+        await into(paymentsTable).insertOnConflictUpdate(payment);
+      }
+    });
+  }
 }
