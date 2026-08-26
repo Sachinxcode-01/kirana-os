@@ -55,6 +55,14 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Result<void, Failure>> signInWithGoogle() async {
+    if (shouldFail) {
+      return const ErrorResult(AuthFailure('Google sign-in failed'));
+    }
+    return const Success(null);
+  }
+
+  @override
   Future<Result<void, Failure>> resendVerificationEmail(
       {required String email}) async {
     if (shouldFail) {

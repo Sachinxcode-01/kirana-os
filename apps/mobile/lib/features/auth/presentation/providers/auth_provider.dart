@@ -151,6 +151,18 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
     );
   }
 
+  Future<bool> signInWithGoogle() async {
+    state = const AuthStateModel(status: AuthStatus.authenticating);
+    final result = await _repository.signInWithGoogle();
+    return result.fold(
+      (_) => true,
+      (failure) {
+        state = AuthStateModel.error(failure.message);
+        return false;
+      },
+    );
+  }
+
   Future<bool> resendVerificationEmail(String email) async {
     final result = await _repository.resendVerificationEmail(email: email);
     return result.fold(

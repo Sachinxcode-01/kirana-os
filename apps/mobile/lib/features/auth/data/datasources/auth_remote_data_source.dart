@@ -71,6 +71,7 @@ class AuthRemoteDataSource {
         email: email.trim(),
         password: password,
         data: {
+          'full_name': fullName.trim(),
           'display_name': fullName.trim(),
           if (phone != null && phone.isNotEmpty) 'phone': phone.trim(),
         },
@@ -79,6 +80,20 @@ class AuthRemoteDataSource {
       final user = response.user;
       if (user == null) {
         throw const AuthException('Registration failed: no user returned');
+      }
+
+      // Explicitly persist profile into public.profiles table
+      try {
+        await _supabase.from('profiles').upsert({
+          'id': user.id,
+          'full_name': fullName.trim(),
+          'email': user.email ?? email.trim(),
+          if (phone != null && phone.isNotEmpty) 'phone': phone.trim(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
+      } catch (profileError) {
+        AppLogger.w('Profile upsert warning during registration: $profileError',
+            tag: 'AuthRemoteDataSource');
       }
 
       return UserModel(
@@ -114,6 +129,21 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> signInWithGoogle() async {
+    try {
+      await _supabase.auth.signInWithOAuth(
+        supa.OAuthProvider.google,
+        redirectTo: 'io.supabase.kirana://login-callback/',
+      );
+    } on supa.AuthException catch (e) {
+      AppLogger.e('Google OAuth error: ${e.message}',
+          tag: 'AuthRemoteDataSource');
+      throw AuthException(e.message, e.statusCode);
+    } catch (e) {
+      throw AuthException('Failed to initiate Google sign in: $e');
+    }
+  }
+
   Future<void> resendVerificationEmail({required String email}) async {
     try {
       await _supabase.auth.resend(
@@ -137,7 +167,10 @@ class AuthRemoteDataSource {
 
   Future<void> sendPasswordResetEmail({required String email}) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(email.trim());
+      await _supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo: 'io.supabase.kirana://reset-password/',
+      );
     } on supa.AuthException catch (e) {
       AppLogger.e('Password reset error: ${e.message}',
           tag: 'AuthRemoteDataSource');
@@ -271,6 +304,48 @@ class AuthRemoteDataSource {
   }
 
   Future<UserModel> _fetchUserProfileAndMembership(supa.User user) async {
+    Map<String, dynamic>? profileData;
+
+    // 1. Query public.profiles table
+    try {
+      profileData = await _supabase
+          .from('profiles')
+          .select('full_name, email, phone, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profileData == null) {
+        // Upsert if missing
+        final name = user.userMetadata?['full_name'] as String? ??
+            user.userMetadata?['display_name'] as String? ??
+            user.userMetadata?['name'] as String? ??
+            user.email?.split('@').first ??
+            'User';
+        final phone = user.phone ?? user.userMetadata?['phone'] as String?;
+        final avatar = user.userMetadata?['avatar_url'] as String?;
+
+        await _supabase.from('profiles').upsert({
+          'id': user.id,
+          'full_name': name,
+          'email': user.email ?? '',
+          'phone': phone,
+          'avatar_url': avatar,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
+
+        profileData = {
+          'full_name': name,
+          'email': user.email ?? '',
+          'phone': phone,
+          'avatar_url': avatar,
+        };
+      }
+    } catch (e) {
+      AppLogger.w('Notice: Could not fetch public.profiles: $e',
+          tag: 'AuthRemoteDataSource');
+    }
+
+    // 2. Query shop_users membership table
     try {
       final shopUsers = await _supabase
           .from('shop_users')
@@ -281,19 +356,23 @@ class AuthRemoteDataSource {
 
       final shopId = shopUsers?['shop_id'] as String?;
       final role = shopUsers?['role'] as String? ?? 'owner';
-      final displayName = shopUsers?['display_name'] as String? ??
+      final displayName = profileData?['full_name'] as String? ??
+          shopUsers?['display_name'] as String? ??
           user.userMetadata?['display_name'] as String? ??
           user.email ??
           'User';
       final shopData = shopUsers?['shops'] as Map<String, dynamic>?;
       final shopName = shopData?['name'] as String?;
-
-      final avatarUrl = user.userMetadata?['avatar_url'] as String?;
+      final avatarUrl = profileData?['avatar_url'] as String? ??
+          user.userMetadata?['avatar_url'] as String?;
+      final phone = profileData?['phone'] as String? ??
+          user.phone ??
+          user.userMetadata?['phone'] as String?;
 
       return UserModel(
         id: user.id,
-        email: user.email ?? '',
-        phone: user.phone ?? user.userMetadata?['phone'] as String?,
+        email: profileData?['email'] as String? ?? user.email ?? '',
+        phone: phone,
         displayName: displayName,
         role: role,
         avatarUrl: avatarUrl,
@@ -305,11 +384,14 @@ class AuthRemoteDataSource {
           tag: 'AuthRemoteDataSource');
       return UserModel(
         id: user.id,
-        email: user.email ?? '',
-        phone: user.phone,
-        displayName: user.email ?? 'User',
+        email: profileData?['email'] as String? ?? user.email ?? '',
+        phone: profileData?['phone'] as String? ?? user.phone,
+        displayName: profileData?['full_name'] as String? ??
+            user.email?.split('@').first ??
+            'User',
         role: 'owner',
-        avatarUrl: user.userMetadata?['avatar_url'] as String?,
+        avatarUrl: profileData?['avatar_url'] as String? ??
+            user.userMetadata?['avatar_url'] as String?,
         shopId: null,
         shopName: null,
       );

@@ -28,9 +28,11 @@ class ProfileRemoteDataSource {
     }
 
     try {
+      // 1. Update Supabase Auth User Metadata
       final response = await _supabase.auth.updateUser(
         supa.UserAttributes(
           data: {
+            'full_name': fullName.trim(),
             'display_name': fullName.trim(),
             'phone': phone.trim(),
           },
@@ -39,7 +41,21 @@ class ProfileRemoteDataSource {
 
       final updatedUser = response.user ?? user;
 
-      // Update shop_users display_name if exists
+      // 2. Persist directly into public.profiles table in Supabase
+      try {
+        await _supabase.from('profiles').upsert({
+          'id': user.id,
+          'full_name': fullName.trim(),
+          'email': user.email ?? '',
+          'phone': phone.trim(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
+      } catch (profileError) {
+        AppLogger.w('Notice: Could not upsert public.profiles: $profileError',
+            tag: 'ProfileRemoteDataSource');
+      }
+
+      // 3. Update shop_users display_name if exists
       try {
         await _supabase
             .from('shop_users')
@@ -95,19 +111,30 @@ class ProfileRemoteDataSource {
         ),
       );
 
+      // Persist avatar_url in public.profiles table
+      try {
+        await _supabase.from('profiles').upsert({
+          'id': user.id,
+          'avatar_url': publicUrl,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
+      } catch (e) {
+        AppLogger.w(
+            'Notice: Could not update avatar_url in public.profiles: $e',
+            tag: 'ProfileRemoteDataSource');
+      }
+
       return publicUrl;
     } catch (e) {
       AppLogger.e('Profile photo upload error: $e',
           tag: 'ProfileRemoteDataSource');
-      throw StorageException('Profile photo upload failed: $e');
+      throw DatabaseException('Failed to upload profile photo: $e');
     }
   }
 
   Future<void> removeProfilePhoto() async {
     final user = _supabase.auth.currentUser;
-    if (user == null) {
-      throw const AuthException('No active user session found.');
-    }
+    if (user == null) return;
 
     try {
       await _supabase.auth.updateUser(
@@ -117,10 +144,18 @@ class ProfileRemoteDataSource {
           },
         ),
       );
+
+      try {
+        await _supabase.from('profiles').update({
+          'avatar_url': null,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }).eq('id', user.id);
+      } catch (e) {
+        AppLogger.w('Notice: Could not clear avatar_url in public.profiles: $e',
+            tag: 'ProfileRemoteDataSource');
+      }
     } catch (e) {
-      AppLogger.e('Profile photo remove error: $e',
-          tag: 'ProfileRemoteDataSource');
-      throw StorageException('Failed to remove profile photo: $e');
+      throw DatabaseException('Failed to remove profile photo: $e');
     }
   }
 }

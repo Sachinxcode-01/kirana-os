@@ -15,6 +15,8 @@ abstract interface class AuthRepository {
     String? phone,
   });
 
+  Future<Result<void, Failure>> signInWithGoogle();
+
   Future<Result<void, Failure>> resendVerificationEmail({
     required String email,
   });

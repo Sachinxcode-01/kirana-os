@@ -50,6 +50,11 @@ class MockAccountSecurityAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Result<void, Failure>> signInWithGoogle() async {
+    return const Success(null);
+  }
+
+  @override
   Future<Result<void, Failure>> resendVerificationEmail({
     required String email,
   }) async {

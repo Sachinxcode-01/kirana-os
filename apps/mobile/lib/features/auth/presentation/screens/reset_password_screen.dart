@@ -55,13 +55,19 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password updated successfully! Please sign in.'),
-            backgroundColor: KiranaColors.success,
-          ),
-        );
-        context.go('/login');
+        // Explicitly sign out recovery session so user logs in with new password
+        await ref.read(authNotifierProvider.notifier).logout();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Password updated successfully! Please sign in with your new password.'),
+              backgroundColor: KiranaColors.success,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          context.go('/login');
+        }
       } else {
         setState(
             () => _error = 'Failed to update password. Link may have expired.');
