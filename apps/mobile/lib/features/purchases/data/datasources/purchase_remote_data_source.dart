@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/network/api_client.dart';
+import '../../domain/models/purchase_history_filter.dart';
 import '../../domain/models/purchase_model.dart';
 
 class PurchaseRemoteDataSource {
@@ -43,7 +44,8 @@ class PurchaseRemoteDataSource {
         return purchase.copyWith(
           status: 'completed',
           supplierId: data['supplier_id'] as String? ?? purchase.supplierId,
-          supplierName: data['supplier_name'] as String? ?? purchase.supplierName,
+          supplierName:
+              data['supplier_name'] as String? ?? purchase.supplierName,
           subtotalPaise: (data['subtotal_paise'] as num?)?.toInt() ??
               purchase.subtotalPaise,
           totalPaise:
@@ -74,6 +76,83 @@ class PurchaseRemoteDataSource {
           .map((json) => PurchaseModel.fromJson(json as Map<String, dynamic>))
           .toList();
       return list;
+    } catch (e) {
+      if (e is PostgrestException) {
+        throw Exception('Supabase Error [${e.code}]: ${e.message}');
+      }
+      rethrow;
+    }
+  }
+
+  Future<PurchaseHistoryResult> fetchPurchaseHistory(
+    String shopId, {
+    PurchaseHistoryFilter filter = const PurchaseHistoryFilter(),
+  }) async {
+    try {
+      var query = _apiClient.supabase
+          .from('purchases')
+          .select('*, items:purchase_items(*)')
+          .eq('shop_id', shopId);
+
+      // Search Query
+      if (filter.search != null && filter.search!.trim().isNotEmpty) {
+        final q = filter.search!.trim();
+        query = query
+            .or('invoice_number.ilike.%$q%,supplier_name_snapshot.ilike.%$q%');
+      }
+
+      // Status Filter
+      final statusDb = filter.statusFilter.dbValue;
+      if (statusDb != null) {
+        query = query.eq('status', statusDb);
+      }
+
+      // Supplier ID Filter
+      if (filter.supplierId != null && filter.supplierId!.isNotEmpty) {
+        query = query.eq('supplier_id', filter.supplierId!);
+      }
+
+      // Date Range Filter
+      if (filter.dateRange != null) {
+        final start = DateTime(
+          filter.dateRange!.start.year,
+          filter.dateRange!.start.month,
+          filter.dateRange!.start.day,
+        ).toUtc().toIso8601String();
+        final end = DateTime(
+          filter.dateRange!.end.year,
+          filter.dateRange!.end.month,
+          filter.dateRange!.end.day,
+          23,
+          59,
+          59,
+        ).toUtc().toIso8601String();
+
+        query = query.gte('created_at', start).lte('created_at', end);
+      }
+
+      final offset = (filter.page - 1) * filter.pageSize;
+      final limit = filter.pageSize;
+
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      final dataList = response as List<dynamic>;
+
+      final purchases = dataList
+          .map((json) => PurchaseModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+
+      final hasMore = purchases.length >= limit;
+
+      return PurchaseHistoryResult(
+        purchases: purchases,
+        hasMore: hasMore,
+        totalCount: offset + purchases.length,
+        isOffline: false,
+        isPartialOfflineHistory: false,
+      );
     } catch (e) {
       if (e is PostgrestException) {
         throw Exception('Supabase Error [${e.code}]: ${e.message}');

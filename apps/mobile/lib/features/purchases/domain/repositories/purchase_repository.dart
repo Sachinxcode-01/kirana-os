@@ -1,5 +1,6 @@
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
+import '../models/purchase_history_filter.dart';
 import '../models/purchase_model.dart';
 
 abstract interface class PurchaseRepository {
@@ -14,6 +15,11 @@ abstract interface class PurchaseRepository {
   Future<Result<PurchaseModel?, Failure>> getPurchaseById(String id);
 
   Future<Result<List<PurchaseModel>, Failure>> getShopPurchases(String shopId);
+
+  Future<Result<PurchaseHistoryResult, Failure>> getPurchaseHistory({
+    required String shopId,
+    PurchaseHistoryFilter filter = const PurchaseHistoryFilter(),
+  });
 
   Future<Result<void, Failure>> deleteDraft(String id);
 

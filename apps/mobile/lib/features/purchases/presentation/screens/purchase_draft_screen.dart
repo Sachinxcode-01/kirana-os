@@ -16,7 +16,8 @@ class PurchaseDraftScreen extends ConsumerStatefulWidget {
   const PurchaseDraftScreen({super.key, this.purchaseId});
 
   @override
-  ConsumerState<PurchaseDraftScreen> createState() => _PurchaseDraftScreenState();
+  ConsumerState<PurchaseDraftScreen> createState() =>
+      _PurchaseDraftScreenState();
 }
 
 class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
@@ -72,7 +73,8 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
     );
   }
 
-  void _showSupplierSelectorSheet(BuildContext context, String? currentSupplierId, String? currentSupplierName) {
+  void _showSupplierSelectorSheet(BuildContext context,
+      String? currentSupplierId, String? currentSupplierName) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -208,7 +210,8 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
                     // Supplier Selector Tile
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.business, color: KiranaColors.primary),
+                      leading: const Icon(Icons.business,
+                          color: KiranaColors.primary),
                       title: Text(
                         draft.supplierName ?? 'Select Supplier (Optional)',
                         style: KiranaTypography.titleMedium.copyWith(
@@ -324,23 +327,26 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
                               const SizedBox(height: KiranaSpacing.xs),
                               Row(
                                 children: [
-                                  Text('Qty:', style: KiranaTypography.bodySmall),
+                                  Text('Qty:',
+                                      style: KiranaTypography.bodySmall),
                                   const SizedBox(width: 4),
                                   if (draft.isDraft) ...[
                                     IconButton(
                                       icon: const Icon(
                                           Icons.remove_circle_outline,
                                           size: 20),
-                                      onPressed: () => notifier.updateItemQuantity(
-                                          item.id, item.quantity - 1),
+                                      onPressed: () =>
+                                          notifier.updateItemQuantity(
+                                              item.id, item.quantity - 1),
                                     ),
                                     Text('${item.quantity} ${item.unit}',
                                         style: KiranaTypography.titleMedium),
                                     IconButton(
                                       icon: const Icon(Icons.add_circle_outline,
                                           size: 20),
-                                      onPressed: () => notifier.updateItemQuantity(
-                                          item.id, item.quantity + 1),
+                                      onPressed: () =>
+                                          notifier.updateItemQuantity(
+                                              item.id, item.quantity + 1),
                                     ),
                                   ] else
                                     Text('${item.quantity} ${item.unit}',
@@ -364,7 +370,8 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
                                       style: KiranaTypography.bodySmall),
                                   Text(
                                     item.totalPaise.toRupeesString(),
-                                    style: KiranaTypography.priceTabular.copyWith(
+                                    style:
+                                        KiranaTypography.priceTabular.copyWith(
                                       color: KiranaColors.primary,
                                     ),
                                   ),

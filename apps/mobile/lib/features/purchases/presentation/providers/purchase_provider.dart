@@ -186,7 +186,6 @@ class PurchaseDraftNotifier extends StateNotifier<PurchaseDraftState> {
     saveDraft();
   }
 
-
   void addProductItem(
     ProductModel product, {
     double quantity = 1.0,

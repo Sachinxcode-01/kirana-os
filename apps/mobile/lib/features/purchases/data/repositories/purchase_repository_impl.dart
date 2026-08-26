@@ -5,6 +5,7 @@ import '../../../../core/errors/result.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../../../../core/network/connectivity_status.dart';
 import '../../../staff/domain/models/staff_member_model.dart';
+import '../../domain/models/purchase_history_filter.dart';
 import '../../domain/models/purchase_model.dart';
 import '../../domain/repositories/purchase_repository.dart';
 import '../datasources/purchase_local_data_source.dart';
@@ -98,6 +99,40 @@ class PurchaseRepositoryImpl implements PurchaseRepository {
 
       final localList = await _localDataSource.getShopPurchases(shopId);
       return Success(localList);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handle(e));
+    }
+  }
+
+  @override
+  Future<Result<PurchaseHistoryResult, Failure>> getPurchaseHistory({
+    required String shopId,
+    PurchaseHistoryFilter filter = const PurchaseHistoryFilter(),
+  }) async {
+    try {
+      if (shopId.trim().isEmpty) {
+        return const ErrorResult(ValidationFailure('Shop ID is required.'));
+      }
+
+      if (_connectivityService.currentStatus != ConnectivityStatus.offline) {
+        try {
+          final remoteResult = await _remoteDataSource.fetchPurchaseHistory(
+            shopId,
+            filter: filter,
+          );
+          for (final p in remoteResult.purchases) {
+            await _localDataSource.saveDraft(p);
+          }
+          return Success(remoteResult);
+        } catch (_) {}
+      }
+
+      // Offline / Remote fallback to local cache
+      final localResult = await _localDataSource.getPurchaseHistory(
+        shopId,
+        filter: filter,
+      );
+      return Success(localResult);
     } catch (e) {
       return ErrorResult(ErrorHandler.handle(e));
     }

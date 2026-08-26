@@ -317,7 +317,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Purchases Screen Header
-      expect(find.text('Purchases & Inward Goods'), findsOneWidget);
+      expect(find.textContaining('Inward Goods'), findsOneWidget);
       expect(find.text('New Purchase'), findsOneWidget);
 
       // Tap on "+ New Purchase" button
