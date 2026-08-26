@@ -2,7 +2,8 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import 'tables/shops_table.dart';
-import 'tables/products_table.dart'; // Products schema with imageUrl column
+import 'tables/user_profiles_table.dart';
+import 'tables/products_table.dart';
 import 'tables/product_barcodes_table.dart';
 import 'tables/categories_table.dart';
 import 'tables/customers_table.dart';
@@ -24,6 +25,7 @@ part 'database.g.dart';
 @DriftDatabase(
   tables: [
     ShopsTable,
+    UserProfilesTable,
     ProductsTable,
     ProductBarcodesTable,
     CategoriesTable,
@@ -49,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -57,7 +59,9 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
         },
         onUpgrade: (Migrator m, int from, int to) async {
-          // Future schema migrations
+          if (from < 2) {
+            await m.createTable(userProfilesTable);
+          }
         },
         beforeOpen: (details) async {
           // Enable foreign keys

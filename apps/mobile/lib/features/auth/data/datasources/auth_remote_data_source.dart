@@ -22,6 +22,66 @@ class AuthRemoteDataSource {
   Stream<supa.AuthState> get onAuthStateChange =>
       _supabase.auth.onAuthStateChange;
 
+  supa.RealtimeChannel? _userRealtimeChannel;
+
+  void subscribeUserRealtime({
+    required String userId,
+    required void Function() onDataChanged,
+  }) {
+    if (_userRealtimeChannel != null) return;
+
+    try {
+      _userRealtimeChannel = _supabase
+          .channel('public:user_sync_$userId')
+          .onPostgresChanges(
+            event: supa.PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'profiles',
+            filter: supa.PostgresChangeFilter(
+              type: supa.PostgresChangeFilterType.eq,
+              column: 'id',
+              value: userId,
+            ),
+            callback: (payload) {
+              AppLogger.d('Realtime profile change event: $payload',
+                  tag: 'AuthRemoteDataSource');
+              onDataChanged();
+            },
+          )
+          .onPostgresChanges(
+            event: supa.PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'shop_users',
+            filter: supa.PostgresChangeFilter(
+              type: supa.PostgresChangeFilterType.eq,
+              column: 'user_id',
+              value: userId,
+            ),
+            callback: (payload) {
+              AppLogger.d('Realtime shop_users change event: $payload',
+                  tag: 'AuthRemoteDataSource');
+              onDataChanged();
+            },
+          )
+          .subscribe();
+    } catch (e) {
+      AppLogger.w('Notice: Could not subscribe to user realtime changes: $e',
+          tag: 'AuthRemoteDataSource');
+    }
+  }
+
+  void unsubscribeUserRealtime() {
+    if (_userRealtimeChannel != null) {
+      try {
+        _supabase.removeChannel(_userRealtimeChannel!);
+      } catch (e) {
+        AppLogger.w('Notice: Could not unsubscribe user realtime channel: $e',
+            tag: 'AuthRemoteDataSource');
+      }
+      _userRealtimeChannel = null;
+    }
+  }
+
   Future<UserModel> login({
     required String email,
     required String password,

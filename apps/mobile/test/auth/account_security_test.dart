@@ -115,6 +115,15 @@ class MockAccountSecurityAuthRepository implements AuthRepository {
   }
 
   @override
+  void subscribeUserRealtime({
+    required String userId,
+    required void Function() onDataChanged,
+  }) {}
+
+  @override
+  void unsubscribeUserRealtime() {}
+
+  @override
   Future<Result<bool, Failure>> verifyQuickPin(String pin) async {
     return const Success(true);
   }

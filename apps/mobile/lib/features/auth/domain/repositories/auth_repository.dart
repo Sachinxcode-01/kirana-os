@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
 import '../models/auth_state_model.dart';
@@ -37,6 +38,13 @@ abstract interface class AuthRepository {
   Future<Result<void, Failure>> logout();
 
   Future<Result<UserModel?, Failure>> restoreSession();
+
+  void subscribeUserRealtime({
+    required String userId,
+    required VoidCallback onDataChanged,
+  });
+
+  void unsubscribeUserRealtime();
 
   Future<Result<bool, Failure>> verifyQuickPin(String pin);
 

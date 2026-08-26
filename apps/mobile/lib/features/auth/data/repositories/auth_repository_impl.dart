@@ -1,21 +1,26 @@
+import 'package:flutter/foundation.dart';
 import '../../../../core/errors/error_handler.dart';
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../domain/models/auth_state_model.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
+  final AuthLocalDataSource? _localDataSource;
   final SecureStorageService _secureStorage;
 
   static const String _quickPinKey = 'user_quick_pin';
 
   AuthRepositoryImpl({
     required AuthRemoteDataSource remoteDataSource,
+    AuthLocalDataSource? localDataSource,
     required SecureStorageService secureStorage,
   })  : _remoteDataSource = remoteDataSource,
+        _localDataSource = localDataSource,
         _secureStorage = secureStorage;
 
   @override
@@ -28,6 +33,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
+      await _localDataSource?.saveUserProfile(user, syncStatus: 'SYNCED');
       return Success(user);
     } catch (e) {
       return ErrorResult(ErrorHandler.handle(e));
@@ -48,6 +54,7 @@ class AuthRepositoryImpl implements AuthRepository {
         fullName: fullName,
         phone: phone,
       );
+      await _localDataSource?.saveUserProfile(user, syncStatus: 'SYNCED');
       return Success(user);
     } catch (e) {
       return ErrorResult(ErrorHandler.handle(e));
@@ -120,6 +127,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Result<void, Failure>> logout() async {
     try {
       await _remoteDataSource.signOut();
+      await _localDataSource?.clearAllUserProfiles();
+      _remoteDataSource.unsubscribeUserRealtime();
       return const Success(null);
     } catch (e) {
       return ErrorResult(ErrorHandler.handle(e));
@@ -129,11 +138,42 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Result<UserModel?, Failure>> restoreSession() async {
     try {
-      final user = await _remoteDataSource.getCurrentUser();
-      return Success(user);
-    } catch (e) {
-      return ErrorResult(ErrorHandler.handle(e));
+      final remoteUser = await _remoteDataSource.getCurrentUser();
+      if (remoteUser != null) {
+        await _localDataSource?.saveUserProfile(remoteUser,
+            syncStatus: 'SYNCED');
+        return Success(remoteUser);
+      }
+    } catch (_) {
+      // Remote restoration failed or device is offline: fallback to local cache
     }
+
+    // Fallback or Recovery from Local Cache
+    try {
+      // If we have an active user ID from Supabase auth state or local storage
+      final cachedUser = await _localDataSource?.getUserProfile('current');
+      if (cachedUser != null) {
+        return Success(cachedUser);
+      }
+    } catch (_) {}
+
+    return const Success(null);
+  }
+
+  @override
+  void subscribeUserRealtime({
+    required String userId,
+    required VoidCallback onDataChanged,
+  }) {
+    _remoteDataSource.subscribeUserRealtime(
+      userId: userId,
+      onDataChanged: onDataChanged,
+    );
+  }
+
+  @override
+  void unsubscribeUserRealtime() {
+    _remoteDataSource.unsubscribeUserRealtime();
   }
 
   @override
@@ -169,6 +209,8 @@ class AuthRepositoryImpl implements AuthRepository {
         currentPassword: currentPassword,
         reason: reason,
       );
+      await _localDataSource?.clearAllUserProfiles();
+      _remoteDataSource.unsubscribeUserRealtime();
       return const Success(null);
     } catch (e) {
       return ErrorResult(ErrorHandler.handle(e));

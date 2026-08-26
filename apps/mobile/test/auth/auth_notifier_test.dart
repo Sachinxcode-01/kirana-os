@@ -86,6 +86,15 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
+  void subscribeUserRealtime({
+    required String userId,
+    required void Function() onDataChanged,
+  }) {}
+
+  @override
+  void unsubscribeUserRealtime() {}
+
+  @override
   Future<Result<void, Failure>> sendPasswordResetEmail(
       {required String email}) async {
     return const Success(null);

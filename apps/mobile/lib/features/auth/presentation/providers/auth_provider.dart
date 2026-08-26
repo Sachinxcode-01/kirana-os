@@ -2,11 +2,18 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import '../../../../app/app_providers.dart';
+import '../../../../core/network/connectivity_status.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../domain/models/auth_state_model.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../data/datasources/auth_local_data_source.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/repositories/auth_repository_impl.dart';
+
+final authLocalDataSourceProvider = Provider<AuthLocalDataSource>((ref) {
+  final db = ref.watch(databaseProvider);
+  return AuthLocalDataSource(db);
+});
 
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
   return AuthRemoteDataSource();
@@ -14,9 +21,11 @@ final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final remoteDataSource = ref.watch(authRemoteDataSourceProvider);
+  final localDataSource = ref.watch(authLocalDataSourceProvider);
   final secureStorage = ref.watch(secureStorageProvider);
   return AuthRepositoryImpl(
     remoteDataSource: remoteDataSource,
+    localDataSource: localDataSource,
     secureStorage: secureStorage,
   );
 });
@@ -24,11 +33,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 class AuthNotifier extends StateNotifier<AuthStateModel> {
   final AuthRepository _repository;
   final AuthRemoteDataSource _remoteDataSource;
+  final Ref? _ref;
   StreamSubscription<supa.AuthState>? _authSubscription;
+  StreamSubscription<ConnectivityStatus>? _connectivitySubscription;
 
-  AuthNotifier(this._repository, this._remoteDataSource)
+  AuthNotifier(this._repository, this._remoteDataSource, [this._ref])
       : super(AuthStateModel.initializing()) {
     _initAuthListener();
+    _initConnectivityListener();
   }
 
   void _initAuthListener() {
@@ -43,16 +55,14 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
             case supa.AuthChangeEvent.signedIn:
             case supa.AuthChangeEvent.tokenRefreshed:
             case supa.AuthChangeEvent.userUpdated:
+            case supa.AuthChangeEvent.initialSession:
               await restoreSession();
               break;
             case supa.AuthChangeEvent.signedOut:
+              _repository.unsubscribeUserRealtime();
               state = AuthStateModel.unauthenticated();
               break;
             case supa.AuthChangeEvent.passwordRecovery:
-              // Keep authenticated or prompt reset screen
-              break;
-            case supa.AuthChangeEvent.initialSession:
-              // Handled by restoreSession()
               break;
             default:
               break;
@@ -68,9 +78,30 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
     }
   }
 
+  void _initConnectivityListener() {
+    if (_ref == null) return;
+    try {
+      final connectivityService = _ref.read(connectivityServiceProvider);
+      _connectivitySubscription =
+          connectivityService.statusStream.listen((status) {
+        if (status == ConnectivityStatus.online) {
+          AppLogger.i(
+              'Connectivity restored -> Triggering automatic session sync',
+              tag: 'AuthNotifier');
+          restoreSession();
+        }
+      });
+    } catch (e) {
+      AppLogger.w('Notice: Connectivity listener setup warning: $e',
+          tag: 'AuthNotifier');
+    }
+  }
+
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _connectivitySubscription?.cancel();
+    _repository.unsubscribeUserRealtime();
     super.dispose();
   }
 
@@ -80,6 +111,13 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
       result.fold(
         (user) {
           if (user != null) {
+            _repository.subscribeUserRealtime(
+              userId: user.id,
+              onDataChanged: () {
+                restoreSession();
+              },
+            );
+
             if (user.shopId != null && user.shopId!.isNotEmpty) {
               state = AuthStateModel.authenticatedWithShop(
                 user: user,
@@ -108,6 +146,13 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
         await _repository.loginWithEmail(email: email, password: password);
     return result.fold(
       (user) {
+        _repository.subscribeUserRealtime(
+          userId: user.id,
+          onDataChanged: () {
+            restoreSession();
+          },
+        );
+
         if (user.shopId != null && user.shopId!.isNotEmpty) {
           state = AuthStateModel.authenticatedWithShop(
             user: user,
@@ -251,6 +296,7 @@ class AuthNotifier extends StateNotifier<AuthStateModel> {
   }
 
   Future<void> logout() async {
+    _repository.unsubscribeUserRealtime();
     await _repository.logout();
     state = AuthStateModel.unauthenticated();
   }
@@ -260,5 +306,5 @@ final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AuthStateModel>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   final remoteDataSource = ref.watch(authRemoteDataSourceProvider);
-  return AuthNotifier(repository, remoteDataSource);
+  return AuthNotifier(repository, remoteDataSource, ref);
 });
