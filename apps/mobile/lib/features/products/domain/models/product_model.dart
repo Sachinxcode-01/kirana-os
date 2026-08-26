@@ -17,6 +17,7 @@ class ProductModel {
   final String? regionalName;
   final String? hsnCode;
   final double taxRatePercentage;
+  final String taxType; // 'shop_default', 'exempt', 'custom'
   final bool isTaxInclusive;
   final bool isLoose;
   final bool isActive;
@@ -42,6 +43,7 @@ class ProductModel {
     this.regionalName,
     this.hsnCode,
     this.taxRatePercentage = 0.0,
+    this.taxType = 'shop_default',
     this.isTaxInclusive = true,
     this.isLoose = false,
     this.isActive = true,
@@ -69,6 +71,7 @@ class ProductModel {
     String? regionalName,
     String? hsnCode,
     double? taxRatePercentage,
+    String? taxType,
     bool? isTaxInclusive,
     bool? isLoose,
     bool? isActive,
@@ -157,6 +160,7 @@ class ProductModel {
       hsnCode: json['hsn_code'] as String?,
       taxRatePercentage:
           (json['tax_rate_percentage'] as num?)?.toDouble() ?? 0.0,
+      taxType: json['tax_type'] as String? ?? 'shop_default',
       isTaxInclusive: json['is_tax_inclusive'] as bool? ?? true,
       isLoose: json['is_loose'] as bool? ?? false,
       isActive: json['is_active'] as bool? ?? true,
@@ -188,6 +192,7 @@ class ProductModel {
       'regional_name': regionalName,
       'hsn_code': hsnCode,
       'tax_rate_percentage': taxRatePercentage,
+      'tax_type': taxType,
       'is_tax_inclusive': isTaxInclusive,
       'is_loose': isLoose,
       'is_active': isActive,

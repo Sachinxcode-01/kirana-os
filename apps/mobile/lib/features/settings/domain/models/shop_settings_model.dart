@@ -76,7 +76,7 @@ class ShopSettingsModel {
     this.currencyCode = 'INR',
     this.currencySymbol = '₹',
     this.decimalPrecision = 2,
-    this.isTaxEnabled = true,
+    this.isTaxEnabled = false,
     this.defaultTaxPercentage = 0.0,
     this.billPrefix = 'INV-',
     this.nextInvoiceNumber = 1001,
@@ -197,7 +197,7 @@ class ShopSettingsModel {
           json['currency'] as String? ??
           '₹',
       decimalPrecision: json['decimal_precision'] as int? ?? 2,
-      isTaxEnabled: json['is_tax_enabled'] as bool? ?? true,
+      isTaxEnabled: json['is_tax_enabled'] as bool? ?? false,
       defaultTaxPercentage:
           (json['default_tax_percentage'] as num?)?.toDouble() ?? 0.0,
       billPrefix: json['bill_prefix'] as String? ?? 'INV-',
