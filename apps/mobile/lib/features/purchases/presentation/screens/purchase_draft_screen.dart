@@ -5,6 +5,8 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../suppliers/domain/models/supplier_model.dart';
+import '../../../suppliers/presentation/widgets/supplier_selector_sheet.dart';
 import '../providers/purchase_provider.dart';
 import '../widgets/purchase_product_search_sheet.dart';
 
@@ -14,8 +16,7 @@ class PurchaseDraftScreen extends ConsumerStatefulWidget {
   const PurchaseDraftScreen({super.key, this.purchaseId});
 
   @override
-  ConsumerState<PurchaseDraftScreen> createState() =>
-      _PurchaseDraftScreenState();
+  ConsumerState<PurchaseDraftScreen> createState() => _PurchaseDraftScreenState();
 }
 
 class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
@@ -66,6 +67,34 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
           ref
               .read(purchaseDraftNotifierProvider.notifier)
               .addProductItem(product);
+        },
+      ),
+    );
+  }
+
+  void _showSupplierSelectorSheet(BuildContext context, String? currentSupplierId, String? currentSupplierName) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: KiranaColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SupplierSelectorSheet(
+        currentSupplier: currentSupplierId != null
+            ? SupplierModel(
+                id: currentSupplierId,
+                shopId: '',
+                name: currentSupplierName ?? 'Supplier',
+                phone: '',
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              )
+            : null,
+        onSupplierSelected: (supplier) {
+          ref
+              .read(purchaseDraftNotifierProvider.notifier)
+              .setSupplier(supplier);
         },
       ),
     );
@@ -156,7 +185,7 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
               ),
             ),
 
-          // Header Card (Purchase #, Supplier Reference)
+          // Header Card (Purchase #, Supplier Selector, Supplier Reference)
           Padding(
             padding: const EdgeInsets.all(KiranaSpacing.md),
             child: Card(
@@ -173,6 +202,36 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
                             style: KiranaTypography.titleMedium),
                       ],
                     ),
+                    const SizedBox(height: KiranaSpacing.xs),
+                    const Divider(height: 12),
+
+                    // Supplier Selector Tile
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.business, color: KiranaColors.primary),
+                      title: Text(
+                        draft.supplierName ?? 'Select Supplier (Optional)',
+                        style: KiranaTypography.titleMedium.copyWith(
+                          color: draft.supplierName != null
+                              ? KiranaColors.textPrimary
+                              : KiranaColors.textMuted,
+                        ),
+                      ),
+                      subtitle: Text(
+                        draft.supplierName != null
+                            ? 'Linked Supplier'
+                            : 'Tap to select supplier for this purchase',
+                        style: KiranaTypography.bodySmall,
+                      ),
+                      trailing: draft.isDraft
+                          ? const Icon(Icons.arrow_drop_down_circle_outlined)
+                          : null,
+                      onTap: draft.isDraft
+                          ? () => _showSupplierSelectorSheet(
+                              context, draft.supplierId, draft.supplierName)
+                          : null,
+                    ),
+
                     const SizedBox(height: KiranaSpacing.xs),
                     TextField(
                       controller: _supplierRefController,
@@ -265,26 +324,23 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
                               const SizedBox(height: KiranaSpacing.xs),
                               Row(
                                 children: [
-                                  Text('Qty:',
-                                      style: KiranaTypography.bodySmall),
+                                  Text('Qty:', style: KiranaTypography.bodySmall),
                                   const SizedBox(width: 4),
                                   if (draft.isDraft) ...[
                                     IconButton(
                                       icon: const Icon(
                                           Icons.remove_circle_outline,
                                           size: 20),
-                                      onPressed: () =>
-                                          notifier.updateItemQuantity(
-                                              item.id, item.quantity - 1),
+                                      onPressed: () => notifier.updateItemQuantity(
+                                          item.id, item.quantity - 1),
                                     ),
                                     Text('${item.quantity} ${item.unit}',
                                         style: KiranaTypography.titleMedium),
                                     IconButton(
                                       icon: const Icon(Icons.add_circle_outline,
                                           size: 20),
-                                      onPressed: () =>
-                                          notifier.updateItemQuantity(
-                                              item.id, item.quantity + 1),
+                                      onPressed: () => notifier.updateItemQuantity(
+                                          item.id, item.quantity + 1),
                                     ),
                                   ] else
                                     Text('${item.quantity} ${item.unit}',
@@ -308,8 +364,7 @@ class _PurchaseDraftScreenState extends ConsumerState<PurchaseDraftScreen> {
                                       style: KiranaTypography.bodySmall),
                                   Text(
                                     item.totalPaise.toRupeesString(),
-                                    style:
-                                        KiranaTypography.priceTabular.copyWith(
+                                    style: KiranaTypography.priceTabular.copyWith(
                                       color: KiranaColors.primary,
                                     ),
                                   ),

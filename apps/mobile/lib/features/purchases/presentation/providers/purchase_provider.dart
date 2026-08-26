@@ -4,7 +4,9 @@ import '../../../../core/errors/result.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../products/domain/models/product_model.dart';
+import '../../../suppliers/domain/models/supplier_model.dart';
 import '../../data/datasources/purchase_local_data_source.dart';
+
 import '../../data/datasources/purchase_remote_data_source.dart';
 import '../../data/repositories/purchase_repository_impl.dart';
 import '../../domain/models/purchase_item_model.dart';
@@ -172,6 +174,18 @@ class PurchaseDraftNotifier extends StateNotifier<PurchaseDraftState> {
     );
     state = state.copyWith(draft: updated);
   }
+
+  void setSupplier(SupplierModel? supplier) {
+    if (state.draft == null) return;
+    final updated = state.draft!.copyWith(
+      supplierId: supplier?.id,
+      supplierName: supplier?.name,
+      clearSupplier: supplier == null,
+    );
+    state = state.copyWith(draft: updated);
+    saveDraft();
+  }
+
 
   void addProductItem(
     ProductModel product, {

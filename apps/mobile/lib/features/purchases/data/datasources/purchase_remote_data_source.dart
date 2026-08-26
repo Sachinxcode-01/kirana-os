@@ -31,6 +31,7 @@ class PurchaseRemoteDataSource {
           'p_shop_id': shopId,
           'p_purchase_id': purchase.id,
           'p_purchase_number': purchase.purchaseNumber,
+          'p_supplier_id': purchase.supplierId,
           'p_supplier_reference': purchase.supplierReference,
           'p_items': itemsPayload,
           'p_idempotency_key': idempotencyKey,
@@ -41,6 +42,8 @@ class PurchaseRemoteDataSource {
         final Map<String, dynamic> data = rpcResult as Map<String, dynamic>;
         return purchase.copyWith(
           status: 'completed',
+          supplierId: data['supplier_id'] as String? ?? purchase.supplierId,
+          supplierName: data['supplier_name'] as String? ?? purchase.supplierName,
           subtotalPaise: (data['subtotal_paise'] as num?)?.toInt() ??
               purchase.subtotalPaise,
           totalPaise:

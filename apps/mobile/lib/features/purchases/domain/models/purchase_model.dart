@@ -4,6 +4,8 @@ class PurchaseModel {
   final String id;
   final String shopId;
   final String purchaseNumber;
+  final String? supplierId;
+  final String? supplierName;
   final String? supplierReference;
   final String status; // 'draft', 'completed'
   final List<PurchaseItemModel> items;
@@ -18,6 +20,8 @@ class PurchaseModel {
     required this.id,
     required this.shopId,
     required this.purchaseNumber,
+    this.supplierId,
+    this.supplierName,
     this.supplierReference,
     this.status = 'draft',
     this.items = const [],
@@ -40,6 +44,8 @@ class PurchaseModel {
     required String id,
     required String shopId,
     required String purchaseNumber,
+    String? supplierId,
+    String? supplierName,
     String? supplierReference,
     String status = 'draft',
     List<PurchaseItemModel> items = const [],
@@ -55,6 +61,8 @@ class PurchaseModel {
       id: id,
       shopId: shopId,
       purchaseNumber: purchaseNumber,
+      supplierId: supplierId,
+      supplierName: supplierName,
       supplierReference: supplierReference,
       status: status,
       items: items,
@@ -71,6 +79,9 @@ class PurchaseModel {
     String? id,
     String? shopId,
     String? purchaseNumber,
+    String? supplierId,
+    bool clearSupplier = false,
+    String? supplierName,
     String? supplierReference,
     bool clearSupplierReference = false,
     String? status,
@@ -91,6 +102,8 @@ class PurchaseModel {
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
       purchaseNumber: purchaseNumber ?? this.purchaseNumber,
+      supplierId: clearSupplier ? null : (supplierId ?? this.supplierId),
+      supplierName: clearSupplier ? null : (supplierName ?? this.supplierName),
       supplierReference: clearSupplierReference
           ? null
           : (supplierReference ?? this.supplierReference),
@@ -109,6 +122,8 @@ class PurchaseModel {
         'id': id,
         'shop_id': shopId,
         'purchase_number': purchaseNumber,
+        'supplier_id': supplierId,
+        'supplier_name': supplierName,
         'supplier_reference': supplierReference,
         'status': status,
         'subtotal_paise': subtotalPaise,
@@ -137,6 +152,9 @@ class PurchaseModel {
       id: json['id'] as String,
       shopId: json['shop_id'] as String,
       purchaseNumber: json['purchase_number'] as String? ?? 'PUR-001',
+      supplierId: json['supplier_id'] as String?,
+      supplierName: json['supplier_name'] as String? ??
+          json['supplier_name_snapshot'] as String?,
       supplierReference: json['supplier_reference'] as String?,
       status: json['status'] as String? ?? 'draft',
       items: itemList,
