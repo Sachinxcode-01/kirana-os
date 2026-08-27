@@ -440,7 +440,7 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
               children: [
                 Expanded(
                   child: _TabButton(
-                    label: '+ INCREASE STOCK',
+                    label: '+ INCREASE',
                     isSelected:
                         _selectedType == InventoryAdjustmentType.stockIn,
                     activeColor: KiranaColors.secondary,
@@ -452,10 +452,10 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
                             }),
                   ),
                 ),
-                const SizedBox(width: KiranaSpacing.sm),
+                const SizedBox(width: KiranaSpacing.xs),
                 Expanded(
                   child: _TabButton(
-                    label: '- DECREASE STOCK',
+                    label: '- DECREASE',
                     isSelected:
                         _selectedType == InventoryAdjustmentType.stockOut,
                     activeColor: KiranaColors.error,
@@ -463,6 +463,22 @@ class _StockAdjustmentSheetState extends ConsumerState<StockAdjustmentSheet> {
                         ? null
                         : () => setState(() {
                               _selectedType = InventoryAdjustmentType.stockOut;
+                              _errorMessage = null;
+                            }),
+                  ),
+                ),
+                const SizedBox(width: KiranaSpacing.xs),
+                Expanded(
+                  child: _TabButton(
+                    label: '= SET STOCK',
+                    isSelected:
+                        _selectedType == InventoryAdjustmentType.adjustment,
+                    activeColor: KiranaColors.primary,
+                    onTap: isCashier || isOffline
+                        ? null
+                        : () => setState(() {
+                              _selectedType =
+                                  InventoryAdjustmentType.adjustment;
                               _errorMessage = null;
                             }),
                   ),

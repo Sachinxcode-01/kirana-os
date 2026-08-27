@@ -402,9 +402,6 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLowStock = product.currentStock <= product.minStockAlert &&
-        product.minStockAlert > 0;
-
     return Card(
       elevation: 0.5,
       shape: RoundedRectangleBorder(
@@ -503,27 +500,48 @@ class _ProductCard extends StatelessWidget {
                     // Stock status
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isLowStock
-                                ? KiranaColors.warningContainer
-                                : KiranaColors.neutral100,
-                            borderRadius: KiranaRadius.borderPill,
-                          ),
-                          child: Text(
-                            isLowStock
-                                ? 'Low Stock: ${product.currentStock.toStringAsFixed(0)} ${product.unit}'
-                                : 'Stock: ${product.currentStock.toStringAsFixed(0)} ${product.unit}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isLowStock
-                                  ? KiranaColors.warning
-                                  : KiranaColors.neutral700,
-                            ),
-                          ),
+                        Builder(
+                          builder: (_) {
+                            final isOutOfStock = product.currentStock <= 0;
+                            final isLow = !isOutOfStock &&
+                                product.currentStock <= product.minStockAlert &&
+                                product.minStockAlert > 0;
+
+                            final Color bgColor = isOutOfStock
+                                ? KiranaColors.errorContainer
+                                : isLow
+                                    ? KiranaColors.warningContainer
+                                    : KiranaColors.successContainer;
+
+                            final Color textColor = isOutOfStock
+                                ? KiranaColors.error
+                                : isLow
+                                    ? KiranaColors.warning
+                                    : KiranaColors.success;
+
+                            final String label = isOutOfStock
+                                ? 'OUT OF STOCK'
+                                : isLow
+                                    ? 'LOW STOCK: ${product.currentStock.toStringAsFixed(product.isLoose ? 2 : 0)} ${product.unit}'
+                                    : 'IN STOCK: ${product.currentStock.toStringAsFixed(product.isLoose ? 2 : 0)} ${product.unit}';
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: bgColor,
+                                borderRadius: KiranaRadius.borderPill,
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
