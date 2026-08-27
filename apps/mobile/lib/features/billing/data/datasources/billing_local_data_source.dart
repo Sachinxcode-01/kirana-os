@@ -3,6 +3,7 @@ import '../../../../database/drift/daos/billing_dao.dart';
 import '../../../../database/drift/database.dart';
 import '../../domain/models/bill_history_filter.dart';
 import '../../domain/models/bill_model.dart';
+import '../../domain/models/payment_model.dart';
 
 class BillingLocalDataSource {
   final BillingDao? _billingDao;
@@ -203,6 +204,23 @@ class BillingLocalDataSource {
   Future<void> cacheBills(List<BillModel> bills) async {
     for (final bill in bills) {
       _completedStore[bill.id] = bill;
+    }
+  }
+
+  Future<void> saveCompletedPayment(PaymentModel payment) async {
+    if (_billingDao != null) {
+      final paymentCompanion = PaymentsTableCompanion.insert(
+        id: payment.id,
+        shopId: payment.shopId,
+        billId: payment.billId,
+        mode: payment.mode,
+        amountPaise: BigInt.from(payment.amountPaise),
+        status: Value(payment.status),
+        referenceNumber: Value(payment.referenceNumber),
+        createdAt: Value(payment.createdAt),
+        updatedAt: Value(payment.updatedAt),
+      );
+      await _billingDao.upsertPayment(paymentCompanion);
     }
   }
 }

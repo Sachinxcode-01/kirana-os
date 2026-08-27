@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/extensions/num_extensions.dart';
@@ -8,15 +9,28 @@ import '../../../../core/theme/typography.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../billing/domain/models/bill_model.dart';
 import '../../../billing/presentation/providers/billing_provider.dart';
+import '../../../settings/domain/models/shop_settings_model.dart';
 import '../../../settings/presentation/providers/shop_settings_provider.dart';
-import '../../domain/models/printer_device_model.dart';
+import '../../domain/services/receipt_formatter_service.dart';
+import '../../domain/services/share_receipt_service.dart';
 import '../providers/printer_provider.dart';
 import '../sheets/printer_selection_sheet.dart';
+import 'pdf_receipt_preview_screen.dart';
 
-class CompletedReceiptScreen extends ConsumerWidget {
+class CompletedReceiptScreen extends ConsumerStatefulWidget {
   final BillModel bill;
 
   const CompletedReceiptScreen({super.key, required this.bill});
+
+  @override
+  ConsumerState<CompletedReceiptScreen> createState() =>
+      _CompletedReceiptScreenState();
+}
+
+class _CompletedReceiptScreenState
+    extends ConsumerState<CompletedReceiptScreen> {
+  bool _showThermalText = false;
+  bool _isSharing = false;
 
   void _showPrinterSettings(BuildContext context) {
     showModalBottomSheet(
@@ -30,23 +44,72 @@ class CompletedReceiptScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _handleShare(
+      BuildContext context, ShopSettingsModel? shopSettings) async {
+    setState(() => _isSharing = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final shareService = ref.read(shareReceiptServiceProvider);
+
+    final shared = await shareService.shareReceipt(
+      bill: widget.bill,
+      shopSettings: shopSettings,
+    );
+
+    if (mounted) {
+      setState(() => _isSharing = false);
+      if (shared) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Receipt shared successfully.'),
+            backgroundColor: KiranaColors.success,
+          ),
+        );
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final printerState = ref.watch(printerNotifierProvider);
     final printerNotifier = ref.read(printerNotifierProvider.notifier);
     final formatterService = ref.watch(receiptFormatterServiceProvider);
     final shopSettings = ref.watch(shopSettingsNotifierProvider).settings;
 
     final receiptText = formatterService.formatThermalReceipt(
-      bill: bill,
+      bill: widget.bill,
       shopSettings: shopSettings,
       paperWidth: printerState.paperWidth,
     );
 
+    final shopName = shopSettings?.shopName ?? 'KIRANA POS STORE';
+    final shopAddress = shopSettings?.address ?? 'Main Road, Market Area';
+    final shopPhone = shopSettings?.phone ?? '';
+    final gstin = shopSettings?.gstin;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Bill #${bill.billNumber}'),
+        title: Text('Receipt #${widget.bill.billNumber}'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'PDF Preview',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => PdfReceiptPreviewScreen(bill: widget.bill),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(
+              _showThermalText ? Icons.receipt_long : Icons.code,
+            ),
+            tooltip: _showThermalText ? 'Visual Receipt' : 'Thermal Preview',
+            onPressed: () {
+              setState(() => _showThermalText = !_showThermalText);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.print_outlined),
             tooltip: 'Printer Settings',
@@ -56,7 +119,7 @@ class CompletedReceiptScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // 1. Independent Print Error Banner & Retry Actions
+          // 1. Printer Status / Error Banners
           if (printerState.errorMessage != null)
             Container(
               margin: const EdgeInsets.all(KiranaSpacing.md),
@@ -66,162 +129,352 @@ class CompletedReceiptScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: KiranaColors.error),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.print_disabled,
-                          color: KiranaColors.error),
-                      const SizedBox(width: KiranaSpacing.xs),
-                      Text('Printer Unavailable',
-                          style: KiranaTypography.titleMedium
-                              .copyWith(color: KiranaColors.error)),
-                    ],
-                  ),
-                  const SizedBox(height: KiranaSpacing.xxs),
-                  Text(
-                    printerState.errorMessage!,
-                    style: KiranaTypography.bodySmall,
-                  ),
-                  const SizedBox(height: KiranaSpacing.xs),
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () => _showPrinterSettings(context),
-                        icon: const Icon(Icons.settings, size: 16),
-                        label: const Text('Select Printer'),
-                      ),
-                      const SizedBox(width: KiranaSpacing.xs),
-                      ElevatedButton.icon(
-                        onPressed: printerState.isPrinting
-                            ? null
-                            : () => printerNotifier.printReceipt(bill),
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Retry Print'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-          if (printerState.successMessage != null)
-            Container(
-              margin: const EdgeInsets.all(KiranaSpacing.md),
-              padding: const EdgeInsets.all(KiranaSpacing.sm),
-              decoration: BoxDecoration(
-                color: KiranaColors.success.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: KiranaColors.success),
-              ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_outline,
-                      color: KiranaColors.success),
+                  const Icon(Icons.print_disabled, color: KiranaColors.error),
                   const SizedBox(width: KiranaSpacing.xs),
                   Expanded(
                     child: Text(
-                      printerState.successMessage!,
-                      style: KiranaTypography.bodySmall
-                          .copyWith(color: KiranaColors.success),
+                      printerState.errorMessage!,
+                      style: KiranaTypography.bodySmall,
                     ),
+                  ),
+                  TextButton(
+                    onPressed: () => _showPrinterSettings(context),
+                    child: const Text('Settings'),
                   ),
                 ],
               ),
             ),
 
-          // 2. Receipt Thermal Print Preview Card
+          // 2. Retail POS Receipt Card Body
           Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: KiranaSpacing.md),
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(KiranaSpacing.md),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Thermal Preview (${printerState.paperWidth.label})',
-                          style: KiranaTypography.labelSmall.copyWith(
-                            color: KiranaColors.textSecondary,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: KiranaSpacing.xs, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: KiranaColors.success.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'SALE COMPLETED (${bill.totalPaise.toRupeesString()})',
-                            style: KiranaTypography.bodySmall.copyWith(
-                              color: KiranaColors.success,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: KiranaSpacing.md),
-                    SelectableText(
-                      receiptText,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        height: 1.2,
-                        color: Colors.black87,
+              child: Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 550),
+                  padding: const EdgeInsets.all(KiranaSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x1A000000),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                  child: _showThermalText
+                      ? SelectableText(
+                          receiptText,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            height: 1.25,
+                            color: Colors.black87,
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Header: Shop Branding
+                            Center(
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding:
+                                        const EdgeInsets.all(KiranaSpacing.sm),
+                                    decoration: BoxDecoration(
+                                      color: KiranaColors.primary
+                                          .withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.storefront,
+                                      size: 36,
+                                      color: KiranaColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: KiranaSpacing.xs),
+                                  Text(
+                                    shopName.toUpperCase(),
+                                    style: KiranaTypography.headlineMedium
+                                        .copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: KiranaColors.primaryDark,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  if (shopAddress.isNotEmpty)
+                                    Text(
+                                      shopAddress,
+                                      style: KiranaTypography.bodySmall,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  if (shopPhone.isNotEmpty)
+                                    Text(
+                                      'Ph: $shopPhone',
+                                      style: KiranaTypography.bodySmall,
+                                    ),
+                                  if (gstin != null && gstin.isNotEmpty)
+                                    Text(
+                                      'GSTIN: $gstin',
+                                      style:
+                                          KiranaTypography.bodySmall.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const Divider(height: KiranaSpacing.xl),
+
+                            // Bill Metadata Header
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Bill No: ${widget.bill.billNumber}',
+                                      style: KiranaTypography.titleMedium,
+                                    ),
+                                    Text(
+                                      'Date: ${_formatDate(widget.bill.createdAt)}',
+                                      style: KiranaTypography.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: KiranaSpacing.sm,
+                                    vertical: KiranaSpacing.xxs,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: KiranaColors.success
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border:
+                                        Border.all(color: KiranaColors.success),
+                                  ),
+                                  child: Text(
+                                    widget.bill.paymentStatus.toUpperCase(),
+                                    style: KiranaTypography.labelSmall.copyWith(
+                                      color: KiranaColors.success,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            if (widget.bill.hasCustomer) ...[
+                              const SizedBox(height: KiranaSpacing.sm),
+                              Container(
+                                padding: const EdgeInsets.all(KiranaSpacing.sm),
+                                decoration: BoxDecoration(
+                                  color: KiranaColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.person_outline, size: 20),
+                                    const SizedBox(width: KiranaSpacing.xs),
+                                    Expanded(
+                                      child: Text(
+                                        'Customer: ${widget.bill.customerName}${widget.bill.customerPhone != null ? " (${widget.bill.customerPhone})" : ""}',
+                                        style: KiranaTypography.bodyMedium,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            const Divider(height: KiranaSpacing.xl),
+
+                            // Items Table Header
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: Text('Item',
+                                      style: KiranaTypography.labelSmall),
+                                ),
+                                Expanded(
+                                  flex: 1,
+                                  child: Text('Qty',
+                                      textAlign: TextAlign.center,
+                                      style: KiranaTypography.labelSmall),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text('Price',
+                                      textAlign: TextAlign.right,
+                                      style: KiranaTypography.labelSmall),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text('Total',
+                                      textAlign: TextAlign.right,
+                                      style: KiranaTypography.labelSmall),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: KiranaSpacing.xs),
+
+                            // Items List
+                            ...widget.bill.items.map((item) {
+                              final qtyStr = item.quantity % 1 == 0
+                                  ? item.quantity.toInt().toString()
+                                  : item.quantity.toStringAsFixed(2);
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: KiranaSpacing.xxs),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 3,
+                                      child: Text(
+                                        item.productName,
+                                        style: KiranaTypography.bodyMedium,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 1,
+                                      child: Text(
+                                        '$qtyStr ${item.unit}',
+                                        textAlign: TextAlign.center,
+                                        style: KiranaTypography.bodySmall,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        item.unitPricePaise.toRupeesString(),
+                                        textAlign: TextAlign.right,
+                                        style: KiranaTypography.bodySmall,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        item.totalPaise.toRupeesString(),
+                                        textAlign: TextAlign.right,
+                                        style: KiranaTypography.bodyMedium
+                                            .copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+
+                            const Divider(height: KiranaSpacing.xl),
+
+                            // Totals Summary Section
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Subtotal:'),
+                                Text(
+                                    widget.bill.subtotalPaise.toRupeesString()),
+                              ],
+                            ),
+                            if (widget.bill.discountPaise > 0)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Discount:'),
+                                  Text(
+                                    '- ${widget.bill.discountPaise.toRupeesString()}',
+                                    style: const TextStyle(
+                                        color: KiranaColors.error),
+                                  ),
+                                ],
+                              ),
+                            if (widget.bill.taxTotalPaise > 0)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Tax:'),
+                                  Text(widget.bill.taxTotalPaise
+                                      .toRupeesString()),
+                                ],
+                              ),
+                            const Divider(height: KiranaSpacing.md),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'GRAND TOTAL:',
+                                  style: KiranaTypography.titleLarge,
+                                ),
+                                Text(
+                                  widget.bill.totalPaise.toRupeesString(),
+                                  style: KiranaTypography.displayTotal.copyWith(
+                                    color: KiranaColors.primary,
+                                    fontSize: 22,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: KiranaSpacing.lg),
+                            Center(
+                              child: Text(
+                                'Thank you for shopping with us!',
+                                style: KiranaTypography.bodySmall.copyWith(
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                ).animate().fade(duration: 250.ms).slideY(begin: 0.05, end: 0),
               ),
             ),
           ),
 
           // 3. Action Toolbar Buttons
-          Padding(
+          Container(
             padding: const EdgeInsets.all(KiranaSpacing.md),
+            decoration: BoxDecoration(
+              color: KiranaColors.surface,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0D000000),
+                  blurRadius: 6,
+                  offset: Offset(0, -2),
+                ),
+              ],
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: AppButton(
-                    label: 'PRINT RECEIPT',
-                    icon: Icons.print,
-                    isLoading: printerState.isPrinting,
-                    onPressed: () async {
-                      if (!printerState.isConnected) {
-                        _showPrinterSettings(context);
-                      } else {
-                        await printerNotifier.printReceipt(bill);
-                      }
-                    },
+                    label: 'SHARE RECEIPT',
+                    icon: Icons.share,
+                    isLoading: _isSharing,
+                    onPressed: () => _handleShare(context, shopSettings),
                   ),
                 ),
                 const SizedBox(width: KiranaSpacing.xs),
                 IconButton.filledTonal(
-                  icon: const Icon(Icons.picture_as_pdf),
-                  tooltip: 'Share PDF',
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Receipt PDF generated locally.'),
-                      ),
-                    );
+                  icon: const Icon(Icons.print),
+                  tooltip: 'Print Receipt',
+                  onPressed: () async {
+                    if (!printerState.isConnected) {
+                      _showPrinterSettings(context);
+                    } else {
+                      await printerNotifier.printReceipt(widget.bill);
+                    }
                   },
                 ),
                 const SizedBox(width: KiranaSpacing.xs),
@@ -232,7 +485,7 @@ class CompletedReceiptScreen extends ConsumerWidget {
                         .initializeDraft();
                     context.go('/bills');
                   },
-                  child: const Text('Done'),
+                  child: const Text('Close'),
                 ),
               ],
             ),
@@ -240,5 +493,14 @@ class CompletedReceiptScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final y = date.year;
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$d/$m/$y $hh:$mm';
   }
 }

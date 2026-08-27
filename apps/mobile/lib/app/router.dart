@@ -11,7 +11,10 @@ import 'package:kirana_mobile/features/auth/presentation/screens/forgot_password
 import 'package:kirana_mobile/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:kirana_mobile/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:kirana_mobile/features/barcode/presentation/screens/barcode_screen.dart';
+import 'package:kirana_mobile/features/billing/domain/models/bill_model.dart';
 import 'package:kirana_mobile/features/billing/presentation/screens/billing_screen.dart';
+import 'package:kirana_mobile/features/receipts/presentation/screens/completed_receipt_screen.dart';
+import 'package:kirana_mobile/features/receipts/presentation/screens/pdf_receipt_preview_screen.dart';
 import 'package:kirana_mobile/features/categories/presentation/screens/categories_screen.dart';
 import 'package:kirana_mobile/features/credit/presentation/screens/credit_screen.dart';
 import 'package:kirana_mobile/features/customers/presentation/screens/customers_screen.dart';
@@ -30,6 +33,7 @@ import 'package:kirana_mobile/features/reports/presentation/screens/reports_scre
 import 'package:kirana_mobile/features/returns/presentation/screens/returns_screen.dart';
 import 'package:kirana_mobile/features/settings/presentation/screens/settings_screen.dart';
 import 'package:kirana_mobile/features/settings/presentation/screens/shop_settings_screen.dart';
+import 'package:kirana_mobile/features/settings/presentation/screens/printer_settings_screen.dart';
 import 'package:kirana_mobile/features/shop/presentation/screens/shop_setup_screen.dart';
 import 'package:kirana_mobile/features/splash/presentation/screens/splash_screen.dart';
 import 'package:kirana_mobile/features/suppliers/presentation/screens/suppliers_screen.dart';
@@ -210,12 +214,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const ChangePasswordScreen(),
           ),
           GoRoute(
+            path: '/receipt',
+            builder: (context, state) {
+              final bill = state.extra as BillModel;
+              return CompletedReceiptScreen(bill: bill);
+            },
+          ),
+          GoRoute(
+            path: '/receipt/pdf',
+            builder: (context, state) {
+              final bill = state.extra as BillModel;
+              return PdfReceiptPreviewScreen(bill: bill);
+            },
+          ),
+          GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsScreen(),
           ),
           GoRoute(
             path: '/settings/shop',
             builder: (context, state) => const ShopSettingsScreen(),
+          ),
+          GoRoute(
+            path: '/settings/printer',
+            builder: (context, state) => const PrinterSettingsScreen(),
           ),
         ],
       ),

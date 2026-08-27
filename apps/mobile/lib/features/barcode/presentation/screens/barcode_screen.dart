@@ -13,6 +13,7 @@ import 'package:kirana_mobile/core/widgets/app_button.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
 import 'package:kirana_mobile/features/barcodes/domain/utils/barcode_validator.dart';
 import 'package:kirana_mobile/features/barcodes/presentation/providers/barcode_provider.dart';
+import 'package:kirana_mobile/features/billing/presentation/providers/billing_provider.dart';
 import 'package:kirana_mobile/features/products/presentation/screens/products_screen.dart';
 import '../widgets/scan_result_sheet.dart';
 
@@ -106,6 +107,19 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
         isOffline: !isOnline,
         onScanAgain: () {
           Navigator.pop(modalCtx);
+        },
+        onAddToCart: () {
+          Navigator.pop(modalCtx);
+          if (product != null) {
+            ref.read(billingNotifierProvider.notifier).initializeDraft();
+            ref.read(billingNotifierProvider.notifier).addProduct(product);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${product.name} added to cart'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          }
         },
         onViewProduct: () {
           Navigator.pop(modalCtx);

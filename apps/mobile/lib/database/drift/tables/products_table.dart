@@ -9,6 +9,7 @@ class ProductsTable extends Table {
   TextColumn get shopId => text()();
   TextColumn get categoryId => text().nullable()();
   TextColumn get name => text().withLength(min: 1, max: 255)();
+  TextColumn get sku => text().nullable()();
   TextColumn get regionalName => text().nullable()();
   TextColumn get description => text().nullable()();
   TextColumn get brand => text().nullable()();

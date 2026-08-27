@@ -400,7 +400,12 @@ class CompleteSaleCheckoutUseCase {
       );
     }
 
-    // 2. Validate Bill & RBAC Permissions
+    // 2. Prevent completing an already completed bill by returning existing completed bill
+    if (bill.isCompleted) {
+      return Success(bill);
+    }
+
+    // 3. Validate Bill & RBAC Permissions
     final validation = _validateBillUseCase.execute(
       bill: bill,
       activeShopId: activeShopId,
@@ -410,7 +415,21 @@ class CompleteSaleCheckoutUseCase {
       return ErrorResult(validation.failureOrNull!);
     }
 
-    // 3. Double-tap duplicate submission prevention
+    // 4. Validate Payment Amount and Mode
+    if (payment.amountPaise <= 0 || payment.amountPaise != bill.totalPaise) {
+      return const ErrorResult(
+        ValidationFailure('Payment amount must equal total payable amount.'),
+      );
+    }
+
+    const validModes = {'cash', 'upi_qr', 'card'};
+    if (!validModes.contains(payment.mode)) {
+      return const ErrorResult(
+        ValidationFailure('Invalid payment method selected.'),
+      );
+    }
+
+    // 5. Double-tap duplicate submission prevention
     final now = DateTime.now();
     if (_lastCheckoutTime != null &&
         now.difference(_lastCheckoutTime!).inMilliseconds < 500) {

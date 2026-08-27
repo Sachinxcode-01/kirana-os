@@ -7,8 +7,10 @@ import '../../../../core/theme/typography.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../receipts/domain/services/share_receipt_service.dart';
 import '../../../receipts/presentation/providers/printer_provider.dart';
 import '../../../receipts/presentation/screens/completed_receipt_screen.dart';
+import '../../../receipts/presentation/screens/pdf_receipt_preview_screen.dart';
 import '../../domain/models/bill_model.dart';
 
 class BillDetailsModal extends ConsumerWidget {
@@ -245,9 +247,11 @@ class BillDetailsModal extends ConsumerWidget {
                       icon: Icons.picture_as_pdf,
                       variant: AppButtonVariant.outlined,
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Receipt PDF generated.')),
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => PdfReceiptPreviewScreen(bill: bill),
+                          ),
                         );
                       },
                     ),
@@ -258,11 +262,10 @@ class BillDetailsModal extends ConsumerWidget {
                       label: 'SHARE',
                       icon: Icons.share,
                       variant: AppButtonVariant.outlined,
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Receipt ready to share.')),
-                        );
+                      onPressed: () async {
+                        final shareService =
+                            ref.read(shareReceiptServiceProvider);
+                        await shareService.shareReceipt(bill: bill);
                       },
                     ),
                   ),

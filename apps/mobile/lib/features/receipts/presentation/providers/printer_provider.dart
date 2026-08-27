@@ -58,11 +58,6 @@ class PrinterState {
   }
 }
 
-final receiptFormatterServiceProvider =
-    Provider<ReceiptFormatterService>((ref) {
-  return ReceiptFormatterService();
-});
-
 final printerServiceProvider = Provider<PrinterService>((ref) {
   return LocalPrinterServiceImpl();
 });
@@ -147,6 +142,18 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
       );
       return false;
     }
+  }
+
+  Future<void> disconnectPrinter() async {
+    await _printerService.disconnectPrinter();
+    state = state.copyWith(
+      clearPrinter: true,
+      successMessage: 'Printer disconnected.',
+    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('saved_thermal_printer');
+    } catch (_) {}
   }
 
   void setPaperWidth(PrinterPaperWidth width) {

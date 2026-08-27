@@ -7,6 +7,7 @@ class PaymentModel {
   final String status; // 'pending', 'success', 'failed'
   final String? referenceNumber;
   final DateTime createdAt;
+  final DateTime updatedAt;
 
   const PaymentModel({
     required this.id,
@@ -17,7 +18,8 @@ class PaymentModel {
     this.status = 'pending',
     this.referenceNumber,
     required this.createdAt,
-  });
+    DateTime? updatedAt,
+  }) : updatedAt = updatedAt ?? createdAt;
 
   bool get isSuccess => status == 'success';
   bool get isFailed => status == 'failed';
@@ -32,6 +34,7 @@ class PaymentModel {
     String? status,
     String? referenceNumber,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return PaymentModel(
       id: id ?? this.id,
@@ -42,6 +45,7 @@ class PaymentModel {
       status: status ?? this.status,
       referenceNumber: referenceNumber ?? this.referenceNumber,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -54,6 +58,7 @@ class PaymentModel {
         'status': status,
         'reference_number': referenceNumber,
         'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
       };
 
   factory PaymentModel.fromJson(Map<String, dynamic> json) => PaymentModel(
@@ -67,5 +72,10 @@ class PaymentModel {
         createdAt: json['created_at'] != null
             ? DateTime.parse(json['created_at'] as String)
             : DateTime.now(),
+        updatedAt: json['updated_at'] != null
+            ? DateTime.parse(json['updated_at'] as String)
+            : (json['created_at'] != null
+                ? DateTime.parse(json['created_at'] as String)
+                : DateTime.now()),
       );
 }

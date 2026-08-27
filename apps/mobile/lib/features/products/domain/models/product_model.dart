@@ -2,6 +2,8 @@ class ProductModel {
   final String id;
   final String shopId;
   final String name;
+  final String? sku;
+  final String? barcode;
   final String? categoryId;
   final String? categoryName;
   final String? brand;
@@ -28,6 +30,8 @@ class ProductModel {
     required this.id,
     required this.shopId,
     required this.name,
+    this.sku,
+    this.barcode,
     this.categoryId,
     this.categoryName,
     this.brand,
@@ -55,6 +59,8 @@ class ProductModel {
     String? id,
     String? shopId,
     String? name,
+    String? sku,
+    String? barcode,
     String? categoryId,
     String? categoryName,
     String? brand,
@@ -82,6 +88,8 @@ class ProductModel {
       id: id ?? this.id,
       shopId: shopId ?? this.shopId,
       name: name ?? this.name,
+      sku: sku ?? this.sku,
+      barcode: barcode ?? this.barcode,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
       brand: brand ?? this.brand,
@@ -98,6 +106,7 @@ class ProductModel {
       regionalName: regionalName ?? this.regionalName,
       hsnCode: hsnCode ?? this.hsnCode,
       taxRatePercentage: taxRatePercentage ?? this.taxRatePercentage,
+      taxType: taxType ?? this.taxType,
       isTaxInclusive: isTaxInclusive ?? this.isTaxInclusive,
       isLoose: isLoose ?? this.isLoose,
       isActive: isActive ?? this.isActive,
@@ -106,11 +115,14 @@ class ProductModel {
     );
   }
 
-  factory ProductModel.fromDrift(dynamic data, {String? categoryName}) {
+  factory ProductModel.fromDrift(dynamic data,
+      {String? categoryName, String? barcode}) {
     return ProductModel(
       id: data.id as String,
       shopId: data.shopId as String,
       name: data.name as String,
+      sku: (data.toJson() as Map<String, dynamic>)['sku'] as String?,
+      barcode: barcode,
       categoryId: data.categoryId as String?,
       categoryName: categoryName,
       brand: data.brand as String?,
@@ -137,10 +149,22 @@ class ProductModel {
   }
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    String? primaryBarcode;
+    if (json['product_barcodes'] != null &&
+        json['product_barcodes'] is List &&
+        (json['product_barcodes'] as List).isNotEmpty) {
+      primaryBarcode =
+          (json['product_barcodes'] as List).first['barcode'] as String?;
+    } else if (json['barcode'] != null) {
+      primaryBarcode = json['barcode'] as String?;
+    }
+
     return ProductModel(
       id: json['id'] as String,
       shopId: json['shop_id'] as String,
       name: json['name'] as String,
+      sku: json['sku'] as String?,
+      barcode: primaryBarcode,
       categoryId: json['category_id'] as String?,
       categoryName: json['categories'] != null
           ? (json['categories'] as Map<String, dynamic>)['name'] as String?
@@ -178,6 +202,7 @@ class ProductModel {
       'id': id,
       'shop_id': shopId,
       'name': name,
+      'sku': sku,
       'category_id': categoryId,
       'brand': brand,
       'image_url': imageUrl,

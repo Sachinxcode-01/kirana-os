@@ -97,6 +97,7 @@ class ProductLocalDataSource {
       id: row.id,
       shopId: row.shopId,
       name: row.name,
+      sku: row.sku,
       categoryId: row.categoryId,
       categoryName: categoryName,
       brand: row.brand,

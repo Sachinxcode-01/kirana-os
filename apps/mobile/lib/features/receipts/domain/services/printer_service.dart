@@ -21,13 +21,25 @@ abstract interface class PrinterService {
 class LocalPrinterServiceImpl implements PrinterService {
   PrinterDeviceModel? _connectedPrinter;
   bool _isBluetoothEnabled = true;
+  bool _hasBluetoothPermission = true;
 
   void setBluetoothStatus(bool enabled) {
     _isBluetoothEnabled = enabled;
   }
 
+  void setBluetoothPermission(bool granted) {
+    _hasBluetoothPermission = granted;
+  }
+
   @override
   Future<Result<List<PrinterDeviceModel>, Failure>> scanForPrinters() async {
+    if (!_hasBluetoothPermission) {
+      return const ErrorResult(
+        PermissionDeniedFailure(
+            'Bluetooth permission denied. Please grant permission in App Settings.'),
+      );
+    }
+
     if (!_isBluetoothEnabled) {
       return const ErrorResult(
         HardwareFailure('Bluetooth is disabled. Please enable Bluetooth.'),
@@ -50,10 +62,10 @@ class LocalPrinterServiceImpl implements PrinterService {
         paperWidth: PrinterPaperWidth.mm80,
       ),
       const PrinterDeviceModel(
-        id: 'print_usb_01',
-        name: 'TVS RP45 Thermal USB',
-        address: 'USB_PORT_01',
-        connectionType: 'usb',
+        id: 'print_bt_03',
+        name: 'TVS RP45 Thermal BT',
+        address: 'CC:DD:EE:FF:00:11',
+        connectionType: 'bluetooth',
         paperWidth: PrinterPaperWidth.mm80,
       ),
     ];
@@ -64,6 +76,13 @@ class LocalPrinterServiceImpl implements PrinterService {
   @override
   Future<Result<PrinterDeviceModel, Failure>> connectPrinter(
       PrinterDeviceModel device) async {
+    if (!_hasBluetoothPermission) {
+      return const ErrorResult(
+        PermissionDeniedFailure(
+            'Bluetooth permission denied. Cannot connect printer.'),
+      );
+    }
+
     if (!_isBluetoothEnabled && device.connectionType == 'bluetooth') {
       return const ErrorResult(
         HardwareFailure('Bluetooth is disabled. Cannot connect printer.'),
@@ -98,20 +117,28 @@ class LocalPrinterServiceImpl implements PrinterService {
       );
     }
 
-    // Local printing simulation (100% offline, zero network requests)
+    // Local thermal printing simulation (100% offline, zero network requests)
     return const Success(null);
   }
 
   @override
   Future<Result<void, Failure>> testPrint(PrinterDeviceModel printer) async {
-    const testPayload = '''
+    final now = DateTime.now();
+    final dateStr =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final widthStr =
+        printer.paperWidth == PrinterPaperWidth.mm58 ? '58mm' : '80mm';
+
+    final testPayload = '''
 ================================
      KIRANA OS TEST PRINT       
 ================================
-Printer Name: Thermal POS
-Width: 58mm / 80mm
-Status: CONNECTED OK
-Date: 25/08/2026
+Printer: ${printer.name}
+Connection: BLUETOOTH
+Paper Width: $widthStr
+Date/Time: $dateStr
+--------------------------------
+Status: CONNECTION OK
 ================================
 ''';
 

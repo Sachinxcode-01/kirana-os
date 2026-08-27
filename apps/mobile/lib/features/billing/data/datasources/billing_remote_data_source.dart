@@ -105,6 +105,7 @@ class BillingRemoteDataSource {
             'p_payment_mode': payment.mode,
             'p_payment_amount_paise': payment.amountPaise,
             'p_idempotency_key': idempotencyKey,
+            'p_reference_number': payment.referenceNumber,
             'p_items': bill.items
                 .map((i) => {
                       'product_id': i.productId,
@@ -120,7 +121,11 @@ class BillingRemoteDataSource {
           if (updated != null) return updated;
         }
       } catch (rpcError) {
-        // Fallback multi-table execution if RPC is not yet deployed
+        if (rpcError is PostgrestException) {
+          throw Exception(
+              'Supabase Error [${rpcError.code}]: ${rpcError.message}');
+        }
+        // Fallback multi-table execution if RPC is not yet deployed in mock/test client
         final completedAt = DateTime.now();
 
         await _apiClient.supabase.from('payments').upsert({
@@ -129,8 +134,10 @@ class BillingRemoteDataSource {
           'bill_id': payment.billId,
           'mode': payment.mode,
           'amount_paise': payment.amountPaise,
+          'status': 'success',
           'reference_number': payment.referenceNumber,
           'created_at': completedAt.toIso8601String(),
+          'updated_at': completedAt.toIso8601String(),
         });
 
         final updatedBillJson = await _apiClient.supabase

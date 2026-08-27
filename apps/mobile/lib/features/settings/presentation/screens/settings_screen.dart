@@ -79,13 +79,7 @@ class SettingsScreen extends ConsumerWidget {
                   title: const Text('Thermal Printer Setup'),
                   subtitle: const Text('ESC/POS Bluetooth 58mm / 80mm paired'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              'Bluetooth ESC/POS thermal printer setup ready.')),
-                    );
-                  },
+                  onTap: () => context.push('/settings/printer'),
                 ),
                 const Divider(height: 1),
                 ListTile(

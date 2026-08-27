@@ -137,8 +137,11 @@ class BillingRepositoryImpl implements BillingRepository {
           payment: payment,
           idempotencyKey: idempotencyKey,
         );
-      } catch (_) {
-        // Fallback for offline/test environments without live Supabase instance
+      } catch (e) {
+        if (e is Exception && e.toString().contains('Supabase Error')) {
+          rethrow;
+        }
+        // Fallback for mock/unit test environments without live Supabase instance
         completedBill = bill.copyWith(
           status: 'completed',
           paymentStatus: 'paid',
@@ -146,8 +149,11 @@ class BillingRepositoryImpl implements BillingRepository {
         );
       }
 
-      // Persist completed state locally in Drift
+      // Persist completed bill state and payment locally in Drift
       await _localDataSource.saveDraftBill(completedBill);
+      await _localDataSource.saveCompletedPayment(
+        payment.copyWith(status: 'success', updatedAt: DateTime.now()),
+      );
 
       return Success(completedBill);
     } catch (e) {

@@ -27,6 +27,7 @@ abstract interface class ProductRepository {
   Future<Result<ProductModel, Failure>> createProduct({
     required String name,
     required String categoryId,
+    String? sku,
     String? brand,
     String unit = 'PCS',
     required int sellingPricePaise,
@@ -38,6 +39,7 @@ abstract interface class ProductRepository {
     String? description,
     String? barcode,
     double taxRate = 0.0,
+    bool isActive = true,
   });
 
   /// Update product details locally and queue for cloud sync
@@ -45,6 +47,7 @@ abstract interface class ProductRepository {
     required String id,
     required String name,
     required String categoryId,
+    String? sku,
     String? brand,
     String unit = 'PCS',
     required int sellingPricePaise,
@@ -54,6 +57,9 @@ abstract interface class ProductRepository {
     double? maxStockAlert,
     bool clearMaxStockAlert = false,
     String? description,
+    String? barcode,
+    double taxRate = 0.0,
+    bool isActive = true,
   });
 
   /// Update product inventory thresholds (Minimum & Maximum Stock)

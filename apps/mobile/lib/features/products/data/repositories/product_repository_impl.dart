@@ -104,6 +104,7 @@ class ProductRepositoryImpl implements ProductRepository {
   Future<Result<ProductModel, Failure>> createProduct({
     required String name,
     required String categoryId,
+    String? sku,
     String? brand,
     String unit = 'PCS',
     required int sellingPricePaise,
@@ -115,6 +116,7 @@ class ProductRepositoryImpl implements ProductRepository {
     String? description,
     String? barcode,
     double taxRate = 0.0,
+    bool isActive = true,
   }) async {
     final cleanName = name.trim();
     if (cleanName.isEmpty) {
@@ -134,6 +136,11 @@ class ProductRepositoryImpl implements ProductRepository {
     if (purchasePricePaise < 0) {
       return const ErrorResult(
           ValidationFailure('Purchase price cannot be negative'));
+    }
+
+    if (taxRate < 0) {
+      return const ErrorResult(
+          ValidationFailure('Tax rate percentage cannot be negative'));
     }
 
     if (minStockAlert < 0) {
@@ -160,14 +167,28 @@ class ProductRepositoryImpl implements ProductRepository {
             'A product with the name "$cleanName" already exists.'));
       }
 
+      // 2. Check duplicate barcode in same shop if provided
+      if (barcode != null && barcode.trim().isNotEmpty) {
+        final cleanBarcode = barcode.trim();
+        final existingBarcode =
+            await _localDataSource.getProductByBarcode(_shopId, cleanBarcode);
+        if (existingBarcode != null) {
+          return ErrorResult(ValidationFailure(
+              'A product with barcode "$cleanBarcode" already exists in your shop.'));
+        }
+      }
+
       final productId = _uuid.v4();
       final now = DateTime.now();
       final actualMrp = mrpPaise ?? sellingPricePaise;
+      final cleanSku = sku?.trim().isEmpty == true ? null : sku?.trim();
 
       final product = ProductModel(
         id: productId,
         shopId: _shopId,
         name: cleanName,
+        sku: cleanSku,
+        barcode: barcode?.trim().isEmpty == true ? null : barcode?.trim(),
         categoryId: cleanCategory,
         brand: brand?.trim().isEmpty == true ? null : brand?.trim(),
         unit: unit.trim().isEmpty ? 'PCS' : unit.trim(),
@@ -180,18 +201,19 @@ class ProductRepositoryImpl implements ProductRepository {
         description:
             description?.trim().isEmpty == true ? null : description?.trim(),
         taxRatePercentage: taxRate,
-        isActive: true,
+        isActive: isActive,
         createdAt: now,
         updatedAt: now,
       );
 
-      // 2. Persist to local Drift SQLite (Offline First)
+      // 3. Persist to local Drift SQLite (Offline First)
       await _localDataSource.upsertProduct(
         ProductsTableCompanion(
           id: Value(product.id),
           shopId: Value(_shopId),
           categoryId: Value(product.categoryId),
           name: Value(product.name),
+          sku: Value(product.sku),
           brand: Value(product.brand),
           imageUrl: Value(product.imageUrl),
           unit: Value(product.unit),
@@ -203,13 +225,13 @@ class ProductRepositoryImpl implements ProductRepository {
           maxStockAlert: Value(product.maxStockAlert),
           description: Value(product.description),
           taxRatePercentage: Value(product.taxRatePercentage),
-          isActive: const Value(true),
+          isActive: Value(product.isActive),
           createdAt: Value(now),
           updatedAt: Value(now),
         ),
       );
 
-      // 3. Link barcode if provided
+      // 4. Link barcode if provided
       if (barcode != null && barcode.trim().isNotEmpty) {
         await _localDataSource.linkBarcode(
           ProductBarcodesTableCompanion(
@@ -223,7 +245,7 @@ class ProductRepositoryImpl implements ProductRepository {
         );
       }
 
-      // 4. Enlist in local sync queue
+      // 5. Enlist in local sync queue
       final opId = _uuid.v4();
       await _localDataSource.enqueueSyncOperation(
         SyncQueueTableCompanion(
@@ -238,7 +260,7 @@ class ProductRepositoryImpl implements ProductRepository {
         ),
       );
 
-      // 5. Opportunistically sync with cloud if online
+      // 6. Opportunistically sync with cloud if online
       if (_connectivityService != null) {
         final isOnline = await _connectivityService.isOnline();
         if (isOnline) {
@@ -262,6 +284,7 @@ class ProductRepositoryImpl implements ProductRepository {
     required String id,
     required String name,
     required String categoryId,
+    String? sku,
     String? brand,
     String unit = 'PCS',
     required int sellingPricePaise,
@@ -271,6 +294,9 @@ class ProductRepositoryImpl implements ProductRepository {
     double? maxStockAlert,
     bool clearMaxStockAlert = false,
     String? description,
+    String? barcode,
+    double taxRate = 0.0,
+    bool isActive = true,
   }) async {
     final cleanName = name.trim();
     if (cleanName.isEmpty) {
@@ -290,6 +316,11 @@ class ProductRepositoryImpl implements ProductRepository {
     if (purchasePricePaise < 0) {
       return const ErrorResult(
           ValidationFailure('Purchase price cannot be negative'));
+    }
+
+    if (taxRate < 0) {
+      return const ErrorResult(
+          ValidationFailure('Tax rate percentage cannot be negative'));
     }
 
     if (minStockAlert < 0) {
@@ -323,9 +354,24 @@ class ProductRepositoryImpl implements ProductRepository {
         }
       }
 
+      // Duplicate barcode check if barcode changed
+      if (barcode != null && barcode.trim().isNotEmpty) {
+        final cleanBarcode = barcode.trim();
+        final existingBarcode =
+            await _localDataSource.getProductByBarcode(_shopId, cleanBarcode);
+        if (existingBarcode != null && existingBarcode.id != id) {
+          return ErrorResult(ValidationFailure(
+              'Another product with barcode "$cleanBarcode" already exists in your shop.'));
+        }
+      }
+
       final now = DateTime.now();
+      final cleanSku = sku?.trim().isEmpty == true ? null : sku?.trim();
+
       final updated = current.copyWith(
         name: cleanName,
+        sku: cleanSku,
+        barcode: barcode?.trim().isEmpty == true ? null : barcode?.trim(),
         categoryId: cleanCategory,
         brand: brand?.trim().isEmpty == true ? null : brand?.trim(),
         unit: unit.trim().isEmpty ? 'PCS' : unit.trim(),
@@ -337,6 +383,8 @@ class ProductRepositoryImpl implements ProductRepository {
         clearMaxStockAlert: clearMaxStockAlert,
         description:
             description?.trim().isEmpty == true ? null : description?.trim(),
+        taxRatePercentage: taxRate,
+        isActive: isActive,
         updatedAt: now,
       );
 
@@ -347,6 +395,7 @@ class ProductRepositoryImpl implements ProductRepository {
           shopId: Value(_shopId),
           categoryId: Value(updated.categoryId),
           name: Value(updated.name),
+          sku: Value(updated.sku),
           brand: Value(updated.brand),
           imageUrl: Value(updated.imageUrl),
           unit: Value(updated.unit),
@@ -358,11 +407,25 @@ class ProductRepositoryImpl implements ProductRepository {
           maxStockAlert: Value(updated.maxStockAlert),
           description: Value(updated.description),
           taxRatePercentage: Value(updated.taxRatePercentage),
-          isActive: const Value(true),
+          isActive: Value(updated.isActive),
           createdAt: Value(updated.createdAt),
           updatedAt: Value(now),
         ),
       );
+
+      // 2. Link barcode if provided
+      if (barcode != null && barcode.trim().isNotEmpty) {
+        await _localDataSource.linkBarcode(
+          ProductBarcodesTableCompanion(
+            id: Value(_uuid.v4()),
+            shopId: Value(_shopId),
+            productId: Value(updated.id),
+            barcode: Value(barcode.trim()),
+            isPrimary: const Value(true),
+            createdAt: Value(now),
+          ),
+        );
+      }
 
       // 2. Enqueue sync UPDATE
       final opId = _uuid.v4();

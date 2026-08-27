@@ -95,7 +95,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
             ElevatedButton(
               onPressed: () {
                 final newQty = double.tryParse(controller.text.trim());
-                if (newQty != null) {
+                if (newQty != null && newQty >= 1.0) {
                   ref
                       .read(billingNotifierProvider.notifier)
                       .updateQuantity(itemId, newQty);
@@ -390,11 +390,13 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                         IconButton(
                                           icon: const Icon(
                                               Icons.remove_circle_outline),
-                                          onPressed: () => ref
-                                              .read(billingNotifierProvider
-                                                  .notifier)
-                                              .updateQuantity(
-                                                  item.id, item.quantity - 1),
+                                          onPressed: item.quantity > 1
+                                              ? () => ref
+                                                  .read(billingNotifierProvider
+                                                      .notifier)
+                                                  .updateQuantity(item.id,
+                                                      item.quantity - 1)
+                                              : null,
                                         ),
                                         InkWell(
                                           onTap: () => _showExactQuantityDialog(

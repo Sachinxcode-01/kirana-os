@@ -11,8 +11,10 @@ class PaymentsTable extends Table {
   TextColumn get mode =>
       text()(); // 'cash', 'upi_qr', 'credit_khata', 'card', 'split'
   Int64Column get amountPaise => int64()();
+  TextColumn get status => text().withDefault(const Constant('success'))();
   TextColumn get referenceNumber => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};

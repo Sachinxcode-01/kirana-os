@@ -139,7 +139,13 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                             Navigator.of(dialogCtx).pop();
 
                             if (success) {
-                              _showSuccessDialog(context);
+                              _showSuccessDialog(
+                                context,
+                                billNumber: activeDraft.billNumber,
+                                amountFormatted:
+                                    activeDraft.totalPaise.toRupeesString(),
+                                paymentMode: modeLabel,
+                              );
                             } else {
                               final err = ref
                                       .read(billingNotifierProvider)
@@ -158,7 +164,12 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     );
   }
 
-  void _showSuccessDialog(BuildContext context) {
+  void _showSuccessDialog(
+    BuildContext context, {
+    required String billNumber,
+    required String amountFormatted,
+    required String paymentMode,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -166,11 +177,58 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
         icon: const Icon(Icons.check_circle_outline,
             size: 64, color: KiranaColors.success),
         title: const Text('Payment Successful'),
-        content: const Text(
-          'Sale has been completed atomically and inventory updated.',
-          textAlign: TextAlign.center,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Text(
+                'Sale completed atomically.',
+                style: KiranaTypography.bodySmall,
+              ),
+            ),
+            const Divider(height: KiranaSpacing.lg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Bill Number:'),
+                Text(billNumber, style: KiranaTypography.titleMedium),
+              ],
+            ),
+            const SizedBox(height: KiranaSpacing.xs),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Amount Paid:'),
+                Text(amountFormatted,
+                    style: KiranaTypography.titleMedium
+                        .copyWith(color: KiranaColors.success)),
+              ],
+            ),
+            const SizedBox(height: KiranaSpacing.xs),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Payment Method:'),
+                Text(paymentMode, style: KiranaTypography.bodyMedium),
+              ],
+            ),
+          ],
         ),
         actions: [
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              final activeDraft = ref.read(billingNotifierProvider).activeDraft;
+              if (activeDraft != null) {
+                context.push('/receipt', extra: activeDraft);
+              } else {
+                context.go('/bills');
+              }
+            },
+            icon: const Icon(Icons.receipt_long),
+            label: const Text('VIEW RECEIPT'),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();

@@ -651,14 +651,18 @@ class _ProductsScreenFormDialogState
     extends ConsumerState<ProductsScreenFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _skuController = TextEditingController();
+  final _barcodeController = TextEditingController();
   final _brandController = TextEditingController();
   final _sellingPriceController = TextEditingController();
   final _purchasePriceController = TextEditingController();
+  final _taxRateController = TextEditingController();
   final _minStockController = TextEditingController();
   final _descriptionController = TextEditingController();
 
   String? _selectedCategoryId;
   String _selectedUnit = 'PCS';
+  bool _isActive = true;
   String? _validationError;
   XFile? _pendingImage;
   bool _isImageRemoved = false;
@@ -669,18 +673,27 @@ class _ProductsScreenFormDialogState
     if (widget.product != null) {
       final p = widget.product!;
       _nameController.text = p.name;
+      _skuController.text = p.sku ?? '';
+      _barcodeController.text = p.barcode ?? '';
       _brandController.text = p.brand ?? '';
       _sellingPriceController.text =
           (p.sellingPricePaise / 100).toStringAsFixed(2);
       _purchasePriceController.text = p.purchasePricePaise > 0
           ? (p.purchasePricePaise / 100).toStringAsFixed(2)
           : '';
+      _taxRateController.text =
+          p.taxRatePercentage > 0 ? p.taxRatePercentage.toStringAsFixed(1) : '';
       _minStockController.text = p.minStockAlert.toStringAsFixed(0);
       _descriptionController.text = p.description ?? '';
       _selectedCategoryId = p.categoryId;
       _selectedUnit = p.unit;
+      _isActive = p.isActive;
     } else {
       _minStockController.text = '5';
+      _taxRateController.text = '0.0';
+      if (widget.prefilledBarcode != null) {
+        _barcodeController.text = widget.prefilledBarcode!;
+      }
       if (widget.prefilledCategoryId != null) {
         _selectedCategoryId = widget.prefilledCategoryId;
       }
@@ -690,9 +703,12 @@ class _ProductsScreenFormDialogState
   @override
   void dispose() {
     _nameController.dispose();
+    _skuController.dispose();
+    _barcodeController.dispose();
     _brandController.dispose();
     _sellingPriceController.dispose();
     _purchasePriceController.dispose();
+    _taxRateController.dispose();
     _minStockController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -700,10 +716,13 @@ class _ProductsScreenFormDialogState
 
   Future<void> _handleSubmit() async {
     final name = _nameController.text.trim();
+    final sku = _skuController.text.trim();
+    final barcode = _barcodeController.text.trim();
     final brand = _brandController.text.trim();
     final desc = _descriptionController.text.trim();
     final spText = _sellingPriceController.text.trim();
     final ppText = _purchasePriceController.text.trim();
+    final taxText = _taxRateController.text.trim();
     final minStockText = _minStockController.text.trim();
 
     if (name.isEmpty) {
@@ -734,6 +753,17 @@ class _ProductsScreenFormDialogState
       purchasePricePaise = (ppDouble * 100).round();
     }
 
+    double taxRate = 0.0;
+    if (taxText.isNotEmpty) {
+      final taxDouble = double.tryParse(taxText);
+      if (taxDouble == null || taxDouble < 0) {
+        setState(
+            () => _validationError = 'Tax rate percentage cannot be negative.');
+        return;
+      }
+      taxRate = taxDouble;
+    }
+
     double minStock = 5.0;
     if (minStockText.isNotEmpty) {
       final ms = double.tryParse(minStockText);
@@ -753,13 +783,16 @@ class _ProductsScreenFormDialogState
       success = await ref.read(productNotifierProvider.notifier).createProduct(
             name: name,
             categoryId: _selectedCategoryId!,
+            sku: sku.isNotEmpty ? sku : null,
             brand: brand.isNotEmpty ? brand : null,
             unit: _selectedUnit,
             sellingPricePaise: sellingPricePaise,
             purchasePricePaise: purchasePricePaise,
             minStockAlert: minStock,
             description: desc.isNotEmpty ? desc : null,
-            barcode: widget.prefilledBarcode,
+            barcode: barcode.isNotEmpty ? barcode : widget.prefilledBarcode,
+            taxRate: taxRate,
+            isActive: _isActive,
           );
     } else {
       // Update
@@ -767,12 +800,16 @@ class _ProductsScreenFormDialogState
             id: widget.product!.id,
             name: name,
             categoryId: _selectedCategoryId!,
+            sku: sku.isNotEmpty ? sku : null,
             brand: brand.isNotEmpty ? brand : null,
             unit: _selectedUnit,
             sellingPricePaise: sellingPricePaise,
             purchasePricePaise: purchasePricePaise,
             minStockAlert: minStock,
             description: desc.isNotEmpty ? desc : null,
+            barcode: barcode.isNotEmpty ? barcode : null,
+            taxRate: taxRate,
+            isActive: _isActive,
           );
     }
 
@@ -1031,13 +1068,70 @@ class _ProductsScreenFormDialogState
               ),
               const SizedBox(height: KiranaSpacing.md),
 
-              // Minimum Stock Alert
-              AppTextField(
-                label: 'Minimum Stock Alert',
-                hint: 'Default: 5',
-                controller: _minStockController,
-                keyboardType: TextInputType.number,
-                prefixIcon: const Icon(Icons.warning_amber_outlined),
+              // SKU & Barcode Row
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      label: 'SKU / Internal Code',
+                      hint: 'e.g. ATT-001',
+                      controller: _skuController,
+                      prefixIcon: const Icon(Icons.qr_code_2_outlined),
+                    ),
+                  ),
+                  const SizedBox(width: KiranaSpacing.md),
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Barcode (Optional)',
+                      hint: 'e.g. 8901234567890',
+                      controller: _barcodeController,
+                      prefixIcon: const Icon(Icons.qr_code_outlined),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: KiranaSpacing.md),
+
+              // Tax Rate & Minimum Stock Row
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Tax Rate (%)',
+                      hint: 'e.g. 5.0, 12.0',
+                      controller: _taxRateController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      prefixIcon: const Icon(Icons.percent_outlined),
+                    ),
+                  ),
+                  const SizedBox(width: KiranaSpacing.md),
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Minimum Stock Alert',
+                      hint: 'Default: 5',
+                      controller: _minStockController,
+                      keyboardType: TextInputType.number,
+                      prefixIcon: const Icon(Icons.warning_amber_outlined),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: KiranaSpacing.md),
+
+              // Active / Inactive Status Switch
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active Product Status'),
+                subtitle: Text(
+                  _isActive
+                      ? 'Product is active and available for billing'
+                      : 'Product is inactive and hidden from active billing POS',
+                  style: KiranaTypography.bodySmall,
+                ),
+                value: _isActive,
+                activeTrackColor: KiranaColors.primary,
+                onChanged: (val) => setState(() => _isActive = val),
               ),
               const SizedBox(height: KiranaSpacing.md),
 

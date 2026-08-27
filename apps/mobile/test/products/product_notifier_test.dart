@@ -14,6 +14,7 @@ class MockProductRepository implements ProductRepository {
   Future<Result<ProductModel, Failure>> createProduct({
     required String name,
     required String categoryId,
+    String? sku,
     String? brand,
     String unit = 'PCS',
     required int sellingPricePaise,
@@ -25,6 +26,7 @@ class MockProductRepository implements ProductRepository {
     String? description,
     String? barcode,
     double taxRate = 0.0,
+    bool isActive = true,
   }) async {
     if (shouldFail) {
       return ErrorResult(ValidationFailure(failureMessage));
@@ -34,6 +36,8 @@ class MockProductRepository implements ProductRepository {
         id: 'prod_test_1',
         shopId: 'shop_1',
         name: name,
+        sku: sku,
+        barcode: barcode,
         categoryId: categoryId,
         brand: brand,
         unit: unit,
@@ -44,6 +48,8 @@ class MockProductRepository implements ProductRepository {
         maxStockAlert: maxStockAlert,
         currentStock: initialStock,
         description: description,
+        taxRatePercentage: taxRate,
+        isActive: isActive,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ),
@@ -55,6 +61,7 @@ class MockProductRepository implements ProductRepository {
     required String id,
     required String name,
     required String categoryId,
+    String? sku,
     String? brand,
     String unit = 'PCS',
     required int sellingPricePaise,
@@ -64,6 +71,9 @@ class MockProductRepository implements ProductRepository {
     double? maxStockAlert,
     bool clearMaxStockAlert = false,
     String? description,
+    String? barcode,
+    double taxRate = 0.0,
+    bool isActive = true,
   }) async {
     if (shouldFail) {
       return ErrorResult(ValidationFailure(failureMessage));
@@ -73,6 +83,8 @@ class MockProductRepository implements ProductRepository {
         id: id,
         shopId: 'shop_1',
         name: name,
+        sku: sku,
+        barcode: barcode,
         categoryId: categoryId,
         brand: brand,
         unit: unit,
@@ -80,8 +92,10 @@ class MockProductRepository implements ProductRepository {
         purchasePricePaise: purchasePricePaise,
         mrpPaise: mrpPaise ?? sellingPricePaise,
         minStockAlert: minStockAlert,
-        maxStockAlert: clearMaxStockAlert ? null : maxStockAlert,
+        maxStockAlert: maxStockAlert,
         description: description,
+        taxRatePercentage: taxRate,
+        isActive: isActive,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ),

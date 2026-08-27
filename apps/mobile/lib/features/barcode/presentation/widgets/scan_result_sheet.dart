@@ -12,6 +12,7 @@ class ScanResultSheet extends StatelessWidget {
   final ProductModel? product;
   final bool isOffline;
   final VoidCallback onScanAgain;
+  final VoidCallback? onAddToCart;
   final VoidCallback? onViewProduct;
   final VoidCallback? onAddProduct;
 
@@ -21,6 +22,7 @@ class ScanResultSheet extends StatelessWidget {
     this.product,
     this.isOffline = false,
     required this.onScanAgain,
+    this.onAddToCart,
     this.onViewProduct,
     this.onAddProduct,
   });
@@ -61,7 +63,7 @@ class ScanResultSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: KiranaSpacing.xs),
                   Text(
-                    hasProduct ? 'Product Scanned' : 'Barcode Not Recognized',
+                    hasProduct ? 'Product Scanned' : 'Barcode Not Registered',
                     style: KiranaTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -106,9 +108,10 @@ class ScanResultSheet extends StatelessWidget {
                     child: Text(
                       hasProduct
                           ? 'Offline — product retrieved from saved local catalog.'
-                          : 'Offline — searching saved products. Remote lookup requires internet.',
+                          : 'Product unavailable offline.',
                       style: KiranaTypography.bodySmall.copyWith(
                         color: KiranaColors.neutral800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -172,9 +175,16 @@ class ScanResultSheet extends StatelessWidget {
                                       color: KiranaColors.neutral400)),
                             ],
                             Text(
-                              'Unit: ${product!.unit}',
+                              'Stock: ${product!.currentStock} ${product!.unit}',
                               style: KiranaTypography.bodySmall.copyWith(
-                                color: KiranaColors.neutral600,
+                                color: product!.currentStock <=
+                                        product!.minStockAlert
+                                    ? KiranaColors.warning
+                                    : KiranaColors.neutral600,
+                                fontWeight: product!.currentStock <=
+                                        product!.minStockAlert
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                           ],
@@ -221,18 +231,27 @@ class ScanResultSheet extends StatelessWidget {
                       size: 40, color: KiranaColors.warning),
                   const SizedBox(height: KiranaSpacing.xs),
                   Text(
-                    'No product found in catalog for "$barcode".',
-                    style: KiranaTypography.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: KiranaColors.neutral800,
+                    'Barcode Not Registered',
+                    style: KiranaTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: KiranaColors.neutral900,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: KiranaSpacing.xs),
+                  Text(
+                    'Detected:\n$barcode',
+                    style: KiranaTypography.priceTabular.copyWith(
+                      color: KiranaColors.neutral800,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: KiranaSpacing.xs),
                   Text(
                     isOffline
-                        ? 'Product not available offline.'
-                        : 'Tap "+ Add Product" below to create a new product entry with this barcode.',
+                        ? 'Product unavailable offline.'
+                        : 'Tap "Add Product" below to create a product with this barcode.',
                     style: KiranaTypography.bodySmall.copyWith(
                       color: KiranaColors.neutral600,
                     ),
@@ -258,9 +277,9 @@ class ScanResultSheet extends StatelessWidget {
               Expanded(
                 child: hasProduct
                     ? AppButton(
-                        label: 'View Product',
-                        icon: Icons.arrow_forward,
-                        onPressed: onViewProduct,
+                        label: 'Add to Cart',
+                        icon: Icons.add_shopping_cart,
+                        onPressed: onAddToCart ?? onViewProduct,
                       )
                     : AppButton(
                         label: '+ Add Product',

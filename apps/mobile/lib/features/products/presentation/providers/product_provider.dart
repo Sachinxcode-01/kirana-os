@@ -65,6 +65,7 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
   Future<bool> createProduct({
     required String name,
     required String categoryId,
+    String? sku,
     String? brand,
     String unit = 'PCS',
     required int sellingPricePaise,
@@ -73,6 +74,8 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
     double minStockAlert = 5.0,
     String? description,
     String? barcode,
+    double taxRate = 0.0,
+    bool isActive = true,
   }) async {
     if (state.isLoading) return false;
     state = const ProductActionState(isLoading: true);
@@ -80,6 +83,7 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
     final result = await _repository.createProduct(
       name: name,
       categoryId: categoryId,
+      sku: sku,
       brand: brand,
       unit: unit,
       sellingPricePaise: sellingPricePaise,
@@ -88,6 +92,8 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
       minStockAlert: minStockAlert,
       description: description,
       barcode: barcode,
+      taxRate: taxRate,
+      isActive: isActive,
     );
 
     return result.fold(
@@ -112,6 +118,7 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
     required String id,
     required String name,
     required String categoryId,
+    String? sku,
     String? brand,
     String unit = 'PCS',
     required int sellingPricePaise,
@@ -119,6 +126,9 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
     int? mrpPaise,
     double minStockAlert = 5.0,
     String? description,
+    String? barcode,
+    double taxRate = 0.0,
+    bool isActive = true,
   }) async {
     if (state.isLoading) return false;
     state = const ProductActionState(isLoading: true);
@@ -127,6 +137,7 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
       id: id,
       name: name,
       categoryId: categoryId,
+      sku: sku,
       brand: brand,
       unit: unit,
       sellingPricePaise: sellingPricePaise,
@@ -134,6 +145,9 @@ class ProductNotifier extends StateNotifier<ProductActionState> {
       mrpPaise: mrpPaise,
       minStockAlert: minStockAlert,
       description: description,
+      barcode: barcode,
+      taxRate: taxRate,
+      isActive: isActive,
     );
 
     return result.fold(

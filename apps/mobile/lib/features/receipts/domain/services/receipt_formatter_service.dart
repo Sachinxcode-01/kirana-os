@@ -1,7 +1,13 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/extensions/num_extensions.dart';
 import '../../../billing/domain/models/bill_model.dart';
 import '../../../settings/domain/models/shop_settings_model.dart';
 import '../models/printer_device_model.dart';
+
+final receiptFormatterServiceProvider =
+    Provider<ReceiptFormatterService>((ref) {
+  return ReceiptFormatterService();
+});
 
 class ReceiptFormatterService {
   String formatThermalReceipt({
@@ -116,6 +122,63 @@ class ReceiptFormatterService {
     buffer.writeln(_centerText('Thank you for shopping!', cols));
     buffer.writeln(_centerText('Visit Again', cols));
     buffer.writeln('\n\n'); // Feed space
+
+    return buffer.toString();
+  }
+
+  String formatShareableText({
+    required BillModel bill,
+    ShopSettingsModel? shopSettings,
+    String? shopName,
+    String? shopPhone,
+    String? shopAddress,
+    String? paymentModeLabel,
+  }) {
+    final buffer = StringBuffer();
+    final name = shopSettings?.shopName ?? shopName ?? 'KIRANA STORE';
+    final address = shopSettings?.address ?? shopAddress ?? '';
+    final phone = shopSettings?.phone ?? shopPhone ?? '';
+    final gstin = shopSettings?.gstin;
+
+    buffer.writeln('🧾 RECEIPT — ${name.toUpperCase()}');
+    if (address.isNotEmpty) buffer.writeln(address);
+    if (phone.isNotEmpty) buffer.writeln('Ph: $phone');
+    if (gstin != null && gstin.isNotEmpty) buffer.writeln('GSTIN: $gstin');
+    buffer.writeln('----------------------------------------');
+    buffer.writeln('Bill No: ${bill.billNumber}');
+    buffer.writeln('Date: ${_formatDate(bill.createdAt)}');
+    if (bill.hasCustomer) {
+      buffer.writeln('Customer: ${bill.customerName}');
+      if (bill.customerPhone != null && bill.customerPhone!.isNotEmpty) {
+        buffer.writeln('Phone: ${bill.customerPhone}');
+      }
+    }
+    buffer.writeln('----------------------------------------');
+    buffer.writeln('ITEMS:');
+    for (final item in bill.items) {
+      final qtyStr = item.quantity % 1 == 0
+          ? item.quantity.toInt().toString()
+          : item.quantity.toStringAsFixed(2);
+      buffer.writeln('• ${item.productName}');
+      buffer.writeln(
+          '  $qtyStr ${item.unit} x ${item.unitPricePaise.toRupeesString()} = ${item.totalPaise.toRupeesString()}');
+    }
+    buffer.writeln('----------------------------------------');
+    buffer.writeln('Subtotal: ${bill.subtotalPaise.toRupeesString()}');
+    if (bill.discountPaise > 0) {
+      buffer.writeln('Discount: - ${bill.discountPaise.toRupeesString()}');
+    }
+    if (bill.taxTotalPaise > 0) {
+      buffer.writeln('Tax: ${bill.taxTotalPaise.toRupeesString()}');
+    }
+    buffer.writeln('----------------------------------------');
+    buffer.writeln('GRAND TOTAL: ${bill.totalPaise.toRupeesString()}');
+    buffer.writeln('----------------------------------------');
+    final mode =
+        paymentModeLabel ?? (bill.paymentStatus == 'paid' ? 'PAID' : 'UNPAID');
+    buffer.writeln('Payment: $mode');
+    buffer.writeln('----------------------------------------');
+    buffer.writeln('Thank you for shopping with us!');
 
     return buffer.toString();
   }

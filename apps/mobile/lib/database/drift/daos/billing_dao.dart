@@ -137,4 +137,9 @@ class BillingDao extends DatabaseAccessor<AppDatabase> with _$BillingDaoMixin {
       }
     });
   }
+
+  /// Upsert payment record into local Drift database
+  Future<void> upsertPayment(PaymentsTableCompanion payment) async {
+    await into(paymentsTable).insertOnConflictUpdate(payment);
+  }
 }
