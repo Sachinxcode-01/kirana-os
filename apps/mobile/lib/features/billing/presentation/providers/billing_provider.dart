@@ -430,6 +430,11 @@ class BillingNotifier extends StateNotifier<BillingState> {
     }
   }
 
+  void resetDraft() {
+    state = state.copyWith(activeDraft: null);
+    initializeDraft();
+  }
+
   void clearMessages() {
     state = state.copyWith(clearError: true, clearSuccess: true);
   }

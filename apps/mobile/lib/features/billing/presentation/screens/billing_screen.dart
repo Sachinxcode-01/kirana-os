@@ -11,6 +11,7 @@ import '../../../../database/drift/database.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../../staff/domain/models/staff_member_model.dart';
+import '../../domain/models/bill_model.dart';
 import '../providers/billing_provider.dart';
 
 class BillingScreen extends ConsumerStatefulWidget {
@@ -564,9 +565,9 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                 ),
                               ),
                               const SizedBox(width: KiranaSpacing.md),
-                              AppButton(
-                                label: 'SAVE DRAFT',
-                                icon: Icons.save_outlined,
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.save_outlined, size: 18),
+                                label: const Text('Save Draft'),
                                 onPressed: () async {
                                   final success = await ref
                                       .read(billingNotifierProvider.notifier)
@@ -595,6 +596,24 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                     }
                                   }
                                 },
+                              ),
+                              const SizedBox(width: KiranaSpacing.xs),
+                              AppButton(
+                                label: 'COMPLETE SALE',
+                                icon: Icons.check_circle_outline,
+                                onPressed: activeDraft.items.isEmpty
+                                    ? null
+                                    : () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (ctx) =>
+                                              _CheckoutReviewSheet(
+                                            bill: activeDraft,
+                                          ),
+                                        );
+                                      },
                               ),
                             ],
                           ),
@@ -1041,6 +1060,378 @@ class __DiscountConfigurationSheetState
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CheckoutReviewSheet extends ConsumerStatefulWidget {
+  final BillModel bill;
+
+  const _CheckoutReviewSheet({required this.bill});
+
+  @override
+  ConsumerState<_CheckoutReviewSheet> createState() =>
+      __CheckoutReviewSheetState();
+}
+
+class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
+  String _selectedPaymentMode = 'cash';
+  bool _isProcessing = false;
+  String? _checkoutError;
+
+  Future<void> _handleConfirmCheckout() async {
+    if (_isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+      _checkoutError = null;
+    });
+
+    final success = await ref
+        .read(billingNotifierProvider.notifier)
+        .completeCheckout(paymentMode: _selectedPaymentMode);
+
+    if (!mounted) return;
+
+    if (success) {
+      final completedBill =
+          ref.read(billingNotifierProvider).activeDraft ?? widget.bill;
+      Navigator.of(context).pop();
+
+      // Reset draft for new sale
+      ref.read(billingNotifierProvider.notifier).resetDraft();
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _CheckoutSuccessModal(
+          billNumber: completedBill.billNumber,
+          totalPaise: completedBill.totalPaise,
+        ),
+      );
+    } else {
+      final err = ref.read(billingNotifierProvider).errorMessage ??
+          'Checkout transaction failed. Please try again.';
+      setState(() {
+        _isProcessing = false;
+        _checkoutError = err;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bill = widget.bill;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + KiranaSpacing.md,
+        left: KiranaSpacing.md,
+        right: KiranaSpacing.md,
+        top: KiranaSpacing.md,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Review Sale Checkout',
+                    style: KiranaTypography.titleLarge),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed:
+                      _isProcessing ? null : () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: KiranaSpacing.sm),
+
+            // Error Banner (e.g. Price changed or Stock unavailable)
+            if (_checkoutError != null) ...[
+              Container(
+                padding: const EdgeInsets.all(KiranaSpacing.sm),
+                decoration: BoxDecoration(
+                  color: KiranaColors.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: KiranaColors.error),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: KiranaColors.error, size: 20),
+                    const SizedBox(width: KiranaSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        _checkoutError!,
+                        style: const TextStyle(
+                          color: KiranaColors.error,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: KiranaSpacing.md),
+            ],
+
+            // Customer Summary Box
+            Container(
+              padding: const EdgeInsets.all(KiranaSpacing.sm),
+              decoration: BoxDecoration(
+                color: KiranaColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: KiranaColors.outlineVariant),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.person_outline, color: KiranaColors.primary),
+                  const SizedBox(width: KiranaSpacing.sm),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        bill.customerName ?? 'Cash Sale (No Customer Attached)',
+                        style: KiranaTypography.bodyMedium
+                            .copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      if (bill.customerPhone != null)
+                        Text(
+                          bill.customerPhone!,
+                          style: KiranaTypography.bodySmall
+                              .copyWith(color: KiranaColors.textSecondary),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: KiranaSpacing.md),
+
+            // Item Summary
+            Text('Items Summary (${bill.items.length})',
+                style: KiranaTypography.titleMedium),
+            const SizedBox(height: KiranaSpacing.xs),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 180),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: bill.items.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (ctx, i) {
+                  final item = bill.items[i];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${item.productName} × ${item.quantity.toStringAsFixed(0)} ${item.unit}',
+                            style: KiranaTypography.bodyMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          item.totalPaise.toRupeesString(),
+                          style: KiranaTypography.bodyMedium
+                              .copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const Divider(height: KiranaSpacing.md),
+
+            // Totals Breakdown
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Subtotal', style: KiranaTypography.bodyMedium),
+                Text(bill.subtotalPaise.toRupeesString(),
+                    style: KiranaTypography.bodyMedium),
+              ],
+            ),
+            if (bill.discountPaise > 0)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Discount', style: KiranaTypography.bodyMedium),
+                  Text(
+                    '- ${bill.discountPaise.toRupeesString()}',
+                    style: KiranaTypography.bodyMedium
+                        .copyWith(color: KiranaColors.success),
+                  ),
+                ],
+              ),
+            if (bill.taxTotalPaise > 0)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Tax Total', style: KiranaTypography.bodyMedium),
+                  Text(bill.taxTotalPaise.toRupeesString(),
+                      style: KiranaTypography.bodyMedium),
+                ],
+              ),
+            const SizedBox(height: KiranaSpacing.xs),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Grand Total',
+                    style: KiranaTypography.titleLarge
+                        .copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  bill.totalPaise.toRupeesString(),
+                  style: KiranaTypography.displayTotal
+                      .copyWith(color: KiranaColors.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: KiranaSpacing.md),
+
+            // Payment Mode Selector
+            Text('Payment Method', style: KiranaTypography.titleMedium),
+            const SizedBox(height: KiranaSpacing.xs),
+            Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('💵 CASH'),
+                  selected: _selectedPaymentMode == 'cash',
+                  onSelected: _isProcessing
+                      ? null
+                      : (val) {
+                          if (val) {
+                            setState(() => _selectedPaymentMode = 'cash');
+                          }
+                        },
+                ),
+                const SizedBox(width: KiranaSpacing.xs),
+                ChoiceChip(
+                  label: const Text('📱 UPI'),
+                  selected: _selectedPaymentMode == 'upi_qr',
+                  onSelected: _isProcessing
+                      ? null
+                      : (val) {
+                          if (val) {
+                            setState(() => _selectedPaymentMode = 'upi_qr');
+                          }
+                        },
+                ),
+                const SizedBox(width: KiranaSpacing.xs),
+                ChoiceChip(
+                  label: const Text('💳 CARD'),
+                  selected: _selectedPaymentMode == 'card',
+                  onSelected: _isProcessing
+                      ? null
+                      : (val) {
+                          if (val) {
+                            setState(() => _selectedPaymentMode = 'card');
+                          }
+                        },
+                ),
+              ],
+            ),
+            const SizedBox(height: KiranaSpacing.lg),
+
+            // Action Buttons
+            AppButton(
+              label:
+                  _isProcessing ? 'PROCESSING...' : 'CONFIRM & COMPLETE SALE',
+              icon: Icons.check_circle_rounded,
+              isLoading: _isProcessing,
+              onPressed: _isProcessing ? null : _handleConfirmCheckout,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CheckoutSuccessModal extends StatelessWidget {
+  final String billNumber;
+  final int totalPaise;
+
+  const _CheckoutSuccessModal({
+    required this.billNumber,
+    required this.totalPaise,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      content: Padding(
+        padding: const EdgeInsets.symmetric(vertical: KiranaSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: KiranaColors.successContainer,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle,
+                  color: KiranaColors.success, size: 48),
+            ),
+            const SizedBox(height: KiranaSpacing.md),
+            Text('Sale Completed!',
+                style: KiranaTypography.headlineMedium
+                    .copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: KiranaSpacing.xs),
+            Text(
+              'Bill #$billNumber',
+              style: KiranaTypography.titleMedium
+                  .copyWith(color: KiranaColors.textSecondary),
+            ),
+            const SizedBox(height: KiranaSpacing.xs),
+            Text(
+              totalPaise.toRupeesString(),
+              style: KiranaTypography.displayTotal
+                  .copyWith(color: KiranaColors.primary),
+            ),
+            const SizedBox(height: KiranaSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: const Text('View Receipt'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      context.push('/completed-receipt',
+                          extra: {'billNumber': billNumber});
+                    },
+                  ),
+                ),
+                const SizedBox(width: KiranaSpacing.sm),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: KiranaColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.add_shopping_cart),
+                    label: const Text('New Sale'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
