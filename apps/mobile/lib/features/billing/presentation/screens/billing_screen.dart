@@ -742,67 +742,248 @@ class __DiscountConfigurationSheetState
     extends ConsumerState<_DiscountConfigurationSheet> {
   String _discountType = 'percentage';
   final _valController = TextEditingController(text: '0');
+  String? _validationError;
+
+  @override
+  void initState() {
+    super.initState();
+    final activeDraft = ref.read(billingNotifierProvider).activeDraft;
+    if (activeDraft != null && activeDraft.discountType != 'none') {
+      _discountType = activeDraft.discountType;
+      if (_discountType == 'fixed') {
+        _valController.text =
+            (activeDraft.discountValue / 100.0).toStringAsFixed(2);
+      } else {
+        _valController.text = activeDraft.discountValue.toStringAsFixed(0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _valController.dispose();
+    super.dispose();
+  }
+
+  void _onPresetSelected(double value) {
+    setState(() {
+      _valController.text =
+          value % 1 == 0 ? value.toInt().toString() : value.toString();
+      _validationError = null;
+    });
+  }
+
+  void _validateInput(String text, int subtotalPaise) {
+    final raw = double.tryParse(text.trim());
+    if (raw == null && text.trim().isNotEmpty) {
+      setState(() => _validationError = 'Enter a valid number.');
+      return;
+    }
+    if (raw != null && raw < 0) {
+      setState(() => _validationError = 'Discount cannot be negative.');
+      return;
+    }
+
+    if (_discountType == 'percentage') {
+      if (raw != null && raw > 100.0) {
+        setState(
+            () => _validationError = 'Percentage discount cannot exceed 100%.');
+        return;
+      }
+    } else if (_discountType == 'fixed') {
+      final paise = ((raw ?? 0.0) * 100).round();
+      if (paise > subtotalPaise) {
+        setState(() => _validationError = 'Discount cannot exceed subtotal.');
+        return;
+      }
+    }
+
+    setState(() => _validationError = null);
+  }
 
   @override
   Widget build(BuildContext context) {
     final activeDraft = ref.watch(billingNotifierProvider).activeDraft;
+    final subtotalPaise = activeDraft?.subtotalPaise ?? 0;
+
+    double parsedRaw = double.tryParse(_valController.text.trim()) ?? 0.0;
+    int calculatedDiscountPaise = 0;
+    if (_discountType == 'percentage') {
+      final pct = parsedRaw.clamp(0.0, 100.0);
+      calculatedDiscountPaise =
+          ((subtotalPaise * (pct / 100.0))).round().clamp(0, subtotalPaise);
+    } else if (_discountType == 'fixed') {
+      calculatedDiscountPaise =
+          ((parsedRaw * 100).round()).clamp(0, subtotalPaise);
+    }
 
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom + KiranaSpacing.md,
         left: KiranaSpacing.md,
         right: KiranaSpacing.md,
         top: KiranaSpacing.md,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Apply Bill Discount', style: KiranaTypography.titleLarge),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Apply Bill Discount', style: KiranaTypography.titleLarge),
+              if (activeDraft != null && activeDraft.discountType != 'none')
+                TextButton.icon(
+                  onPressed: () {
+                    ref.read(billingNotifierProvider.notifier).applyDiscount(
+                          discountType: 'none',
+                          discountValue: 0.0,
+                        );
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.clear,
+                      size: 18, color: KiranaColors.error),
+                  label: const Text(
+                    'Clear Discount',
+                    style: TextStyle(color: KiranaColors.error),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: KiranaSpacing.md),
+
+          // Discount Type Selector Segment
           Row(
             children: [
               ChoiceChip(
-                label: const Text('Percentage (%)'),
-                selected: _discountType == 'percentage',
-                onSelected: (val) {
-                  if (val) setState(() => _discountType = 'percentage');
-                },
-              ),
-              const SizedBox(width: KiranaSpacing.sm),
-              ChoiceChip(
-                label: const Text('Fixed Amount (₹)'),
+                label: const Text('Flat (₹)'),
                 selected: _discountType == 'fixed',
                 onSelected: (val) {
-                  if (val) setState(() => _discountType = 'fixed');
+                  if (val) {
+                    setState(() {
+                      _discountType = 'fixed';
+                      _valController.text = '0';
+                      _validationError = null;
+                    });
+                  }
                 },
               ),
-              const SizedBox(width: KiranaSpacing.sm),
+              const SizedBox(width: KiranaSpacing.xs),
+              ChoiceChip(
+                label: const Text('Percent (%)'),
+                selected: _discountType == 'percentage',
+                onSelected: (val) {
+                  if (val) {
+                    setState(() {
+                      _discountType = 'percentage';
+                      _valController.text = '0';
+                      _validationError = null;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(width: KiranaSpacing.xs),
               ChoiceChip(
                 label: const Text('None'),
                 selected: _discountType == 'none',
                 onSelected: (val) {
-                  if (val) setState(() => _discountType = 'none');
+                  if (val) {
+                    setState(() {
+                      _discountType = 'none';
+                      _valController.text = '0';
+                      _validationError = null;
+                    });
+                  }
                 },
               ),
             ],
           ),
           const SizedBox(height: KiranaSpacing.md),
-          if (_discountType != 'none')
+
+          if (_discountType != 'none') ...[
+            // Quick Presets
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _discountType == 'percentage'
+                    ? [5, 10, 15, 20, 25, 50].map((pct) {
+                        return Padding(
+                          padding:
+                              const EdgeInsets.only(right: KiranaSpacing.xs),
+                          child: ActionChip(
+                            label: Text('$pct%'),
+                            onPressed: () => _onPresetSelected(pct.toDouble()),
+                          ),
+                        );
+                      }).toList()
+                    : [10, 20, 50, 100, 200, 500].map((amt) {
+                        return Padding(
+                          padding:
+                              const EdgeInsets.only(right: KiranaSpacing.xs),
+                          child: ActionChip(
+                            label: Text('₹$amt'),
+                            onPressed: () => _onPresetSelected(amt.toDouble()),
+                          ),
+                        );
+                      }).toList(),
+              ),
+            ),
+            const SizedBox(height: KiranaSpacing.md),
+
+            // Value Input Field
             TextField(
               controller: _valController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              onChanged: (val) => _validateInput(val, subtotalPaise),
               decoration: InputDecoration(
                 labelText: _discountType == 'percentage'
                     ? 'Discount Percentage (%)'
                     : 'Discount Amount (₹)',
-                helperText: _discountType == 'percentage'
-                    ? 'Enter 0% to 100%'
-                    : 'Enter amount in Rupees (Max ₹${((activeDraft?.subtotalPaise ?? 0) / 100).toStringAsFixed(2)})',
+                errorText: _validationError,
+                prefixIcon: Icon(
+                  _discountType == 'percentage'
+                      ? Icons.percent
+                      : Icons.currency_rupee,
+                ),
               ),
             ),
+            const SizedBox(height: KiranaSpacing.md),
+
+            // Real-time Summary Card
+            Container(
+              padding: const EdgeInsets.all(KiranaSpacing.sm),
+              decoration: BoxDecoration(
+                color: KiranaColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: KiranaColors.outlineVariant),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Calculated Discount:',
+                    style: KiranaTypography.bodyMedium
+                        .copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '- ${calculatedDiscountPaise.toRupeesString()}',
+                    style: KiranaTypography.titleMedium.copyWith(
+                      color: calculatedDiscountPaise > 0
+                          ? KiranaColors.success
+                          : KiranaColors.textSecondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: KiranaSpacing.lg),
+
+          // Dialog Actions
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -810,47 +991,55 @@ class __DiscountConfigurationSheetState
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Cancel'),
               ),
+              const SizedBox(width: KiranaSpacing.sm),
               ElevatedButton(
-                onPressed: () {
-                  if (_discountType == 'none') {
-                    ref.read(billingNotifierProvider.notifier).applyDiscount(
-                        discountType: 'none', discountValue: 0.0);
-                    Navigator.of(context).pop();
-                    return;
-                  }
+                onPressed: _validationError != null
+                    ? null
+                    : () {
+                        if (_discountType == 'none') {
+                          ref
+                              .read(billingNotifierProvider.notifier)
+                              .applyDiscount(
+                                discountType: 'none',
+                                discountValue: 0.0,
+                              );
+                          Navigator.of(context).pop();
+                          return;
+                        }
 
-                  final rawVal =
-                      double.tryParse(_valController.text.trim()) ?? 0.0;
-                  final discountValue = _discountType == 'fixed'
-                      ? (rawVal * 100)
-                          .roundToDouble() // convert rupees to paise
-                      : rawVal;
+                        final rawVal =
+                            double.tryParse(_valController.text.trim()) ?? 0.0;
+                        final discountValue = _discountType == 'fixed'
+                            ? (rawVal * 100)
+                                .roundToDouble() // convert rupees to paise
+                            : rawVal;
 
-                  final success =
-                      ref.read(billingNotifierProvider.notifier).applyDiscount(
-                            discountType: _discountType,
-                            discountValue: discountValue,
-                          );
+                        final success = ref
+                            .read(billingNotifierProvider.notifier)
+                            .applyDiscount(
+                              discountType: _discountType,
+                              discountValue: discountValue,
+                            );
 
-                  if (success) {
-                    Navigator.of(context).pop();
-                  } else {
-                    final err = ref.read(billingNotifierProvider).errorMessage;
-                    if (err != null && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(err),
-                          backgroundColor: KiranaColors.error,
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: const Text('Apply'),
+                        if (success) {
+                          Navigator.of(context).pop();
+                        } else {
+                          final err =
+                              ref.read(billingNotifierProvider).errorMessage;
+                          if (err != null && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(err),
+                                backgroundColor: KiranaColors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                child: const Text('Apply Discount'),
               ),
             ],
           ),
-          const SizedBox(height: KiranaSpacing.md),
         ],
       ),
     );
