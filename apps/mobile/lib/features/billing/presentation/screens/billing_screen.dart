@@ -236,18 +236,40 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                 // 1. Customer Attachment Banner / Selector Card
                 if (activeDraft != null)
                   Container(
-                    margin: const EdgeInsets.all(KiranaSpacing.md),
-                    padding: const EdgeInsets.all(KiranaSpacing.sm),
+                    margin: const EdgeInsets.fromLTRB(KiranaSpacing.md,
+                        KiranaSpacing.sm, KiranaSpacing.md, KiranaSpacing.xs),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: KiranaSpacing.sm,
+                        vertical: KiranaSpacing.xs),
                     decoration: BoxDecoration(
-                      color: KiranaColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: KiranaColors.outlineVariant),
+                      color: activeDraft.hasCustomer
+                          ? KiranaColors.primaryContainer.withValues(alpha: 0.3)
+                          : KiranaColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: activeDraft.hasCustomer
+                            ? KiranaColors.primary.withValues(alpha: 0.3)
+                            : KiranaColors.outlineVariant,
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.person_outline,
-                            color: KiranaColors.primary),
-                        const SizedBox(width: KiranaSpacing.xs),
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: activeDraft.hasCustomer
+                              ? KiranaColors.primary
+                              : KiranaColors.outlineVariant,
+                          child: Icon(
+                            activeDraft.hasCustomer
+                                ? Icons.person
+                                : Icons.person_outline,
+                            size: 18,
+                            color: activeDraft.hasCustomer
+                                ? Colors.white
+                                : KiranaColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: KiranaSpacing.sm),
                         Expanded(
                           child: activeDraft.hasCustomer
                               ? Column(
@@ -255,33 +277,46 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                   children: [
                                     Text(
                                       activeDraft.customerName ?? 'Customer',
-                                      style: KiranaTypography.labelLarge,
+                                      style:
+                                          KiranaTypography.titleMedium.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                     if (activeDraft.customerPhone != null)
                                       Text(
                                         activeDraft.customerPhone!,
-                                        style: KiranaTypography.bodySmall,
+                                        style:
+                                            KiranaTypography.bodySmall.copyWith(
+                                          color: KiranaColors.textSecondary,
+                                        ),
                                       ),
                                   ],
                                 )
                               : Text(
-                                  'No customer attached',
+                                  'Walk-in Customer (No Customer Attached)',
                                   style: KiranaTypography.bodySmall.copyWith(
                                     color: KiranaColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                         ),
-                        if (activeDraft.hasCustomer)
+                        if (activeDraft.hasCustomer) ...[
+                          TextButton(
+                            onPressed: () => _showCustomerPickerSheet(context),
+                            child: const Text('Change'),
+                          ),
                           IconButton(
-                            icon: const Icon(Icons.close, size: 20),
+                            icon: const Icon(Icons.close,
+                                size: 18, color: KiranaColors.error),
+                            tooltip: 'Remove customer',
                             onPressed: () => ref
                                 .read(billingNotifierProvider.notifier)
                                 .removeCustomer(),
-                          )
-                        else
+                          ),
+                        ] else
                           TextButton.icon(
                             onPressed: () => _showCustomerPickerSheet(context),
-                            icon: const Icon(Icons.add, size: 18),
+                            icon: const Icon(Icons.person_add, size: 16),
                             label: const Text('Attach'),
                           ),
                       ],
@@ -290,29 +325,44 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
 
                 // 2. Top Search & Add Product Bar
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: KiranaSpacing.md),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: KiranaSpacing.md, vertical: KiranaSpacing.xs),
                   child: Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _showAddProductDialog(context),
-                          icon: const Icon(Icons.search),
-                          label: const Text('Search catalog...'),
-                          style: OutlinedButton.styleFrom(
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: KiranaSpacing.md,
-                              vertical: KiranaSpacing.sm,
+                        child: SizedBox(
+                          height: 44,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showAddProductDialog(context),
+                            icon: const Icon(Icons.search, size: 20),
+                            label: const Text('Search catalog...'),
+                            style: OutlinedButton.styleFrom(
+                              alignment: Alignment.centerLeft,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: KiranaSpacing.sm,
+                              ),
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(width: KiranaSpacing.xs),
-                      ElevatedButton.icon(
-                        onPressed: () => _showAddProductDialog(context),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Item'),
+                      SizedBox(
+                        height: 44,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _showAddProductDialog(context),
+                          icon: const Icon(Icons.add, size: 20),
+                          label: const Text('Add Item'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: KiranaColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -348,112 +398,156 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: KiranaSpacing.md),
+                              horizontal: KiranaSpacing.md,
+                              vertical: KiranaSpacing.xs),
                           itemCount: activeDraft.items.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: KiranaSpacing.xs),
                           itemBuilder: (context, index) {
                             final item = activeDraft.items[index];
                             return Card(
-                              elevation: 1,
+                              elevation: 0.5,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                    color: KiranaColors.outlineVariant
+                                        .withValues(alpha: 0.5)),
+                              ),
                               child: Padding(
-                                padding: const EdgeInsets.all(KiranaSpacing.md),
-                                child: Row(
+                                padding: const EdgeInsets.all(KiranaSpacing.sm),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item.productName,
-                                            style: KiranaTypography.titleMedium,
-                                          ),
-                                          const SizedBox(
-                                              height: KiranaSpacing.xxs),
-                                          Text(
-                                            '${item.unitPricePaise.toRupeesString()} / ${item.unit}',
-                                            style: KiranaTypography.bodySmall,
-                                          ),
-                                          if (item.taxRate > 0)
-                                            Text(
-                                              'Tax (${item.taxRate.toStringAsFixed(1)}%): ${item.taxAmountPaise.toRupeesString()}',
-                                              style: KiranaTypography.bodySmall
-                                                  .copyWith(
-                                                color:
-                                                    KiranaColors.textSecondary,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    // Quantity Controls
+                                    // Row 1: Product Name + Delete Button
                                     Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        IconButton(
-                                          icon: const Icon(
-                                              Icons.remove_circle_outline),
-                                          onPressed: item.quantity > 1
-                                              ? () => ref
-                                                  .read(billingNotifierProvider
-                                                      .notifier)
-                                                  .updateQuantity(item.id,
-                                                      item.quantity - 1)
-                                              : null,
-                                        ),
-                                        InkWell(
-                                          onTap: () => _showExactQuantityDialog(
-                                              context,
-                                              item.id,
-                                              item.quantity,
-                                              item.unit),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: KiranaSpacing.xs,
-                                                vertical: KiranaSpacing.xxs),
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                  color: KiranaColors.outline),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
+                                        Expanded(
+                                          child: Text(
+                                            item.productName,
+                                            style: KiranaTypography.titleMedium
+                                                .copyWith(
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                            child: Text(
-                                              item.quantity % 1 == 0
-                                                  ? item.quantity
-                                                      .toInt()
-                                                      .toString()
-                                                  : item.quantity
-                                                      .toStringAsFixed(2),
-                                              style:
-                                                  KiranaTypography.labelLarge,
-                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         IconButton(
                                           icon: const Icon(
-                                              Icons.add_circle_outline),
+                                            Icons.delete_outline,
+                                            color: KiranaColors.error,
+                                            size: 20,
+                                          ),
+                                          constraints: const BoxConstraints(),
+                                          padding: EdgeInsets.zero,
+                                          tooltip: 'Remove item',
                                           onPressed: () => ref
                                               .read(billingNotifierProvider
                                                   .notifier)
-                                              .updateQuantity(
-                                                  item.id, item.quantity + 1),
+                                              .removeItem(item.id),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(width: KiranaSpacing.xs),
-                                    Text(
-                                      item.totalPaise.toRupeesString(),
-                                      style: KiranaTypography.priceTabular,
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: KiranaColors.error,
-                                      ),
-                                      onPressed: () => ref
-                                          .read(
-                                              billingNotifierProvider.notifier)
-                                          .removeItem(item.id),
+                                    const SizedBox(height: KiranaSpacing.xxs),
+
+                                    // Row 2: Price Subtitle + Quantity Controls + Item Total
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        // Unit Price Subtitle
+                                        Text(
+                                          '${item.unitPricePaise.toRupeesString()} / ${item.unit}',
+                                          style: KiranaTypography.bodySmall
+                                              .copyWith(
+                                            color: KiranaColors.textSecondary,
+                                          ),
+                                        ),
+
+                                        // Quantity Controls
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(
+                                                  Icons.remove_circle_outline,
+                                                  size: 22),
+                                              constraints:
+                                                  const BoxConstraints(),
+                                              padding: const EdgeInsets.all(4),
+                                              onPressed: item.quantity > 1
+                                                  ? () => ref
+                                                      .read(
+                                                          billingNotifierProvider
+                                                              .notifier)
+                                                      .updateQuantity(item.id,
+                                                          item.quantity - 1)
+                                                  : null,
+                                            ),
+                                            InkWell(
+                                              onTap: () =>
+                                                  _showExactQuantityDialog(
+                                                      context,
+                                                      item.id,
+                                                      item.quantity,
+                                                      item.unit),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            KiranaSpacing.sm,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: KiranaColors
+                                                      .surfaceVariant,
+                                                  border: Border.all(
+                                                      color: KiranaColors
+                                                          .outlineVariant),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  item.quantity % 1 == 0
+                                                      ? item.quantity
+                                                          .toInt()
+                                                          .toString()
+                                                      : item.quantity
+                                                          .toStringAsFixed(2),
+                                                  style: KiranaTypography
+                                                      .labelLarge
+                                                      .copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(
+                                                  Icons.add_circle_outline,
+                                                  size: 22),
+                                              constraints:
+                                                  const BoxConstraints(),
+                                              padding: const EdgeInsets.all(4),
+                                              onPressed: () => ref
+                                                  .read(billingNotifierProvider
+                                                      .notifier)
+                                                  .updateQuantity(item.id,
+                                                      item.quantity + 1),
+                                            ),
+                                          ],
+                                        ),
+
+                                        // Total Price
+                                        Text(
+                                          item.totalPaise.toRupeesString(),
+                                          style: KiranaTypography.priceTabular
+                                              .copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: KiranaColors.primary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -629,16 +723,31 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
   }
 }
 
-class _ProductPickerSheet extends ConsumerWidget {
+class _ProductPickerSheet extends ConsumerStatefulWidget {
   const _ProductPickerSheet();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ProductPickerSheet> createState() =>
+      __ProductPickerSheetState();
+}
+
+class __ProductPickerSheetState extends ConsumerState<_ProductPickerSheet> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final productsAsync = ref.watch(productsStreamProvider);
 
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.7,
+      initialChildSize: 0.75,
       maxChildSize: 0.9,
       minChildSize: 0.4,
       builder: (context, scrollController) {
@@ -647,7 +756,36 @@ class _ProductPickerSheet extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Select Product', style: KiranaTypography.titleLarge),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Select Product', style: KiranaTypography.titleLarge),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: KiranaSpacing.xs),
+              TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: (val) =>
+                    setState(() => _searchQuery = val.trim().toLowerCase()),
+                decoration: InputDecoration(
+                  hintText: 'Search product name or barcode...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                ),
+              ),
               const SizedBox(height: KiranaSpacing.sm),
               Expanded(
                 child: productsAsync.when(
@@ -655,20 +793,77 @@ class _ProductPickerSheet extends ConsumerWidget {
                       const Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(child: Text('Error: $err')),
                   data: (products) {
-                    if (products.isEmpty) {
-                      return const Center(
-                          child: Text('No products available.'));
+                    final filteredProducts = _searchQuery.isEmpty
+                        ? products
+                        : products.where((p) {
+                            final nameMatch =
+                                p.name.toLowerCase().contains(_searchQuery);
+                            final barcodeMatch = p.barcode != null &&
+                                p.barcode!.toLowerCase().contains(_searchQuery);
+                            return nameMatch || barcodeMatch;
+                          }).toList();
+
+                    if (filteredProducts.isEmpty) {
+                      return Center(
+                        child: Text(
+                          _searchQuery.isEmpty
+                              ? 'No products available in catalog.'
+                              : 'No products match "$_searchQuery".',
+                          style: KiranaTypography.bodyMedium
+                              .copyWith(color: KiranaColors.textSecondary),
+                        ),
+                      );
                     }
-                    return ListView.builder(
+                    return ListView.separated(
                       controller: scrollController,
-                      itemCount: products.length,
+                      itemCount: filteredProducts.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (ctx, i) {
-                        final product = products[i];
+                        final product = filteredProducts[i];
+                        final hasStock = product.currentStock > 0;
+
                         return ListTile(
-                          title: Text(product.name),
-                          subtitle: Text(
-                              '${product.sellingPricePaise.toRupeesString()} per ${product.unit}'),
-                          trailing: const Icon(Icons.add_circle_outline),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: KiranaSpacing.xs, vertical: 2),
+                          title: Text(
+                            product.name,
+                            style: KiranaTypography.titleMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Row(
+                            children: [
+                              Text(
+                                '${product.sellingPricePaise.toRupeesString()} / ${product.unit}',
+                                style: KiranaTypography.bodyMedium,
+                              ),
+                              const SizedBox(width: KiranaSpacing.xs),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: hasStock
+                                      ? KiranaColors.successContainer
+                                      : KiranaColors.errorContainer,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  hasStock
+                                      ? 'Stock: ${product.currentStock % 1 == 0 ? product.currentStock.toInt() : product.currentStock.toStringAsFixed(1)} ${product.unit}'
+                                      : 'Out of stock',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: hasStock
+                                        ? KiranaColors.success
+                                        : KiranaColors.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          trailing: const Icon(Icons.add_circle,
+                              color: KiranaColors.primary, size: 28),
                           onTap: () {
                             ref
                                 .read(billingNotifierProvider.notifier)
@@ -1496,7 +1691,9 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
             // Payment Mode Selector
             Text('Payment Method', style: KiranaTypography.titleMedium),
             const SizedBox(height: KiranaSpacing.xs),
-            Row(
+            Wrap(
+              spacing: KiranaSpacing.xs,
+              runSpacing: KiranaSpacing.xs,
               children: [
                 ChoiceChip(
                   label: const Text('💵 CASH'),
@@ -1512,7 +1709,6 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
                           }
                         },
                 ),
-                const SizedBox(width: KiranaSpacing.xs),
                 ChoiceChip(
                   label: const Text('📱 UPI'),
                   selected: _selectedPaymentMode == 'upi_qr',
@@ -1527,7 +1723,6 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
                           }
                         },
                 ),
-                const SizedBox(width: KiranaSpacing.xs),
                 ChoiceChip(
                   label: const Text('💳 CARD'),
                   selected: _selectedPaymentMode == 'card',
@@ -1542,7 +1737,6 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
                           }
                         },
                 ),
-                const SizedBox(width: KiranaSpacing.xs),
                 ChoiceChip(
                   label: const Text('📝 UDHAAR'),
                   selected: _selectedPaymentMode == 'credit',
