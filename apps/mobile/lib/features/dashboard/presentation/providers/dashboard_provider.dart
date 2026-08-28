@@ -3,6 +3,7 @@ import '../../../../app/app_providers.dart';
 import '../../domain/models/dashboard_metrics.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 import '../../data/datasources/dashboard_local_data_source.dart';
+import '../../data/datasources/dashboard_remote_data_source.dart';
 import '../../data/repositories/dashboard_repository_impl.dart';
 
 final dashboardLocalDataSourceProvider =
@@ -11,9 +12,16 @@ final dashboardLocalDataSourceProvider =
   return DashboardLocalDataSource(db);
 });
 
+final dashboardRemoteDataSourceProvider =
+    Provider<DashboardRemoteDataSource>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return DashboardRemoteDataSource(apiClient);
+});
+
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
   final local = ref.watch(dashboardLocalDataSourceProvider);
-  return DashboardRepositoryImpl(local);
+  final remote = ref.watch(dashboardRemoteDataSourceProvider);
+  return DashboardRepositoryImpl(local, remote);
 });
 
 final dashboardMetricsStreamProvider =

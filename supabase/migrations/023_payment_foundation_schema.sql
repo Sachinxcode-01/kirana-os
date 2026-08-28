@@ -38,7 +38,6 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARATION
 DECLARE
     v_bill RECORD;
     v_item RECORD;

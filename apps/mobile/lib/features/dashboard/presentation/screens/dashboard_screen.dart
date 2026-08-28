@@ -11,8 +11,9 @@ import 'package:kirana_mobile/core/theme/typography.dart';
 import 'package:kirana_mobile/core/utils/currency_formatter.dart';
 import 'package:kirana_mobile/features/dashboard/domain/models/dashboard_metrics.dart';
 import 'package:kirana_mobile/features/dashboard/presentation/providers/dashboard_provider.dart';
-
 import 'package:kirana_mobile/features/dashboard/presentation/widgets/dashboard_session_header.dart';
+import 'package:kirana_mobile/features/dashboard/presentation/widgets/sales_trend_chart.dart';
+import 'package:kirana_mobile/features/dashboard/presentation/widgets/top_products_card.dart';
 import 'package:kirana_mobile/features/inventory/presentation/widgets/low_stock_dashboard_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -42,7 +43,8 @@ class DashboardScreen extends ConsumerWidget {
         ],
       ),
       body: metricsAsync.when(
-        data: (metrics) => _buildDashboardContent(context, metrics, isOffline),
+        data: (metrics) =>
+            _buildDashboardContent(context, ref, metrics, isOffline),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, st) => Center(
           child: Column(
@@ -54,9 +56,10 @@ class DashboardScreen extends ConsumerWidget {
               const Text('Failed to load dashboard metrics',
                   style: KiranaTypography.titleMedium),
               const SizedBox(height: KiranaSpacing.lg),
-              ElevatedButton(
+              ElevatedButton.icon(
                 onPressed: () => ref.refresh(dashboardMetricsStreamProvider),
-                child: const Text('Retry'),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
               ),
             ],
           ),
@@ -67,14 +70,55 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildDashboardContent(
     BuildContext context,
+    WidgetRef ref,
     DashboardMetrics metrics,
     bool isOffline,
   ) {
+    final showOffline = isOffline || metrics.isOffline;
+    final lastSyncedTimeStr = metrics.lastSyncedAt != null
+        ? '${metrics.lastSyncedAt!.hour.toString().padLeft(2, '0')}:${metrics.lastSyncedAt!.minute.toString().padLeft(2, '0')}'
+        : 'Unknown';
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(KiranaSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Offline Banner / Sync Status
+          if (showOffline)
+            Container(
+              margin: const EdgeInsets.only(bottom: KiranaSpacing.md),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: KiranaSpacing.md, vertical: KiranaSpacing.sm),
+              decoration: BoxDecoration(
+                color: KiranaColors.warningContainer,
+                borderRadius: KiranaRadius.borderMd,
+                border: Border.all(color: KiranaColors.warning),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.wifi_off,
+                      color: KiranaColors.onSecondaryContainer, size: 20),
+                  const SizedBox(width: KiranaSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'OFFLINE • Last updated: $lastSyncedTimeStr',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: KiranaColors.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        ref.refresh(dashboardMetricsStreamProvider),
+                    child: const Text('Sync Now'),
+                  ),
+                ],
+              ),
+            ),
+
           // Quick Barcode POS CTA
           Card(
             color: KiranaColors.primary,
@@ -123,7 +167,7 @@ class DashboardScreen extends ConsumerWidget {
           // KPI Grid
           GridView.count(
             crossAxisCount: context.isWideScreen ? 4 : 2,
-            childAspectRatio: 1.3,
+            childAspectRatio: 1.25,
             crossAxisSpacing: KiranaSpacing.md,
             mainAxisSpacing: KiranaSpacing.md,
             shrinkWrap: true,
@@ -133,12 +177,16 @@ class DashboardScreen extends ConsumerWidget {
                 title: "Today's Sales",
                 value: CurrencyFormatter.formatPaise(
                     metrics.todaySalesPaise.toInt()),
+                subtitle: 'Completed sales',
                 icon: Icons.currency_rupee,
                 color: KiranaColors.primary,
               ),
               _KpiCard(
-                title: "Bills Generated",
+                title: "Bills Today",
                 value: '${metrics.todayBillsCount}',
+                subtitle: metrics.yesterdayBillsCount != null
+                    ? 'Yesterday: ${metrics.yesterdayBillsCount}'
+                    : null,
                 icon: Icons.receipt_long,
                 color: KiranaColors.primaryLight,
               ),
@@ -161,6 +209,14 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: KiranaSpacing.lg),
+
+          // Today's Top Products Card
+          TopProductsCard(topProducts: metrics.topProducts),
+          const SizedBox(height: KiranaSpacing.lg),
+
+          // Basic Sales Trend Chart
+          SalesTrendChart(salesTrend: metrics.salesTrend),
           const SizedBox(height: KiranaSpacing.lg),
 
           // Low Stock Dashboard Card
@@ -291,6 +347,7 @@ class DashboardScreen extends ConsumerWidget {
 class _KpiCard extends StatelessWidget {
   final String title;
   final String value;
+  final String? subtitle;
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
@@ -298,6 +355,7 @@ class _KpiCard extends StatelessWidget {
   const _KpiCard({
     required this.title,
     required this.value,
+    this.subtitle,
     required this.icon,
     required this.color,
     this.onTap,
@@ -328,15 +386,32 @@ class _KpiCard extends StatelessWidget {
                   Icon(icon, size: 18, color: color),
                 ],
               ),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  value,
-                  style: KiranaTypography.titleLarge.copyWith(
-                    fontWeight: FontWeight.w700,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      style: KiranaTypography.titleLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: KiranaColors.neutral600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

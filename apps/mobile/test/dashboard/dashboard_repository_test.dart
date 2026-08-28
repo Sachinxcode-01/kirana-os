@@ -28,7 +28,7 @@ void main() {
       final now = DateTime.now();
       final earlier = now.subtract(const Duration(minutes: 15));
 
-      // 1. Insert 2 bills created today
+      // 1. Insert 2 completed bills created today
       await db.into(db.billsTable).insert(
             BillsTableCompanion(
               id: const d.Value('bill_001'),
@@ -40,6 +40,7 @@ void main() {
               discountPaise: d.Value(BigInt.zero),
               totalPaise: d.Value(BigInt.from(15000)),
               paymentStatus: const d.Value('paid'),
+              isCancelled: const d.Value(false),
               createdAt: d.Value(earlier),
               updatedAt: d.Value(earlier),
             ),
@@ -56,8 +57,52 @@ void main() {
               discountPaise: d.Value(BigInt.zero),
               totalPaise: d.Value(BigInt.from(25000)),
               paymentStatus: const d.Value('paid'),
+              isCancelled: const d.Value(false),
               createdAt: d.Value(now),
               updatedAt: d.Value(now),
+            ),
+          );
+
+      // Cancelled bill (must be excluded)
+      await db.into(db.billsTable).insert(
+            BillsTableCompanion(
+              id: const d.Value('bill_cancelled'),
+              shopId: const d.Value(testShopId),
+              billNumber: const d.Value('BILL-CAN'),
+              cashierId: const d.Value('cashier_1'),
+              subtotalPaise: d.Value(BigInt.from(90000)),
+              taxTotalPaise: d.Value(BigInt.zero),
+              discountPaise: d.Value(BigInt.zero),
+              totalPaise: d.Value(BigInt.from(90000)),
+              paymentStatus: const d.Value('unpaid'),
+              isCancelled: const d.Value(true),
+              createdAt: d.Value(now),
+              updatedAt: d.Value(now),
+            ),
+          );
+
+      // Insert bill items for top products
+      await db.into(db.billItemsTable).insert(
+            BillItemsTableCompanion(
+              id: const d.Value('item_1'),
+              billId: const d.Value('bill_001'),
+              productId: const d.Value('p1'),
+              productName: const d.Value('Milk'),
+              quantity: const d.Value(24.0),
+              unitPricePaise: d.Value(BigInt.from(3000)),
+              totalPaise: d.Value(BigInt.from(72000)),
+            ),
+          );
+
+      await db.into(db.billItemsTable).insert(
+            BillItemsTableCompanion(
+              id: const d.Value('item_2'),
+              billId: const d.Value('bill_002'),
+              productId: const d.Value('p2'),
+              productName: const d.Value('Bread'),
+              quantity: const d.Value(18.0),
+              unitPricePaise: d.Value(BigInt.from(4000)),
+              totalPaise: d.Value(BigInt.from(72000)),
             ),
           );
 
@@ -136,19 +181,144 @@ void main() {
       expect(result.isSuccess, isTrue);
 
       final metrics = result.dataOrNull!;
-      // ₹150 + ₹250 = ₹400 = 40000 paise
+      // ₹150 + ₹250 = ₹400 = 40000 paise (excluding cancelled bill)
       expect(metrics.todaySalesPaise, BigInt.from(40000));
       expect(metrics.todayBillsCount, 2);
 
-      // ₹500 + ₹300 = ₹800 = 80000 paise
+      // Udhaar debt
       expect(metrics.totalUdhaarOutstandingPaise, BigInt.from(80000));
 
-      // 2 low stock items
+      // Low stock items
       expect(metrics.lowStockItemsCount, 2);
 
-      // 2 recent bills
+      // Recent completed bills
       expect(metrics.recentBills.length, 2);
       expect(metrics.recentBills.first.billNumber, 'BILL-002');
+
+      // Top products
+      expect(metrics.topProducts.length, 2);
+      expect(metrics.topProducts.first.productName, 'Milk');
+      expect(metrics.topProducts.first.quantitySold, 24.0);
+
+      // Sales trend past 7 days
+      expect(metrics.salesTrend.length, 7);
+      expect(metrics.salesTrend.last.totalPaise, BigInt.from(40000));
+    });
+
+    test(
+        'Excludes draft, failed payment, and cancelled bills from today sales and bill count',
+        () async {
+      final now = DateTime.now();
+
+      // Completed bill = 5000 paise (₹50)
+      await db.into(db.billsTable).insert(
+            BillsTableCompanion(
+              id: const d.Value('bill_comp'),
+              shopId: const d.Value(testShopId),
+              billNumber: const d.Value('BILL-C1'),
+              cashierId: const d.Value('cashier_1'),
+              subtotalPaise: d.Value(BigInt.from(5000)),
+              taxTotalPaise: d.Value(BigInt.zero),
+              discountPaise: d.Value(BigInt.zero),
+              totalPaise: d.Value(BigInt.from(5000)),
+              paymentStatus: const d.Value('paid'),
+              isCancelled: const d.Value(false),
+              createdAt: d.Value(now),
+              updatedAt: d.Value(now),
+            ),
+          );
+
+      // Draft bill (must be excluded)
+      await db.into(db.billsTable).insert(
+            BillsTableCompanion(
+              id: const d.Value('bill_draft'),
+              shopId: const d.Value(testShopId),
+              billNumber: const d.Value('BILL-DRAFT'),
+              cashierId: const d.Value('cashier_1'),
+              subtotalPaise: d.Value(BigInt.from(99000)),
+              taxTotalPaise: d.Value(BigInt.zero),
+              discountPaise: d.Value(BigInt.zero),
+              totalPaise: d.Value(BigInt.from(99000)),
+              paymentStatus: const d.Value('unpaid'),
+              isCancelled: const d.Value(false),
+              createdAt: d.Value(now),
+              updatedAt: d.Value(now),
+            ),
+          );
+
+      // Failed payment bill (must be excluded)
+      await db.into(db.billsTable).insert(
+            BillsTableCompanion(
+              id: const d.Value('bill_failed'),
+              shopId: const d.Value(testShopId),
+              billNumber: const d.Value('BILL-FAIL'),
+              cashierId: const d.Value('cashier_1'),
+              subtotalPaise: d.Value(BigInt.from(44000)),
+              taxTotalPaise: d.Value(BigInt.zero),
+              discountPaise: d.Value(BigInt.zero),
+              totalPaise: d.Value(BigInt.from(44000)),
+              paymentStatus: const d.Value('failed'),
+              isCancelled: const d.Value(false),
+              createdAt: d.Value(now),
+              updatedAt: d.Value(now),
+            ),
+          );
+
+      final result = await repository.getDashboardMetrics(testShopId);
+      expect(result.isSuccess, isTrue);
+      final metrics = result.dataOrNull!;
+      expect(metrics.todaySalesPaise, BigInt.from(5000));
+      expect(metrics.todayBillsCount, 1);
+    });
+
+    test('Enforces strict shop isolation (Shop A does not leak Shop B sales)',
+        () async {
+      final now = DateTime.now();
+
+      // Shop A bill
+      await db.into(db.billsTable).insert(
+            BillsTableCompanion(
+              id: const d.Value('shop_a_bill'),
+              shopId: const d.Value(testShopId),
+              billNumber: const d.Value('BILL-A1'),
+              cashierId: const d.Value('cashier_1'),
+              subtotalPaise: d.Value(BigInt.from(10000)),
+              taxTotalPaise: d.Value(BigInt.zero),
+              discountPaise: d.Value(BigInt.zero),
+              totalPaise: d.Value(BigInt.from(10000)),
+              paymentStatus: const d.Value('paid'),
+              isCancelled: const d.Value(false),
+              createdAt: d.Value(now),
+              updatedAt: d.Value(now),
+            ),
+          );
+
+      // Shop B bill
+      await db.into(db.billsTable).insert(
+            BillsTableCompanion(
+              id: const d.Value('shop_b_bill'),
+              shopId: const d.Value('shop_b_other'),
+              billNumber: const d.Value('BILL-B1'),
+              cashierId: const d.Value('cashier_2'),
+              subtotalPaise: d.Value(BigInt.from(50000)),
+              taxTotalPaise: d.Value(BigInt.zero),
+              discountPaise: d.Value(BigInt.zero),
+              totalPaise: d.Value(BigInt.from(50000)),
+              paymentStatus: const d.Value('paid'),
+              isCancelled: const d.Value(false),
+              createdAt: d.Value(now),
+              updatedAt: d.Value(now),
+            ),
+          );
+
+      final shopAResult = await repository.getDashboardMetrics(testShopId);
+      final shopBResult = await repository.getDashboardMetrics('shop_b_other');
+
+      expect(shopAResult.dataOrNull!.todaySalesPaise, BigInt.from(10000));
+      expect(shopAResult.dataOrNull!.todayBillsCount, 1);
+
+      expect(shopBResult.dataOrNull!.todaySalesPaise, BigInt.from(50000));
+      expect(shopBResult.dataOrNull!.todayBillsCount, 1);
     });
   });
 }
