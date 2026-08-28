@@ -9,6 +9,8 @@ import '../../../../core/theme/typography.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../database/drift/database.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../credit/presentation/providers/credit_providers.dart';
+import '../../../customers/presentation/providers/customer_providers.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../../staff/domain/models/staff_member_model.dart';
 import '../../domain/models/bill_model.dart';
@@ -1083,6 +1085,16 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
   Future<void> _handleConfirmCheckout() async {
     if (_isProcessing) return;
 
+    if (_selectedPaymentMode == 'credit') {
+      if (!widget.bill.hasCustomer) {
+        setState(() {
+          _checkoutError =
+              'Please attach a customer to the bill before completing an Udhaar / Credit sale.';
+        });
+        return;
+      }
+    }
+
     setState(() {
       _isProcessing = true;
       _checkoutError = null;
@@ -1097,6 +1109,21 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
     if (success) {
       final completedBill =
           ref.read(billingNotifierProvider).activeDraft ?? widget.bill;
+
+      if (_selectedPaymentMode == 'credit' && completedBill.hasCustomer) {
+        await ref.read(creditRepositoryProvider).recordCreditSale(
+              customerId: completedBill.customerId!,
+              amountPaise: completedBill.totalPaise,
+              billId: completedBill.id,
+              notes: 'POS Checkout Udhaar Sale #${completedBill.billNumber}',
+            );
+        ref.invalidate(customerDetailProvider(completedBill.customerId!));
+        ref.invalidate(customerSalesHistoryProvider(completedBill.customerId!));
+        ref.invalidate(customerLedgerStreamProvider(completedBill.customerId!));
+        ref.invalidate(shopCreditSummaryProvider);
+        ref.invalidate(indebtedCustomersStreamProvider);
+      }
+
       Navigator.of(context).pop();
 
       // Reset draft for new sale
@@ -1335,6 +1362,18 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
                       : (val) {
                           if (val) {
                             setState(() => _selectedPaymentMode = 'card');
+                          }
+                        },
+                ),
+                const SizedBox(width: KiranaSpacing.xs),
+                ChoiceChip(
+                  label: const Text('📝 UDHAAR'),
+                  selected: _selectedPaymentMode == 'credit',
+                  onSelected: _isProcessing
+                      ? null
+                      : (val) {
+                          if (val) {
+                            setState(() => _selectedPaymentMode = 'credit');
                           }
                         },
                 ),

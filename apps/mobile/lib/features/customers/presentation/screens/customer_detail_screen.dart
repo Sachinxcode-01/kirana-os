@@ -8,6 +8,8 @@ import '../../../../core/utils/date_formatter.dart';
 import '../../../../database/drift/database.dart';
 import '../../../billing/domain/models/bill_model.dart';
 import '../../../billing/presentation/widgets/bill_details_modal.dart';
+import '../../../credit/presentation/providers/credit_providers.dart';
+import '../../../credit/presentation/screens/record_khata_payment_dialog.dart';
 import '../providers/customer_providers.dart';
 import 'add_edit_customer_dialog.dart';
 
@@ -54,10 +56,11 @@ class CustomerDetailScreen extends ConsumerWidget {
     final customerAsync = ref.watch(customerDetailProvider(customerId));
     final salesHistoryAsync =
         ref.watch(customerSalesHistoryProvider(customerId));
+    final ledgerAsync = ref.watch(customerLedgerStreamProvider(customerId));
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Customer Profile'),
+        title: const Text('Customer Profile & Khata'),
         actions: [
           customerAsync.when(
             data: (customer) => customer != null
@@ -102,6 +105,8 @@ class CustomerDetailScreen extends ConsumerWidget {
           if (customer == null) {
             return const Center(child: Text('Customer not found'));
           }
+
+          final debtPaise = customer.currentDebtPaise.toInt();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(KiranaSpacing.lg),
@@ -183,60 +188,184 @@ class CustomerDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: KiranaSpacing.md),
 
-                // Details Card (Address & Notes)
-                if ((customer.address != null &&
-                        customer.address!.isNotEmpty) ||
-                    (customer.notes != null && customer.notes!.isNotEmpty)) ...[
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(KiranaSpacing.md),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (customer.address != null &&
-                              customer.address!.isNotEmpty) ...[
-                            Text(
-                              'Address',
-                              style: KiranaTypography.labelSmall.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: KiranaColors.neutral600,
+                // Khata Debt & Collect Payment Card
+                Card(
+                  elevation: 2,
+                  color: debtPaise > 0
+                      ? KiranaColors.secondaryContainer.withValues(alpha: 0.6)
+                      : KiranaColors.surfaceVariant,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: KiranaRadius.borderMd,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(KiranaSpacing.lg),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Outstanding Debt (Udhaar)',
+                                style: KiranaTypography.labelLarge.copyWith(
+                                  color: KiranaColors.neutral700,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              customer.address!,
-                              style: KiranaTypography.bodyMedium,
-                            ),
-                            const SizedBox(height: KiranaSpacing.md),
-                          ],
-                          if (customer.notes != null &&
-                              customer.notes!.isNotEmpty) ...[
-                            Text(
-                              'Notes',
-                              style: KiranaTypography.labelSmall.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: KiranaColors.neutral600,
+                              const SizedBox(height: 4),
+                              Text(
+                                debtPaise > 0
+                                    ? _formatRupees(debtPaise)
+                                    : 'No Due Balance',
+                                style: KiranaTypography.headlineMedium.copyWith(
+                                  color: debtPaise > 0
+                                      ? KiranaColors.secondary
+                                      : KiranaColors.success,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              customer.notes!,
-                              style: KiranaTypography.bodyMedium,
-                            ),
-                          ],
-                        ],
-                      ),
+                              Text(
+                                'Credit Limit: ${_formatRupees(customer.creditLimitPaise.toInt())}',
+                                style: KiranaTypography.bodySmall.copyWith(
+                                  color: KiranaColors.neutral600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: KiranaColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                          ),
+                          onPressed: () => RecordKhataPaymentDialog.show(
+                            context,
+                            customer,
+                          ),
+                          icon: const Icon(Icons.add_card, size: 18),
+                          label: const Text('Collect Payment'),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: KiranaSpacing.lg),
-                ],
+                ),
+                const SizedBox(height: KiranaSpacing.lg),
 
-                // Sales History Section Header
+                // Section 1: Khata Ledger Transactions History
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Sales History',
+                      'Khata Transaction Ledger',
+                      style: KiranaTypography.titleLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () => ref
+                          .invalidate(customerLedgerStreamProvider(customerId)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: KiranaSpacing.sm),
+
+                ledgerAsync.when(
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(KiranaSpacing.lg),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                  error: (_, __) => Container(
+                    padding: const EdgeInsets.all(KiranaSpacing.md),
+                    color: KiranaColors.errorContainer,
+                    child: const Text('Failed to load Khata transactions'),
+                  ),
+                  data: (txns) {
+                    if (txns.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(KiranaSpacing.xl),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: KiranaRadius.borderMd,
+                          border: Border.all(color: KiranaColors.neutral200),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(Icons.history_toggle_off,
+                                size: 36, color: KiranaColors.neutral400),
+                            SizedBox(height: KiranaSpacing.xs),
+                            Text('No Khata transactions recorded yet',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: txns.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: KiranaSpacing.xs),
+                      itemBuilder: (context, index) {
+                        final txn = txns[index];
+                        final isPayment = txn.type == 'payment_received';
+
+                        return Card(
+                          elevation: 1,
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: isPayment
+                                  ? KiranaColors.successContainer
+                                  : KiranaColors.errorContainer,
+                              child: Icon(
+                                isPayment
+                                    ? Icons.arrow_downward
+                                    : Icons.arrow_upward,
+                                color: isPayment
+                                    ? KiranaColors.success
+                                    : KiranaColors.error,
+                                size: 18,
+                              ),
+                            ),
+                            title: Text(
+                              isPayment
+                                  ? 'Payment Received'
+                                  : 'Udhaar Credit Sale',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              '${DateFormatter.formatDateTime(txn.createdAt)}${txn.notes != null ? ' • ${txn.notes}' : ''}',
+                              style: KiranaTypography.bodySmall,
+                            ),
+                            trailing: Text(
+                              '${isPayment ? '-' : '+'}${_formatRupees(txn.amountPaise.toInt())}',
+                              style: KiranaTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isPayment
+                                    ? KiranaColors.success
+                                    : KiranaColors.error,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: KiranaSpacing.xl),
+
+                // Section 2: Sales History Section Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Completed Sales History',
                       style: KiranaTypography.titleLarge.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -250,7 +379,6 @@ class CustomerDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: KiranaSpacing.sm),
 
-                // Sales History List
                 salesHistoryAsync.when(
                   loading: () => const Center(
                     child: Padding(

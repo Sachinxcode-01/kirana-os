@@ -10,6 +10,16 @@ class CustomerLocalDataSource {
     return _db.customersDao.watchCustomers(shopId, query);
   }
 
+  Stream<List<CustomerData>> watchIndebtedCustomers(String shopId,
+      [String query = '']) {
+    return _db.customersDao.watchIndebtedCustomers(shopId, query);
+  }
+
+  Stream<List<CreditTransactionData>> watchCreditTransactions(
+      String shopId, String customerId) {
+    return _db.customersDao.watchCreditTransactions(shopId, customerId);
+  }
+
   Future<CustomerData?> getCustomerById(String id) {
     return _db.customersDao.getCustomerById(id);
   }
@@ -21,6 +31,11 @@ class CustomerLocalDataSource {
   Future<List<BillData>> getCustomerSalesHistory(
       String shopId, String customerId) {
     return _db.customersDao.getCustomerSalesHistory(shopId, customerId);
+  }
+
+  Future<({int totalDebtPaise, int indebtedCount})> getShopCreditSummary(
+      String shopId) {
+    return _db.customersDao.getShopCreditSummary(shopId);
   }
 
   Future<void> upsertCustomer(CustomersTableCompanion customer) {
@@ -38,6 +53,20 @@ class CustomerLocalDataSource {
     required SyncQueueTableCompanion syncOp,
   }) {
     return _db.customersDao.recordCreditPayment(
+      customerId: customerId,
+      amountPaise: amountPaise,
+      transactionRecord: transactionRecord,
+      syncOp: syncOp,
+    );
+  }
+
+  Future<void> recordCreditSale({
+    required String customerId,
+    required int amountPaise,
+    required CreditTransactionsTableCompanion transactionRecord,
+    required SyncQueueTableCompanion syncOp,
+  }) {
+    return _db.customersDao.recordCreditSale(
       customerId: customerId,
       amountPaise: amountPaise,
       transactionRecord: transactionRecord,

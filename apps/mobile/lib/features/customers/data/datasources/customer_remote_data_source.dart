@@ -37,4 +37,15 @@ class CustomerRemoteDataSource {
       throw const NetworkException('Failed to push customer to cloud');
     }
   }
+
+  Future<void> pushCreditTransaction(Map<String, dynamic> payload) async {
+    try {
+      await _supabase.from('credit_transactions').upsert(payload);
+    } catch (e) {
+      AppLogger.e('Failed to push credit transaction: $e',
+          tag: 'CustomerRemoteDataSource');
+      throw const NetworkException(
+          'Failed to push credit transaction to cloud');
+    }
+  }
 }
