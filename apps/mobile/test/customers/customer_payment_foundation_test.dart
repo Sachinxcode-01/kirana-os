@@ -12,9 +12,7 @@ void main() {
   late CreditRepositoryImpl creditRepository;
 
   const shopA = 'shop-111-aaa';
-  const shopB = 'shop-222-bbb';
   const customerId = 'cust-404';
-  const cashierId = 'cashier-001';
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
