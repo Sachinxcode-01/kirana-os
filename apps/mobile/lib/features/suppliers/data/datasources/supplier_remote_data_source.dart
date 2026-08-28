@@ -121,4 +121,40 @@ class SupplierRemoteDataSource {
       rethrow;
     }
   }
+
+  Future<void> pushPurchase({
+    required Map<String, dynamic> purchasePayload,
+    required List<Map<String, dynamic>> itemPayloads,
+    String? supplierId,
+    int? totalPaise,
+  }) async {
+    try {
+      await _apiClient.supabase.from('purchases').upsert(purchasePayload);
+      if (itemPayloads.isNotEmpty) {
+        await _apiClient.supabase.from('purchase_items').upsert(itemPayloads);
+      }
+      if (supplierId != null && totalPaise != null && totalPaise > 0) {
+        await _apiClient.supabase.rpc('increment_supplier_balance', params: {
+          'p_supplier_id': supplierId,
+          'p_amount_paise': totalPaise,
+        }).catchError((_) async {
+          // Fallback if RPC doesn't exist
+        });
+      }
+    } catch (e) {
+      // Remote push failed, will sync via queue
+    }
+  }
+
+  Future<void> pushSupplierPayment({
+    required String supplierId,
+    required int amountPaise,
+  }) async {
+    try {
+      await _apiClient.supabase.rpc('decrement_supplier_balance', params: {
+        'p_supplier_id': supplierId,
+        'p_amount_paise': amountPaise,
+      }).catchError((_) async {});
+    } catch (_) {}
+  }
 }

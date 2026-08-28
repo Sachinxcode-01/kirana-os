@@ -29,7 +29,7 @@ import 'package:kirana_mobile/features/payments/presentation/screens/payments_sc
 import 'package:kirana_mobile/features/products/presentation/screens/products_screen.dart';
 import 'package:kirana_mobile/features/profile/presentation/screens/profile_screen.dart';
 import 'package:kirana_mobile/features/staff/presentation/screens/staff_screen.dart';
-import 'package:kirana_mobile/features/purchases/presentation/screens/purchases_screen.dart';
+import 'package:kirana_mobile/features/purchases/presentation/screens/record_purchase_screen.dart';
 import 'package:kirana_mobile/features/reports/presentation/screens/reports_screen.dart';
 import 'package:kirana_mobile/features/returns/presentation/screens/returns_screen.dart';
 import 'package:kirana_mobile/features/settings/presentation/screens/settings_screen.dart';
@@ -160,7 +160,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/purchases',
-            builder: (context, state) => const PurchasesScreen(),
+            builder: (context, state) => const SuppliersScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (context, state) => const RecordPurchaseScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/suppliers',
