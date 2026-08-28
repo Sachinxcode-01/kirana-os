@@ -689,46 +689,151 @@ class _ProductPickerSheet extends ConsumerWidget {
   }
 }
 
-class _CustomerPickerSheet extends ConsumerWidget {
+class _CustomerPickerSheet extends ConsumerStatefulWidget {
   const _CustomerPickerSheet();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CustomerPickerSheet> createState() =>
+      __CustomerPickerSheetState();
+}
+
+class __CustomerPickerSheetState extends ConsumerState<_CustomerPickerSheet> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final db = ref.watch(databaseProvider);
     final shopId = ref.watch(activeShopIdProvider);
 
     return StreamBuilder<List<CustomerData>>(
-      stream: db.customersDao.watchCustomers(shopId, ''),
+      stream: db.customersDao.watchCustomers(shopId, _searchQuery),
       builder: (context, snapshot) {
         final customers = snapshot.data ?? [];
+        final activeDraft = ref.watch(billingNotifierProvider).activeDraft;
+        final hasCustomer = activeDraft?.hasCustomer ?? false;
 
         return Container(
           padding: const EdgeInsets.all(KiranaSpacing.md),
-          height: MediaQuery.of(context).size.height * 0.6,
+          height: MediaQuery.of(context).size.height * 0.75,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Attach Customer', style: KiranaTypography.titleLarge),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Select Customer', style: KiranaTypography.titleLarge),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: KiranaSpacing.xs),
+              TextField(
+                controller: _searchController,
+                onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                decoration: InputDecoration(
+                  hintText: 'Search by name or phone number...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                ),
+              ),
               const SizedBox(height: KiranaSpacing.sm),
+
+              // Walk-in Customer option
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: !hasCustomer
+                      ? KiranaColors.primary
+                      : KiranaColors.surfaceVariant,
+                  child: Icon(
+                    Icons.person_off_outlined,
+                    color: !hasCustomer ? Colors.white : KiranaColors.textSecondary,
+                  ),
+                ),
+                title: Text(
+                  'Walk-in Customer',
+                  style: TextStyle(
+                    fontWeight: !hasCustomer ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                subtitle: const Text('No customer attached (Cash/Digital)'),
+                trailing: !hasCustomer
+                    ? const Icon(Icons.check_circle, color: KiranaColors.primary)
+                    : null,
+                onTap: () {
+                  ref.read(billingNotifierProvider.notifier).removeCustomer();
+                  Navigator.of(context).pop();
+                },
+              ),
+              const Divider(),
+
               if (customers.isEmpty)
-                const Expanded(
+                Expanded(
                   child: Center(
-                    child: Text('No saved customers found.'),
+                    child: Text(
+                      _searchQuery.isEmpty
+                          ? 'No saved customers found in shop.'
+                          : 'No customers match "$_searchQuery".',
+                      style: KiranaTypography.bodyMedium
+                          .copyWith(color: KiranaColors.textSecondary),
+                    ),
                   ),
                 )
               else
                 Expanded(
                   child: ListView.separated(
                     itemCount: customers.length,
-                    separatorBuilder: (_, __) => const Divider(),
+                    separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (ctx, index) {
                       final cust = customers[index];
+                      final isSelected = activeDraft?.customerId == cust.id;
+                      final debtPaise = cust.currentDebtPaise.toInt();
+
                       return ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.person),
+                        leading: CircleAvatar(
+                          backgroundColor: isSelected
+                              ? KiranaColors.primary
+                              : KiranaColors.primaryContainer,
+                          child: Icon(
+                            Icons.person,
+                            color: isSelected
+                                ? Colors.white
+                                : KiranaColors.primary,
+                          ),
                         ),
-                        title: Text(cust.name),
-                        subtitle: Text(cust.phone),
+                        title: Text(
+                          cust.name,
+                          style: TextStyle(
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        subtitle: Text(
+                          cust.phone +
+                              (debtPaise > 0
+                                  ? ' • Debt: ₹${(debtPaise / 100.0).toStringAsFixed(2)}'
+                                  : ''),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle,
+                                color: KiranaColors.primary)
+                            : null,
                         onTap: () {
                           ref
                               .read(billingNotifierProvider.notifier)
@@ -1209,37 +1314,95 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
               const SizedBox(height: KiranaSpacing.md),
             ],
 
-            // Customer Summary Box
-            Container(
-              padding: const EdgeInsets.all(KiranaSpacing.sm),
-              decoration: BoxDecoration(
-                color: KiranaColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: KiranaColors.outlineVariant),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.person_outline, color: KiranaColors.primary),
-                  const SizedBox(width: KiranaSpacing.sm),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        bill.customerName ?? 'Cash Sale (No Customer Attached)',
-                        style: KiranaTypography.bodyMedium
-                            .copyWith(fontWeight: FontWeight.bold),
+            // Customer Summary Box (Interactive Selector / Change / Remove)
+            Builder(builder: (context) {
+              final activeBill =
+                  ref.watch(billingNotifierProvider).activeDraft ?? widget.bill;
+              final hasCust = activeBill.hasCustomer;
+
+              return Container(
+                padding: const EdgeInsets.all(KiranaSpacing.sm),
+                decoration: BoxDecoration(
+                  color: KiranaColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: KiranaColors.outlineVariant),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      hasCust ? Icons.person : Icons.person_outline,
+                      color: hasCust
+                          ? KiranaColors.primary
+                          : KiranaColors.textSecondary,
+                    ),
+                    const SizedBox(width: KiranaSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            hasCust
+                                ? activeBill.customerName!
+                                : 'Walk-in Customer (No Customer Attached)',
+                            style: KiranaTypography.bodyMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (hasCust && activeBill.customerPhone != null)
+                            Text(
+                              activeBill.customerPhone!,
+                              style: KiranaTypography.bodySmall.copyWith(
+                                color: KiranaColors.textSecondary,
+                              ),
+                            ),
+                        ],
                       ),
-                      if (bill.customerPhone != null)
-                        Text(
-                          bill.customerPhone!,
-                          style: KiranaTypography.bodySmall
-                              .copyWith(color: KiranaColors.textSecondary),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+                    ),
+                    if (hasCust) ...[
+                      TextButton(
+                        onPressed: _isProcessing
+                            ? null
+                            : () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (_) => const _CustomerPickerSheet(),
+                                );
+                              },
+                        child: const Text('Change'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close,
+                            size: 18, color: KiranaColors.error),
+                        tooltip: 'Remove customer',
+                        onPressed: _isProcessing
+                            ? null
+                            : () {
+                                ref
+                                    .read(billingNotifierProvider.notifier)
+                                    .removeCustomer();
+                              },
+                      ),
+                    ] else
+                      TextButton.icon(
+                        icon: const Icon(Icons.person_add, size: 16),
+                        label: const Text('Select Customer'),
+                        onPressed: _isProcessing
+                            ? null
+                            : () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (_) => const _CustomerPickerSheet(),
+                                );
+                              },
+                      ),
+                  ],
+                ),
+              );
+            }),
             const SizedBox(height: KiranaSpacing.md),
 
             // Item Summary
