@@ -31,7 +31,8 @@ void main() {
   });
 
   group('KIRANAOS PHASE 14.2 — Customer Purchase Summary Tests', () {
-    test('1. Customer with no purchases returns 0 totals & null last purchase', () async {
+    test('1. Customer with no purchases returns 0 totals & null last purchase',
+        () async {
       final result = await repository.getCustomerPurchaseSummary(customerId);
       expect(result.isSuccess, isTrue);
 
@@ -42,7 +43,9 @@ void main() {
       expect(summary.hasPurchases, isFalse);
     });
 
-    test('2. Multiple completed sales accurately calculates total purchases & last purchase', () async {
+    test(
+        '2. Multiple completed sales accurately calculates total purchases & last purchase',
+        () async {
       final now = DateTime.now();
 
       // Bill 1 (Older - ₹150.00)
@@ -151,7 +154,8 @@ void main() {
       expect(summary.lastPurchase?.id, equals('bill-valid'));
     });
 
-    test('4. Security & Shop Isolation: Excludes sales from other shops', () async {
+    test('4. Security & Shop Isolation: Excludes sales from other shops',
+        () async {
       final now = DateTime.now();
 
       // Shop A Bill
@@ -194,5 +198,3 @@ void main() {
     });
   });
 }
-
-
