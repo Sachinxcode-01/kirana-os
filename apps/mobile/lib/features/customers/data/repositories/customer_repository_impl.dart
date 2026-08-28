@@ -5,6 +5,7 @@ import '../../../../core/errors/error_handler.dart';
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
 import '../../../../database/drift/database.dart';
+import '../../domain/models/customer_purchase_summary.dart';
 import '../../domain/repositories/customer_repository.dart';
 import '../datasources/customer_local_data_source.dart';
 import '../datasources/customer_remote_data_source.dart';
@@ -276,6 +277,29 @@ class CustomerRepositoryImpl implements CustomerRepository {
       final bills =
           await _localDataSource.getCustomerSalesHistory(_shopId, customerId);
       return Success(bills);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<CustomerPurchaseSummary, Failure>> getCustomerPurchaseSummary(
+      String customerId) async {
+    try {
+      final bills =
+          await _localDataSource.getCustomerSalesHistory(_shopId, customerId);
+      int sumPaise = 0;
+      for (final b in bills) {
+        sumPaise += b.totalPaise.toInt();
+      }
+
+      final summary = CustomerPurchaseSummary(
+        totalPurchasesPaise: sumPaise,
+        totalBillsCount: bills.length,
+        lastPurchase: bills.isNotEmpty ? bills.first : null,
+      );
+
+      return Success(summary);
     } catch (e) {
       return ErrorResult(ErrorHandler.handleException(e));
     }

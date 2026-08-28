@@ -4,6 +4,7 @@ import '../../../../database/drift/database.dart';
 import '../../data/datasources/customer_local_data_source.dart';
 import '../../data/datasources/customer_remote_data_source.dart';
 import '../../data/repositories/customer_repository_impl.dart';
+import '../../domain/models/customer_purchase_summary.dart';
 import '../../domain/repositories/customer_repository.dart';
 
 final customerLocalDataSourceProvider =
@@ -51,4 +52,15 @@ final customerSalesHistoryProvider = FutureProvider.family
   final repository = ref.watch(customerRepositoryProvider);
   final result = await repository.getCustomerSalesHistory(customerId);
   return result.dataOrNull ?? [];
+});
+
+final customerPurchaseSummaryProvider = FutureProvider.family
+    .autoDispose<CustomerPurchaseSummary, String>((ref, customerId) async {
+  final repository = ref.watch(customerRepositoryProvider);
+  final result = await repository.getCustomerPurchaseSummary(customerId);
+  return result.dataOrNull ??
+      const CustomerPurchaseSummary(
+        totalPurchasesPaise: 0,
+        totalBillsCount: 0,
+      );
 });

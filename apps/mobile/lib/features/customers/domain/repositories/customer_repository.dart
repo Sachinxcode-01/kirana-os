@@ -2,6 +2,8 @@ import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
 import '../../../../database/drift/database.dart';
 
+import '../models/customer_purchase_summary.dart';
+
 abstract interface class CustomerRepository {
   /// Stream of customers for shop filtered by search query (Name or Phone)
   Stream<List<CustomerData>> watchCustomers([String query = '']);
@@ -34,6 +36,10 @@ abstract interface class CustomerRepository {
 
   /// Get completed sales history for a specific customer
   Future<Result<List<BillData>, Failure>> getCustomerSalesHistory(
+      String customerId);
+
+  /// Get aggregated customer purchase summary (Total Purchases, Bill Count, Last Purchase)
+  Future<Result<CustomerPurchaseSummary, Failure>> getCustomerPurchaseSummary(
       String customerId);
 
   /// Record Khata debt settlement / payment received

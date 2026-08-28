@@ -251,6 +251,179 @@ class CustomerDetailScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: KiranaSpacing.md),
+
+                // Customer Purchase Summary Card (Phase 14.2)
+                Consumer(
+                  builder: (context, ref, _) {
+                    final summaryAsync = ref.watch(
+                        customerPurchaseSummaryProvider(customerId));
+
+                    return summaryAsync.when(
+                      loading: () => const SizedBox(
+                        height: 80,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (summary) {
+                        return Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: KiranaRadius.borderMd,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(KiranaSpacing.md),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Customer Purchase Summary',
+                                  style: KiranaTypography.titleMedium.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: KiranaSpacing.sm),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(
+                                            KiranaSpacing.sm),
+                                        decoration: BoxDecoration(
+                                          color: KiranaColors.primaryContainer
+                                              .withValues(alpha: 0.5),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Total Purchases',
+                                              style: KiranaTypography.bodySmall
+                                                  .copyWith(
+                                                color:
+                                                    KiranaColors.textSecondary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              _formatRupees(
+                                                  summary.totalPurchasesPaise),
+                                              style: KiranaTypography.titleLarge
+                                                  .copyWith(
+                                                color: KiranaColors.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: KiranaSpacing.xs),
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(
+                                            KiranaSpacing.sm),
+                                        decoration: BoxDecoration(
+                                          color: KiranaColors.surfaceVariant,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Total Bills',
+                                              style: KiranaTypography.bodySmall
+                                                  .copyWith(
+                                                color:
+                                                    KiranaColors.textSecondary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${summary.totalBillsCount}',
+                                              style: KiranaTypography.titleLarge
+                                                  .copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: KiranaSpacing.xs),
+                                InkWell(
+                                  onTap: summary.hasPurchases
+                                      ? () => _showBillDetails(
+                                          context, summary.lastPurchase!)
+                                      : null,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding:
+                                        const EdgeInsets.all(KiranaSpacing.sm),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: KiranaColors.outlineVariant),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.history,
+                                                size: 20,
+                                                color: KiranaColors.primary),
+                                            const SizedBox(
+                                                width: KiranaSpacing.xs),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Last Purchase',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  summary.hasPurchases
+                                                      ? '${DateFormatter.formatDateTime(summary.lastPurchase!.createdAt)} • ${_formatRupees(summary.lastPurchase!.totalPaise.toInt())}'
+                                                      : 'No purchases yet',
+                                                  style: KiranaTypography
+                                                      .bodySmall
+                                                      .copyWith(
+                                                    color: KiranaColors
+                                                        .textSecondary,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        if (summary.hasPurchases)
+                                          const Icon(Icons.chevron_right,
+                                              color: KiranaColors.textSecondary),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
                 const SizedBox(height: KiranaSpacing.lg),
 
                 // Section 1: Khata Ledger Transactions History
