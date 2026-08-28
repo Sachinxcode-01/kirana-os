@@ -561,13 +561,15 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                 if (activeDraft != null)
                   Container(
                     padding: const EdgeInsets.all(KiranaSpacing.md),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: KiranaColors.surface,
-                      boxShadow: [
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(16)),
+                      boxShadow: const [
                         BoxShadow(
-                          color: Color(0x14000000),
-                          offset: Offset(0, -2),
-                          blurRadius: 8,
+                          color: Color(0x1A000000),
+                          offset: Offset(0, -3),
+                          blurRadius: 10,
                         ),
                       ],
                     ),
@@ -575,31 +577,38 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Subtotal Row
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Subtotal',
-                                  style: KiranaTypography.bodySmall),
+                              Text('Subtotal',
+                                  style: KiranaTypography.bodyMedium.copyWith(
+                                      color: KiranaColors.textSecondary)),
                               Text(
                                 activeDraft.subtotalPaise.toRupeesString(),
                                 style: KiranaTypography.bodyMedium,
                               ),
                             ],
                           ),
+                          const SizedBox(height: 4),
+
                           // Discount Row
-                          Padding(
-                            padding:
-                                const EdgeInsets.only(top: KiranaSpacing.xxs),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Text('Discount',
-                                        style: KiranaTypography.bodySmall),
-                                    const SizedBox(width: KiranaSpacing.xxs),
-                                    InkWell(
-                                      onTap: () => _showDiscountSheet(context),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Text('Discount',
+                                      style: KiranaTypography.bodyMedium
+                                          .copyWith(
+                                              color:
+                                                  KiranaColors.textSecondary)),
+                                  const SizedBox(width: KiranaSpacing.xxs),
+                                  InkWell(
+                                    onTap: () => _showDiscountSheet(context),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 4, vertical: 2),
                                       child: Text(
                                         activeDraft.discountType == 'none'
                                             ? '(Apply)'
@@ -611,105 +620,153 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                         ),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                Text(
-                                  '- ${activeDraft.discountPaise.toRupeesString()}',
-                                  style: KiranaTypography.bodyMedium.copyWith(
-                                    color: activeDraft.discountPaise > 0
-                                        ? KiranaColors.success
-                                        : KiranaColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (activeDraft.taxTotalPaise > 0)
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(top: KiranaSpacing.xxs),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text('Tax Total',
-                                      style: KiranaTypography.bodySmall),
-                                  Text(
-                                    activeDraft.taxTotalPaise.toRupeesString(),
-                                    style: KiranaTypography.bodyMedium,
                                   ),
                                 ],
                               ),
+                              Text(
+                                '- ${activeDraft.discountPaise.toRupeesString()}',
+                                style: KiranaTypography.bodyMedium.copyWith(
+                                  color: activeDraft.discountPaise > 0
+                                      ? KiranaColors.success
+                                      : KiranaColors.textSecondary,
+                                  fontWeight: activeDraft.discountPaise > 0
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // Tax Row (if applicable)
+                          if (activeDraft.taxTotalPaise > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Tax Total',
+                                    style: KiranaTypography.bodyMedium.copyWith(
+                                        color: KiranaColors.textSecondary)),
+                                Text(
+                                  activeDraft.taxTotalPaise.toRupeesString(),
+                                  style: KiranaTypography.bodyMedium,
+                                ),
+                              ],
                             ),
-                          const Divider(height: KiranaSpacing.md),
+                          ],
+
+                          const Divider(height: KiranaSpacing.md, thickness: 1),
+
+                          // Grand Total Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Grand Total',
+                                style: KiranaTypography.titleMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                activeDraft.totalPaise.toRupeesString(),
+                                style: KiranaTypography.displayTotal.copyWith(
+                                  color: KiranaColors.primary,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: KiranaSpacing.md),
+
+                          // Responsive Action Buttons Row (50% / 50% flex width)
                           Row(
                             children: [
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Grand Total',
-                                        style: KiranaTypography.labelSmall),
-                                    Text(
-                                      activeDraft.totalPaise.toRupeesString(),
-                                      style: KiranaTypography.displayTotal
-                                          .copyWith(
-                                        color: KiranaColors.primary,
+                                child: SizedBox(
+                                  height: 48,
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(Icons.save_outlined,
+                                        size: 18),
+                                    label: const Text(
+                                      'Save Draft',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
                                     ),
-                                  ],
+                                    onPressed: () async {
+                                      final success = await ref
+                                          .read(
+                                              billingNotifierProvider.notifier)
+                                          .saveDraft();
+                                      if (context.mounted) {
+                                        if (success) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                                content: Text(
+                                                    'Draft saved locally')),
+                                          );
+                                        } else if (ref
+                                                .read(billingNotifierProvider)
+                                                .errorMessage !=
+                                            null) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(ref
+                                                  .read(billingNotifierProvider)
+                                                  .errorMessage!),
+                                              backgroundColor:
+                                                  KiranaColors.error,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: KiranaSpacing.md),
-                              OutlinedButton.icon(
-                                icon: const Icon(Icons.save_outlined, size: 18),
-                                label: const Text('Save Draft'),
-                                onPressed: () async {
-                                  final success = await ref
-                                      .read(billingNotifierProvider.notifier)
-                                      .saveDraft();
-                                  if (context.mounted) {
-                                    if (success) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content:
-                                                Text('Draft saved locally')),
-                                      );
-                                    } else if (ref
-                                            .read(billingNotifierProvider)
-                                            .errorMessage !=
-                                        null) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(ref
-                                              .read(billingNotifierProvider)
-                                              .errorMessage!),
-                                          backgroundColor: KiranaColors.error,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                              ),
-                              const SizedBox(width: KiranaSpacing.xs),
-                              AppButton(
-                                label: 'COMPLETE SALE',
-                                icon: Icons.check_circle_outline,
-                                onPressed: activeDraft.items.isEmpty
-                                    ? null
-                                    : () {
-                                        showModalBottomSheet(
-                                          context: context,
-                                          isScrollControlled: true,
-                                          backgroundColor: Colors.transparent,
-                                          builder: (ctx) =>
-                                              _CheckoutReviewSheet(
-                                            bill: activeDraft,
-                                          ),
-                                        );
-                                      },
+                              const SizedBox(width: KiranaSpacing.sm),
+                              Expanded(
+                                child: SizedBox(
+                                  height: 48,
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.check_circle_outline,
+                                        size: 18),
+                                    label: const Text(
+                                      'COMPLETE SALE',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: KiranaColors.primary,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    onPressed: activeDraft.items.isEmpty
+                                        ? null
+                                        : () {
+                                            showModalBottomSheet(
+                                              context: context,
+                                              isScrollControlled: true,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              builder: (ctx) =>
+                                                  _CheckoutReviewSheet(
+                                                bill: activeDraft,
+                                              ),
+                                            );
+                                          },
+                                  ),
+                                ),
                               ),
                             ],
                           ),
