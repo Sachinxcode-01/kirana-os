@@ -186,30 +186,54 @@ class _CreditScreenState extends ConsumerState<CreditScreen> {
               data: (customers) {
                 if (customers.isEmpty) {
                   return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.check_circle_outline,
-                            size: 56, color: KiranaColors.success),
-                        const SizedBox(height: KiranaSpacing.md),
-                        Text(
-                          searchQuery.isNotEmpty
-                              ? 'No indebted customer matches "$searchQuery"'
-                              : 'No Outstanding Udhaar Debt!',
-                          style: KiranaTypography.headlineMedium.copyWith(
-                            color: KiranaColors.neutral700,
-                            fontWeight: FontWeight.bold,
+                    child: Padding(
+                      padding: const EdgeInsets.all(KiranaSpacing.xl),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(KiranaSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: searchQuery.isNotEmpty
+                                  ? KiranaColors.surfaceVariant
+                                  : KiranaColors.successContainer
+                                      .withValues(alpha: 0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              searchQuery.isNotEmpty
+                                  ? Icons.search_off
+                                  : Icons.check_circle_outline,
+                              size: 48,
+                              color: searchQuery.isNotEmpty
+                                  ? KiranaColors.textSecondary
+                                  : KiranaColors.success,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: KiranaSpacing.xs),
-                        Text(
-                          searchQuery.isNotEmpty
-                              ? 'Try searching with a different name or phone.'
-                              : 'All customer accounts are clear with zero due debt.',
-                          style: const TextStyle(
-                              fontSize: 13, color: KiranaColors.neutral600),
-                        ),
-                      ],
+                          const SizedBox(height: KiranaSpacing.lg),
+                          Text(
+                            searchQuery.isNotEmpty
+                                ? 'No indebted customer matches "$searchQuery"'
+                                : 'All Customers Clear!',
+                            style: KiranaTypography.titleLarge.copyWith(
+                              color: KiranaColors.neutral800,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: KiranaSpacing.xs),
+                          Text(
+                            searchQuery.isNotEmpty
+                                ? 'Try searching with a different name or phone number.'
+                                : 'All customer accounts are clear with zero due debt.',
+                            style: KiranaTypography.bodyMedium.copyWith(
+                              color: KiranaColors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
