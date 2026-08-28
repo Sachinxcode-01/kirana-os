@@ -17,6 +17,7 @@ import 'package:kirana_mobile/features/receipts/presentation/screens/completed_r
 import 'package:kirana_mobile/features/receipts/presentation/screens/pdf_receipt_preview_screen.dart';
 import 'package:kirana_mobile/features/categories/presentation/screens/categories_screen.dart';
 import 'package:kirana_mobile/features/credit/presentation/screens/credit_screen.dart';
+import 'package:kirana_mobile/features/customers/presentation/screens/customer_detail_screen.dart';
 import 'package:kirana_mobile/features/customers/presentation/screens/customers_screen.dart';
 import 'package:kirana_mobile/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:kirana_mobile/features/expenses/presentation/screens/expenses_screen.dart';
@@ -168,6 +169,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/customers',
             builder: (context, state) => const CustomersScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => CustomerDetailScreen(
+                  customerId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/credit',

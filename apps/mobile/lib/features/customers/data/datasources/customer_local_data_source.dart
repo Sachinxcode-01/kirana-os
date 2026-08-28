@@ -14,8 +14,21 @@ class CustomerLocalDataSource {
     return _db.customersDao.getCustomerById(id);
   }
 
+  Future<CustomerData?> findCustomerByPhone(String shopId, String phone) {
+    return _db.customersDao.findCustomerByPhone(shopId, phone);
+  }
+
+  Future<List<BillData>> getCustomerSalesHistory(
+      String shopId, String customerId) {
+    return _db.customersDao.getCustomerSalesHistory(shopId, customerId);
+  }
+
   Future<void> upsertCustomer(CustomersTableCompanion customer) {
     return _db.customersDao.upsertCustomer(customer);
+  }
+
+  Future<void> archiveCustomer(String id) {
+    return _db.customersDao.archiveCustomer(id);
   }
 
   Future<void> recordCreditPayment({

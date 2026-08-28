@@ -22,6 +22,17 @@ class CustomerRepositoryImpl implements CustomerRepository {
         _remoteDataSource = remoteDataSource,
         _shopId = shopId;
 
+  static String normalizePhone(String rawPhone) {
+    final digitsOnly = rawPhone.replaceAll(RegExp(r'\D'), '');
+    if (digitsOnly.length == 12 && digitsOnly.startsWith('91')) {
+      return digitsOnly.substring(2);
+    }
+    if (digitsOnly.length == 11 && digitsOnly.startsWith('0')) {
+      return digitsOnly.substring(1);
+    }
+    return digitsOnly;
+  }
+
   @override
   Stream<List<CustomerData>> watchCustomers([String query = '']) {
     return _localDataSource.watchCustomers(_shopId, query);
@@ -41,10 +52,32 @@ class CustomerRepositoryImpl implements CustomerRepository {
   Future<Result<String, Failure>> createCustomer({
     required String name,
     required String phone,
+    String? email,
     String? address,
+    String? notes,
     int creditLimitPaise = 500000,
   }) async {
     try {
+      final trimmedName = name.trim();
+      final normalizedPhone = normalizePhone(phone);
+
+      if (trimmedName.isEmpty) {
+        return const ErrorResult(
+            ValidationFailure('Customer name is required'));
+      }
+      if (normalizedPhone.length < 10) {
+        return const ErrorResult(
+            ValidationFailure('Please enter a valid 10-digit phone number'));
+      }
+
+      // Check for duplicate phone in active shop
+      final existing =
+          await _localDataSource.findCustomerByPhone(_shopId, normalizedPhone);
+      if (existing != null) {
+        return ErrorResult(ValidationFailure(
+            'Customer "${existing.name}" with phone $normalizedPhone already exists in this shop'));
+      }
+
       final customerId = const Uuid().v4();
       final now = DateTime.now();
 
@@ -53,27 +86,35 @@ class CustomerRepositoryImpl implements CustomerRepository {
         CustomersTableCompanion(
           id: Value(customerId),
           shopId: Value(_shopId),
-          name: Value(name),
-          phone: Value(phone),
-          address: Value(address),
+          name: Value(trimmedName),
+          phone: Value(normalizedPhone),
+          email: Value(email?.trim().isEmpty ?? true ? null : email!.trim()),
+          address:
+              Value(address?.trim().isEmpty ?? true ? null : address!.trim()),
+          notes: Value(notes?.trim().isEmpty ?? true ? null : notes!.trim()),
           creditLimitPaise: Value(BigInt.from(creditLimitPaise)),
           currentDebtPaise: Value(BigInt.zero),
+          isArchived: const Value(false),
           createdAt: Value(now),
           updatedAt: Value(now),
         ),
       );
 
-      // 2. Enlist sync operation
+      // 2. Enlist in sync queue for cloud sync
       final opId = const Uuid().v4();
       final payload = {
         'id': customerId,
         'shop_id': _shopId,
-        'name': name,
-        'phone': phone,
-        'address': address,
+        'name': trimmedName,
+        'phone': normalizedPhone,
+        'email': email?.trim().isEmpty ?? true ? null : email!.trim(),
+        'address': address?.trim().isEmpty ?? true ? null : address!.trim(),
+        'notes': notes?.trim().isEmpty ?? true ? null : notes!.trim(),
         'credit_limit_paise': creditLimitPaise,
         'current_debt_paise': 0,
+        'is_archived': false,
         'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
       };
 
       await _localDataSource.enqueueSyncOperation(
@@ -89,7 +130,152 @@ class CustomerRepositoryImpl implements CustomerRepository {
         ),
       );
 
+      // 3. Opportunistic cloud push if online
+      try {
+        await _remoteDataSource.pushCustomer(payload);
+      } catch (_) {
+        // Enqueued in sync queue for background retry
+      }
+
       return Success(customerId);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> updateCustomer({
+    required String id,
+    required String name,
+    required String phone,
+    String? email,
+    String? address,
+    String? notes,
+  }) async {
+    try {
+      final trimmedName = name.trim();
+      final normalizedPhone = normalizePhone(phone);
+
+      if (trimmedName.isEmpty) {
+        return const ErrorResult(
+            ValidationFailure('Customer name is required'));
+      }
+      if (normalizedPhone.length < 10) {
+        return const ErrorResult(
+            ValidationFailure('Please enter a valid 10-digit phone number'));
+      }
+
+      final existing =
+          await _localDataSource.findCustomerByPhone(_shopId, normalizedPhone);
+      if (existing != null && existing.id != id) {
+        return ErrorResult(ValidationFailure(
+            'Another customer (${existing.name}) already uses phone $normalizedPhone'));
+      }
+
+      final current = await _localDataSource.getCustomerById(id);
+      if (current == null) {
+        return const ErrorResult(DatabaseFailure('Customer not found'));
+      }
+
+      final now = DateTime.now();
+
+      await _localDataSource.upsertCustomer(
+        CustomersTableCompanion(
+          id: Value(id),
+          shopId: Value(_shopId),
+          name: Value(trimmedName),
+          phone: Value(normalizedPhone),
+          email: Value(email?.trim().isEmpty ?? true ? null : email!.trim()),
+          address:
+              Value(address?.trim().isEmpty ?? true ? null : address!.trim()),
+          notes: Value(notes?.trim().isEmpty ?? true ? null : notes!.trim()),
+          creditLimitPaise: Value(current.creditLimitPaise),
+          currentDebtPaise: Value(current.currentDebtPaise),
+          isArchived: Value(current.isArchived),
+          createdAt: Value(current.createdAt),
+          updatedAt: Value(now),
+        ),
+      );
+
+      final opId = const Uuid().v4();
+      final payload = {
+        'id': id,
+        'shop_id': _shopId,
+        'name': trimmedName,
+        'phone': normalizedPhone,
+        'email': email?.trim().isEmpty ?? true ? null : email!.trim(),
+        'address': address?.trim().isEmpty ?? true ? null : address!.trim(),
+        'notes': notes?.trim().isEmpty ?? true ? null : notes!.trim(),
+        'updated_at': now.toIso8601String(),
+      };
+
+      await _localDataSource.enqueueSyncOperation(
+        SyncQueueTableCompanion(
+          operationId: Value(opId),
+          shopId: Value(_shopId),
+          entityType: const Value('customer'),
+          entityId: Value(id),
+          operationType: const Value('UPDATE'),
+          payload: Value(jsonEncode(payload)),
+          createdAt: Value(now),
+          status: const Value('PENDING'),
+        ),
+      );
+
+      try {
+        await _remoteDataSource.pushCustomer(payload);
+      } catch (_) {}
+
+      return const Success(null);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<void, Failure>> archiveCustomer(String id) async {
+    try {
+      await _localDataSource.archiveCustomer(id);
+
+      final opId = const Uuid().v4();
+      final now = DateTime.now();
+      final payload = {
+        'id': id,
+        'shop_id': _shopId,
+        'is_archived': true,
+        'updated_at': now.toIso8601String(),
+      };
+
+      await _localDataSource.enqueueSyncOperation(
+        SyncQueueTableCompanion(
+          operationId: Value(opId),
+          shopId: Value(_shopId),
+          entityType: const Value('customer'),
+          entityId: Value(id),
+          operationType: const Value('UPDATE'),
+          payload: Value(jsonEncode(payload)),
+          createdAt: Value(now),
+          status: const Value('PENDING'),
+        ),
+      );
+
+      try {
+        await _remoteDataSource.pushCustomer(payload);
+      } catch (_) {}
+
+      return const Success(null);
+    } catch (e) {
+      return ErrorResult(ErrorHandler.handleException(e));
+    }
+  }
+
+  @override
+  Future<Result<List<BillData>, Failure>> getCustomerSalesHistory(
+      String customerId) async {
+    try {
+      final bills =
+          await _localDataSource.getCustomerSalesHistory(_shopId, customerId);
+      return Success(bills);
     } catch (e) {
       return ErrorResult(ErrorHandler.handleException(e));
     }
@@ -162,11 +348,14 @@ class CustomerRepositoryImpl implements CustomerRepository {
             shopId: Value(_shopId),
             name: Value(raw['name'] as String),
             phone: Value(raw['phone'] as String),
+            email: Value(raw['email'] as String?),
             address: Value(raw['address'] as String?),
-            creditLimitPaise:
-                Value(BigInt.from((raw['credit_limit_paise'] as num).toInt())),
-            currentDebtPaise:
-                Value(BigInt.from((raw['current_debt_paise'] as num).toInt())),
+            notes: Value(raw['notes'] as String?),
+            creditLimitPaise: Value(BigInt.from(
+                (raw['credit_limit_paise'] as num? ?? 500000).toInt())),
+            currentDebtPaise: Value(
+                BigInt.from((raw['current_debt_paise'] as num? ?? 0).toInt())),
+            isArchived: Value(raw['is_archived'] as bool? ?? false),
             createdAt: Value(DateTime.parse(raw['created_at'] as String)),
             updatedAt: Value(DateTime.parse(raw['updated_at'] as String)),
           ),
