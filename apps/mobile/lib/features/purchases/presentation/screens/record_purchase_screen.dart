@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../app/app_providers.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
-import '../../../../database/drift/database.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../products/domain/models/product_model.dart';
 import '../../../products/presentation/providers/product_provider.dart';
 import '../../../suppliers/domain/models/supplier_model.dart';
 import '../../../suppliers/presentation/providers/supplier_provider.dart';
 
 class RecordPurchaseItemDraft {
-  final ProductData product;
+  final ProductModel product;
   double quantity;
   int purchasePricePaise;
   double taxRate;
@@ -62,7 +62,7 @@ class _RecordPurchaseScreenState extends ConsumerState<RecordPurchaseScreen> {
   int get _taxTotalPaise => _items.fold(0, (sum, item) => sum + item.taxPaise);
   int get _grandTotalPaise => _subtotalPaise + _taxTotalPaise;
 
-  void _addItem(ProductData product) {
+  void _addItem(ProductModel product) {
     final existingIndex =
         _items.indexWhere((item) => item.product.id == product.id);
     if (existingIndex >= 0) {
@@ -74,9 +74,8 @@ class _RecordPurchaseScreenState extends ConsumerState<RecordPurchaseScreen> {
         _items.add(RecordPurchaseItemDraft(
           product: product,
           quantity: 1.0,
-          purchasePricePaise: product.purchasePricePaise?.toInt() ??
-              product.sellingPricePaise.toInt(),
-          taxRate: product.gstRate,
+          purchasePricePaise: product.purchasePricePaise.toInt(),
+          taxRate: product.taxRatePercentage,
         ));
       });
     }
@@ -209,7 +208,7 @@ class _RecordPurchaseScreenState extends ConsumerState<RecordPurchaseScreen> {
 
                       // Supplier Dropdown
                       DropdownButtonFormField<SupplierModel>(
-                        value: _selectedSupplier,
+                        initialValue: _selectedSupplier,
                         decoration: const InputDecoration(
                           labelText: 'Select Supplier (Optional)',
                           prefixIcon: Icon(Icons.business_outlined),
@@ -538,7 +537,7 @@ class _PurchaseItemCard extends StatelessWidget {
 }
 
 class _ProductPickerSheet extends ConsumerWidget {
-  final ValueChanged<ProductData> onSelected;
+  final ValueChanged<ProductModel> onSelected;
 
   const _ProductPickerSheet({required this.onSelected});
 
@@ -581,7 +580,7 @@ class _ProductPickerSheet extends ConsumerWidget {
                               style:
                                   const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
-                              'Current Stock: ${p.stockQuantity.toStringAsFixed(0)} ${p.unit}'),
+                              'Current Stock: ${p.currentStock.toStringAsFixed(0)} ${p.unit}'),
                           trailing: const Icon(Icons.add_circle_outline,
                               color: KiranaColors.primary),
                           onTap: () {

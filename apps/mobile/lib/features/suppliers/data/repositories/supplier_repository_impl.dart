@@ -279,6 +279,7 @@ class SupplierRepositoryImpl implements SupplierRepository {
   }
 
   /// Record Stock Purchase Entry
+  @override
   Future<Result<PurchaseModel, Failure>> recordPurchase({
     required String shopId,
     String? supplierId,
@@ -459,6 +460,7 @@ class SupplierRepositoryImpl implements SupplierRepository {
   }
 
   /// Record Payment Made to Supplier (Settlement)
+  @override
   Future<Result<void, Failure>> recordSupplierPayment({
     required String supplierId,
     required String shopId,

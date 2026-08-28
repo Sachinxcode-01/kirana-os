@@ -1,5 +1,6 @@
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
+import '../../../purchases/domain/models/purchase_model.dart';
 import '../models/supplier_model.dart';
 
 abstract interface class SupplierRepository {
@@ -30,4 +31,29 @@ abstract interface class SupplierRepository {
   });
 
   Future<Result<SupplierModel?, Failure>> getSupplierById(String id);
+
+  Future<Result<PurchaseModel, Failure>> recordPurchase({
+    required String shopId,
+    String? supplierId,
+    String? supplierNameSnapshot,
+    required String invoiceNumber,
+    required DateTime invoiceDate,
+    required List<
+            ({
+              String productId,
+              String productName,
+              double quantity,
+              int purchasePricePaise,
+              double taxRate,
+            })>
+        lineItems,
+  });
+
+  Future<Result<void, Failure>> recordSupplierPayment({
+    required String supplierId,
+    required String shopId,
+    required int amountPaise,
+    String paymentMethod = 'Bank',
+    String? notes,
+  });
 }
