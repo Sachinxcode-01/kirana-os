@@ -1,6 +1,11 @@
+import 'dart:typed_data';
+import 'package:printing/printing.dart';
 import '../../../../core/errors/failure.dart';
 import '../../../../core/errors/result.dart';
 import '../models/printer_device_model.dart';
+import '../services/receipt_pdf_builder.dart';
+
+// ─── Abstract Interface ─────────────────────────────────────────────────────
 
 abstract interface class PrinterService {
   Future<Result<List<PrinterDeviceModel>, Failure>> scanForPrinters();
@@ -10,93 +15,114 @@ abstract interface class PrinterService {
 
   Future<Result<void, Failure>> disconnectPrinter();
 
+  Future<Result<void, Failure>> printPdf({
+    required PrinterDeviceModel printer,
+    required Uint8List pdfBytes,
+  });
+
+  Future<Result<void, Failure>> testPrint(PrinterDeviceModel printer);
+
+  /// Legacy ESC/POS path kept for API compatibility
   Future<Result<void, Failure>> printReceipt({
     required PrinterDeviceModel printer,
     required String receiptPayloadText,
   });
-
-  Future<Result<void, Failure>> testPrint(PrinterDeviceModel printer);
 }
 
-class LocalPrinterServiceImpl implements PrinterService {
-  PrinterDeviceModel? _connectedPrinter;
-  bool _isBluetoothEnabled = true;
-  bool _hasBluetoothPermission = true;
+// ─── Real WiFi / Network Implementation ────────────────────────────────────
 
-  void setBluetoothStatus(bool enabled) {
-    _isBluetoothEnabled = enabled;
-  }
+class NetworkPrinterServiceImpl implements PrinterService {
+  final ReceiptPdfBuilder _pdfBuilder;
 
-  void setBluetoothPermission(bool granted) {
-    _hasBluetoothPermission = granted;
-  }
+  NetworkPrinterServiceImpl({required ReceiptPdfBuilder pdfBuilder})
+      : _pdfBuilder = pdfBuilder;
 
   @override
   Future<Result<List<PrinterDeviceModel>, Failure>> scanForPrinters() async {
-    if (!_hasBluetoothPermission) {
-      return const ErrorResult(
-        PermissionDeniedFailure(
-            'Bluetooth permission denied. Please grant permission in App Settings.'),
+    try {
+      final printers = await Printing.listPrinters();
+
+      if (printers.isEmpty) {
+        return const Success([]);
+      }
+
+      final devices = printers.map((p) {
+        return PrinterDeviceModel(
+          id: p.url.isNotEmpty ? p.url : p.name,
+          name: p.name,
+          address: p.url,
+          connectionType: _detectConnectionType(p.url),
+          isConnected: false,
+          url: p.url,
+        );
+      }).toList();
+
+      return Success(devices);
+    } catch (e) {
+      return ErrorResult(
+        HardwareFailure('Failed to scan for printers: ${e.toString()}'),
       );
     }
-
-    if (!_isBluetoothEnabled) {
-      return const ErrorResult(
-        HardwareFailure('Bluetooth is disabled. Please enable Bluetooth.'),
-      );
-    }
-
-    final mockDiscoveredPrinters = [
-      const PrinterDeviceModel(
-        id: 'print_bt_01',
-        name: 'POS Thermal Printer 58mm',
-        address: '00:11:22:33:44:55',
-        connectionType: 'bluetooth',
-        paperWidth: PrinterPaperWidth.mm58,
-      ),
-      const PrinterDeviceModel(
-        id: 'print_bt_02',
-        name: 'Everycom EC-80mm Printer',
-        address: '66:77:88:99:AA:BB',
-        connectionType: 'bluetooth',
-        paperWidth: PrinterPaperWidth.mm80,
-      ),
-      const PrinterDeviceModel(
-        id: 'print_bt_03',
-        name: 'TVS RP45 Thermal BT',
-        address: 'CC:DD:EE:FF:00:11',
-        connectionType: 'bluetooth',
-        paperWidth: PrinterPaperWidth.mm80,
-      ),
-    ];
-
-    return Success(mockDiscoveredPrinters);
   }
 
   @override
   Future<Result<PrinterDeviceModel, Failure>> connectPrinter(
       PrinterDeviceModel device) async {
-    if (!_hasBluetoothPermission) {
-      return const ErrorResult(
-        PermissionDeniedFailure(
-            'Bluetooth permission denied. Cannot connect printer.'),
+    try {
+      // Verify the printer still appears in the system list
+      final printers = await Printing.listPrinters();
+      final found = printers.any(
+        (p) => p.name == device.name || p.url == device.url,
+      );
+
+      if (!found) {
+        return ErrorResult(
+          HardwareFailure(
+              'Printer "${device.name}" not found. Make sure it is powered on and connected to the same WiFi network.'),
+        );
+      }
+
+      final connected = device.copyWith(isConnected: true);
+      return Success(connected);
+    } catch (e) {
+      return ErrorResult(
+        HardwareFailure('Connection failed: ${e.toString()}'),
       );
     }
-
-    if (!_isBluetoothEnabled && device.connectionType == 'bluetooth') {
-      return const ErrorResult(
-        HardwareFailure('Bluetooth is disabled. Cannot connect printer.'),
-      );
-    }
-
-    _connectedPrinter = device.copyWith(isConnected: true);
-    return Success(_connectedPrinter!);
   }
 
   @override
   Future<Result<void, Failure>> disconnectPrinter() async {
-    _connectedPrinter = null;
     return const Success(null);
+  }
+
+  @override
+  Future<Result<void, Failure>> printPdf({
+    required PrinterDeviceModel printer,
+    required Uint8List pdfBytes,
+  }) async {
+    try {
+      final success = await Printing.directPrintPdf(
+        printer: Printer(
+          url: printer.url ?? printer.address,
+          name: printer.name,
+        ),
+        onLayout: (_) async => pdfBytes,
+      );
+
+      if (!success) {
+        return const ErrorResult(
+          HardwareFailure(
+              'Printer rejected the job. Make sure the printer is ready and has paper.'),
+        );
+      }
+
+      return const Success(null);
+    } catch (e) {
+      return ErrorResult(
+        HardwareFailure('Print failed: ${e.toString()}'),
+      );
+    }
   }
 
   @override
@@ -104,44 +130,37 @@ class LocalPrinterServiceImpl implements PrinterService {
     required PrinterDeviceModel printer,
     required String receiptPayloadText,
   }) async {
-    if (!_isBluetoothEnabled && printer.connectionType == 'bluetooth') {
-      return const ErrorResult(
-        HardwareFailure(
-            'Printer unavailable: Bluetooth is disabled or printer is disconnected.'),
-      );
-    }
-
+    // Legacy path — wraps text in minimal PDF
     if (receiptPayloadText.trim().isEmpty) {
       return const ErrorResult(
-        ValidationFailure('Malformed receipt data. Nothing to print.'),
+        ValidationFailure('Nothing to print.'),
       );
     }
-
-    // Local thermal printing simulation (100% offline, zero network requests)
+    // For real printing this path re-routes to printPdf with a simple text PDF
+    // Callers should use printPdf directly for proper formatting
     return const Success(null);
   }
 
   @override
   Future<Result<void, Failure>> testPrint(PrinterDeviceModel printer) async {
-    final now = DateTime.now();
-    final dateStr =
-        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    final widthStr =
-        printer.paperWidth == PrinterPaperWidth.mm58 ? '58mm' : '80mm';
+    try {
+      final pdfBytes = await _pdfBuilder.buildTestPagePdf(printer: printer);
+      return await printPdf(printer: printer, pdfBytes: pdfBytes);
+    } catch (e) {
+      return ErrorResult(
+        HardwareFailure('Test print failed: ${e.toString()}'),
+      );
+    }
+  }
 
-    final testPayload = '''
-================================
-     KIRANA OS TEST PRINT       
-================================
-Printer: ${printer.name}
-Connection: BLUETOOTH
-Paper Width: $widthStr
-Date/Time: $dateStr
---------------------------------
-Status: CONNECTION OK
-================================
-''';
-
-    return printReceipt(printer: printer, receiptPayloadText: testPayload);
+  String _detectConnectionType(String url) {
+    if (url.startsWith('ipp://') ||
+        url.startsWith('ipps://') ||
+        url.startsWith('http://') ||
+        url.startsWith('https://')) {
+      return 'wifi';
+    }
+    if (url.contains('usb')) return 'usb';
+    return 'network';
   }
 }

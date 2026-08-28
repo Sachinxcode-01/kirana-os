@@ -1,11 +1,16 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../billing/domain/models/bill_model.dart';
 import '../../../settings/presentation/providers/shop_settings_provider.dart';
 import '../../domain/models/printer_device_model.dart';
 import '../../domain/services/printer_service.dart';
-import '../../domain/services/receipt_formatter_service.dart';
+import '../../domain/services/receipt_pdf_builder.dart';
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+enum PrinterTestStatus { idle, testing, ok, failed }
 
 class PrinterState {
   final PrinterDeviceModel? selectedPrinter;
@@ -15,7 +20,12 @@ class PrinterState {
   final bool isPrinting;
   final String? errorMessage;
   final String? successMessage;
-  final PrinterPaperWidth paperWidth;
+
+  // Per-job settings (independent from connected device)
+  final bool isColor;
+  final PrinterPageFormat pageFormat;
+  final int copies;
+  final PrinterTestStatus testStatus;
 
   const PrinterState({
     this.selectedPrinter,
@@ -25,9 +35,14 @@ class PrinterState {
     this.isPrinting = false,
     this.errorMessage,
     this.successMessage,
-    this.paperWidth = PrinterPaperWidth.mm58,
+    this.isColor = true,
+    this.pageFormat = PrinterPageFormat.roll80mm,
+    this.copies = 1,
+    this.testStatus = PrinterTestStatus.idle,
   });
 
+  // Legacy compat
+  PrinterPaperWidth get paperWidth => pageFormat.toPaperWidth;
   bool get isConnected => selectedPrinter?.isConnected ?? false;
 
   PrinterState copyWith({
@@ -38,7 +53,10 @@ class PrinterState {
     bool? isPrinting,
     String? errorMessage,
     String? successMessage,
-    PrinterPaperWidth? paperWidth,
+    bool? isColor,
+    PrinterPageFormat? pageFormat,
+    int? copies,
+    PrinterTestStatus? testStatus,
     bool clearError = false,
     bool clearSuccess = false,
     bool clearPrinter = false,
@@ -53,45 +71,80 @@ class PrinterState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       successMessage:
           clearSuccess ? null : (successMessage ?? this.successMessage),
-      paperWidth: paperWidth ?? this.paperWidth,
+      isColor: isColor ?? this.isColor,
+      pageFormat: pageFormat ?? this.pageFormat,
+      copies: copies ?? this.copies,
+      testStatus: testStatus ?? this.testStatus,
     );
   }
 }
 
-final printerServiceProvider = Provider<PrinterService>((ref) {
-  return LocalPrinterServiceImpl();
+// ─── Providers ───────────────────────────────────────────────────────────────
+
+final receiptPdfBuilderProvider = Provider<ReceiptPdfBuilder>((ref) {
+  return ReceiptPdfBuilder();
 });
+
+final printerServiceProvider = Provider<PrinterService>((ref) {
+  final pdfBuilder = ref.watch(receiptPdfBuilderProvider);
+  return NetworkPrinterServiceImpl(pdfBuilder: pdfBuilder);
+});
+
+// ─── Notifier ────────────────────────────────────────────────────────────────
 
 class PrinterNotifier extends StateNotifier<PrinterState> {
   final PrinterService _printerService;
-  final ReceiptFormatterService _formatterService;
+  final ReceiptPdfBuilder _pdfBuilder;
   final Ref _ref;
 
   PrinterNotifier({
     required PrinterService printerService,
-    required ReceiptFormatterService formatterService,
+    required ReceiptPdfBuilder pdfBuilder,
     required Ref ref,
   })  : _printerService = printerService,
-        _formatterService = formatterService,
+        _pdfBuilder = pdfBuilder,
         _ref = ref,
         super(const PrinterState()) {
-    _loadSavedPrinter();
+    _loadSavedSettings();
   }
 
-  Future<void> _loadSavedPrinter() async {
+  Future<void> _loadSavedSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedJsonStr = prefs.getString('saved_thermal_printer');
+      final savedJsonStr = prefs.getString('saved_wifi_printer');
       if (savedJsonStr != null) {
         final map = jsonDecode(savedJsonStr) as Map<String, dynamic>;
         final device = PrinterDeviceModel.fromJson(map);
+        final pageFormat = PrinterPageFormatExtension.fromString(
+            map['page_format'] as String?);
+        final isColor = map['is_color'] as bool? ?? true;
+        final copies = map['copies'] as int? ?? 1;
         state = state.copyWith(
           selectedPrinter: device,
-          paperWidth: device.paperWidth,
+          pageFormat: pageFormat,
+          isColor: isColor,
+          copies: copies,
         );
       }
     } catch (_) {}
   }
+
+  Future<void> _saveSettings() async {
+    try {
+      if (state.selectedPrinter == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      final map = state.selectedPrinter!
+          .copyWith(
+            isColor: state.isColor,
+            pageFormat: state.pageFormat,
+            copies: state.copies,
+          )
+          .toJson();
+      await prefs.setString('saved_wifi_printer', jsonEncode(map));
+    } catch (_) {}
+  }
+
+  // ── Scanning ──────────────────────────────────────────────────────────────
 
   Future<void> scanPrinters() async {
     state = state.copyWith(isScanning: true, clearError: true);
@@ -111,6 +164,8 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     }
   }
 
+  // ── Connect / Disconnect ──────────────────────────────────────────────────
+
   Future<bool> selectAndConnectPrinter(PrinterDeviceModel device) async {
     state = state.copyWith(isConnecting: true, clearError: true);
 
@@ -121,19 +176,9 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
       state = state.copyWith(
         isConnecting: false,
         selectedPrinter: connected,
-        paperWidth: connected.paperWidth,
-        successMessage: 'Connected to ${connected.name}',
+        successMessage: '✓ Connected to ${connected.name}',
       );
-
-      // Save preference locally
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(
-          'saved_thermal_printer',
-          jsonEncode(connected.toJson()),
-        );
-      } catch (_) {}
-
+      await _saveSettings();
       return true;
     } else {
       state = state.copyWith(
@@ -149,26 +194,69 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     state = state.copyWith(
       clearPrinter: true,
       successMessage: 'Printer disconnected.',
+      testStatus: PrinterTestStatus.idle,
     );
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('saved_thermal_printer');
+      await prefs.remove('saved_wifi_printer');
     } catch (_) {}
   }
 
-  void setPaperWidth(PrinterPaperWidth width) {
-    state = state.copyWith(paperWidth: width);
-    if (state.selectedPrinter != null) {
-      final updated = state.selectedPrinter!.copyWith(paperWidth: width);
-      state = state.copyWith(selectedPrinter: updated);
+  // ── Connection Test ───────────────────────────────────────────────────────
+
+  Future<void> testConnection() async {
+    if (state.selectedPrinter == null) return;
+    state =
+        state.copyWith(testStatus: PrinterTestStatus.testing, clearError: true);
+
+    final result = await _printerService.connectPrinter(state.selectedPrinter!);
+
+    if (result.isSuccess) {
+      state = state.copyWith(
+        testStatus: PrinterTestStatus.ok,
+        selectedPrinter: result.dataOrNull,
+        successMessage: '✓ Printer is reachable',
+      );
+    } else {
+      state = state.copyWith(
+        testStatus: PrinterTestStatus.failed,
+        errorMessage: result.failureOrNull?.message,
+      );
     }
   }
+
+  // ── Print Settings ────────────────────────────────────────────────────────
+
+  void setColorMode(bool isColor) {
+    state = state.copyWith(isColor: isColor);
+    _saveSettings();
+  }
+
+  void setPageFormat(PrinterPageFormat format) {
+    state = state.copyWith(pageFormat: format);
+    _saveSettings();
+  }
+
+  void setCopies(int copies) {
+    final clamped = copies.clamp(1, 9);
+    state = state.copyWith(copies: clamped);
+    _saveSettings();
+  }
+
+  // Legacy compat
+  void setPaperWidth(PrinterPaperWidth width) {
+    final format = width == PrinterPaperWidth.mm58
+        ? PrinterPageFormat.roll58mm
+        : PrinterPageFormat.roll80mm;
+    setPageFormat(format);
+  }
+
+  // ── Printing ──────────────────────────────────────────────────────────────
 
   Future<bool> printReceipt(BillModel bill) async {
     if (state.selectedPrinter == null) {
       state = state.copyWith(
-        errorMessage:
-            'Printer unavailable: No printer selected. Please select a printer.',
+        errorMessage: 'No printer selected. Please select a WiFi printer.',
       );
       return false;
     }
@@ -178,27 +266,51 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     final settingsState = _ref.read(shopSettingsNotifierProvider);
     final shopSettings = settingsState.settings;
 
-    final receiptText = _formatterService.formatThermalReceipt(
-      bill: bill,
-      shopSettings: shopSettings,
-      paperWidth: state.paperWidth,
+    // Build PDF with current settings
+    final printerWithSettings = state.selectedPrinter!.copyWith(
+      isColor: state.isColor,
+      pageFormat: state.pageFormat,
+      copies: state.copies,
     );
 
-    final result = await _printerService.printReceipt(
-      printer: state.selectedPrinter!,
-      receiptPayloadText: receiptText,
-    );
+    bool overallSuccess = true;
+    String? lastError;
 
-    if (result.isSuccess) {
+    for (int i = 0; i < state.copies; i++) {
+      try {
+        final Uint8List pdfBytes = await _pdfBuilder.buildReceiptPdf(
+          bill: bill,
+          shopSettings: shopSettings,
+          printerSettings: printerWithSettings,
+        );
+
+        final result = await (_printerService as NetworkPrinterServiceImpl)
+            .printPdf(printer: printerWithSettings, pdfBytes: pdfBytes);
+
+        if (!result.isSuccess) {
+          overallSuccess = false;
+          lastError = result.failureOrNull?.message;
+          break;
+        }
+      } catch (e) {
+        overallSuccess = false;
+        lastError = e.toString();
+        break;
+      }
+    }
+
+    if (overallSuccess) {
       state = state.copyWith(
         isPrinting: false,
-        successMessage: 'Receipt printed successfully!',
+        successMessage: state.copies > 1
+            ? '✓ ${state.copies} copies printed!'
+            : '✓ Receipt printed!',
       );
       return true;
     } else {
       state = state.copyWith(
         isPrinting: false,
-        errorMessage: result.failureOrNull?.message,
+        errorMessage: lastError ?? 'Print failed.',
       );
       return false;
     }
@@ -206,19 +318,23 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
 
   Future<bool> sendTestPrint() async {
     if (state.selectedPrinter == null) {
-      state =
-          state.copyWith(errorMessage: 'No printer selected for test print.');
+      state = state.copyWith(errorMessage: 'No printer selected.');
       return false;
     }
 
     state = state.copyWith(isPrinting: true, clearError: true);
 
-    final result = await _printerService.testPrint(state.selectedPrinter!);
+    final printerWithSettings = state.selectedPrinter!.copyWith(
+      isColor: state.isColor,
+      pageFormat: state.pageFormat,
+    );
+
+    final result = await _printerService.testPrint(printerWithSettings);
 
     if (result.isSuccess) {
       state = state.copyWith(
         isPrinting: false,
-        successMessage: 'Test print sent successfully!',
+        successMessage: '✓ Test page sent to ${state.selectedPrinter!.name}',
       );
       return true;
     } else {
@@ -235,11 +351,13 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
   }
 }
 
+// ─── Provider ────────────────────────────────────────────────────────────────
+
 final printerNotifierProvider =
     StateNotifierProvider<PrinterNotifier, PrinterState>((ref) {
   return PrinterNotifier(
     printerService: ref.watch(printerServiceProvider),
-    formatterService: ref.watch(receiptFormatterServiceProvider),
+    pdfBuilder: ref.watch(receiptPdfBuilderProvider),
     ref: ref,
   );
 });
