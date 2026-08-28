@@ -48,4 +48,31 @@ class CustomerRemoteDataSource {
           'Failed to push credit transaction to cloud');
     }
   }
+
+  Future<Map<String, dynamic>> recordCreditTransactionAtomic({
+    required String shopId,
+    required String customerId,
+    required int amountPaise,
+    required String type,
+    String? billId,
+    String? notes,
+  }) async {
+    try {
+      final response =
+          await _supabase.rpc('record_credit_transaction_atomic', params: {
+        'p_shop_id': shopId,
+        'p_customer_id': customerId,
+        'p_amount_paise': amountPaise,
+        'p_type': type,
+        'p_bill_id': billId,
+        'p_notes': notes,
+      });
+      return Map<String, dynamic>.from(response as Map);
+    } catch (e) {
+      AppLogger.e('Failed atomic credit transaction RPC: $e',
+          tag: 'CustomerRemoteDataSource');
+      throw NetworkException(
+          'Internet connection required to record payment. Cloud error: $e');
+    }
+  }
 }
