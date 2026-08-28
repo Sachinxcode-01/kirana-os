@@ -597,7 +597,7 @@ class CustomerDetailScreen extends ConsumerWidget {
                               children: [
                                 Text(
                                   'Current Due Balance',
-                                  style: KiranaTypography.labelMedium.copyWith(
+                                  style: KiranaTypography.labelLarge.copyWith(
                                     color: KiranaColors.textSecondary,
                                   ),
                                 ),
