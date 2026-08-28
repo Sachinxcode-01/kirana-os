@@ -145,8 +145,8 @@ class CreditRepositoryImpl implements CreditRepository {
       }
 
       final customer = await _localDataSource.getCustomerById(customerId);
-      if (customer == null) {
-        return const ErrorResult(DatabaseFailure('Customer not found'));
+      if (customer == null || customer.shopId != _shopId) {
+        return const ErrorResult(DatabaseFailure('Customer not found in shop'));
       }
 
       final now = DateTime.now();

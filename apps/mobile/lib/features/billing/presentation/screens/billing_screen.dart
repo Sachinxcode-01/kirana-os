@@ -763,18 +763,22 @@ class __CustomerPickerSheetState extends ConsumerState<_CustomerPickerSheet> {
                       : KiranaColors.surfaceVariant,
                   child: Icon(
                     Icons.person_off_outlined,
-                    color: !hasCustomer ? Colors.white : KiranaColors.textSecondary,
+                    color: !hasCustomer
+                        ? Colors.white
+                        : KiranaColors.textSecondary,
                   ),
                 ),
                 title: Text(
                   'Walk-in Customer',
                   style: TextStyle(
-                    fontWeight: !hasCustomer ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        !hasCustomer ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
                 subtitle: const Text('No customer attached (Cash/Digital)'),
                 trailing: !hasCustomer
-                    ? const Icon(Icons.check_circle, color: KiranaColors.primary)
+                    ? const Icon(Icons.check_circle,
+                        color: KiranaColors.primary)
                     : null,
                 onTap: () {
                   ref.read(billingNotifierProvider.notifier).removeCustomer();
@@ -820,8 +824,9 @@ class __CustomerPickerSheetState extends ConsumerState<_CustomerPickerSheet> {
                         title: Text(
                           cust.name,
                           style: TextStyle(
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                         subtitle: Text(
@@ -1193,8 +1198,7 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
     if (_selectedPaymentMode == 'credit') {
       if (!widget.bill.hasCustomer) {
         setState(() {
-          _checkoutError =
-              'Please attach a customer to the bill before completing an Udhaar / Credit sale.';
+          _checkoutError = 'Select a customer for a credit sale.';
         });
         return;
       }
@@ -1501,7 +1505,10 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
                       ? null
                       : (val) {
                           if (val) {
-                            setState(() => _selectedPaymentMode = 'cash');
+                            setState(() {
+                              _selectedPaymentMode = 'cash';
+                              _checkoutError = null;
+                            });
                           }
                         },
                 ),
@@ -1513,7 +1520,10 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
                       ? null
                       : (val) {
                           if (val) {
-                            setState(() => _selectedPaymentMode = 'upi_qr');
+                            setState(() {
+                              _selectedPaymentMode = 'upi_qr';
+                              _checkoutError = null;
+                            });
                           }
                         },
                 ),
@@ -1525,7 +1535,10 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
                       ? null
                       : (val) {
                           if (val) {
-                            setState(() => _selectedPaymentMode = 'card');
+                            setState(() {
+                              _selectedPaymentMode = 'card';
+                              _checkoutError = null;
+                            });
                           }
                         },
                 ),
@@ -1537,22 +1550,179 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
                       ? null
                       : (val) {
                           if (val) {
-                            setState(() => _selectedPaymentMode = 'credit');
+                            setState(() {
+                              _selectedPaymentMode = 'credit';
+                              _checkoutError = null;
+                            });
                           }
                         },
                 ),
               ],
             ),
+            const SizedBox(height: KiranaSpacing.md),
+
+            // Credit Sale Customer Due Validation Card (Phase 14.5)
+            if (_selectedPaymentMode == 'credit')
+              Builder(builder: (context) {
+                final activeBill =
+                    ref.watch(billingNotifierProvider).activeDraft ??
+                        widget.bill;
+                final hasCust = activeBill.hasCustomer;
+
+                if (!hasCust) {
+                  return Container(
+                    padding: const EdgeInsets.all(KiranaSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: KiranaColors.errorContainer,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: KiranaColors.error),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: KiranaColors.error, size: 20),
+                        const SizedBox(width: KiranaSpacing.xs),
+                        const Expanded(
+                          child: Text(
+                            'Select a customer for a credit sale.',
+                            style: TextStyle(
+                              color: KiranaColors.error,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.person_add, size: 16),
+                          label: const Text('Select'),
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => const _CustomerPickerSheet(),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final customerAsync =
+                    ref.watch(customerDetailProvider(activeBill.customerId!));
+
+                return customerAsync.when(
+                  loading: () => const SizedBox(
+                    height: 60,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (cust) {
+                    final currentDebt = cust?.currentDebtPaise.toInt() ?? 0;
+                    final thisSale = bill.totalPaise;
+                    final newTotalDue = currentDebt + thisSale;
+
+                    return Container(
+                      padding: const EdgeInsets.all(KiranaSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: KiranaColors.secondaryContainer
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color:
+                                KiranaColors.secondary.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Credit Sale Customer Breakdown',
+                                style: KiranaTypography.labelLarge.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: KiranaColors.secondary,
+                                ),
+                              ),
+                              Text(
+                                cust?.name ?? '',
+                                style: KiranaTypography.bodySmall.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: KiranaSpacing.xs),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Current Due:',
+                                  style: TextStyle(fontSize: 12)),
+                              Text((currentDebt).toRupeesString(),
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('This Udhaar Sale:',
+                                  style: TextStyle(fontSize: 12)),
+                              Text('+ ${(thisSale).toRupeesString()}',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: KiranaColors.secondary)),
+                            ],
+                          ),
+                          const Divider(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('New Total Due:',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold)),
+                              Text(
+                                (newTotalDue).toRupeesString(),
+                                style: KiranaTypography.titleMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: KiranaColors.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              }),
             const SizedBox(height: KiranaSpacing.lg),
 
             // Action Buttons
-            AppButton(
-              label:
-                  _isProcessing ? 'PROCESSING...' : 'CONFIRM & COMPLETE SALE',
-              icon: Icons.check_circle_rounded,
-              isLoading: _isProcessing,
-              onPressed: _isProcessing ? null : _handleConfirmCheckout,
-            ),
+            Builder(builder: (context) {
+              final activeBill =
+                  ref.watch(billingNotifierProvider).activeDraft ?? widget.bill;
+              final isCreditNoCustomer =
+                  _selectedPaymentMode == 'credit' && !activeBill.hasCustomer;
+
+              return AppButton(
+                label: _isProcessing
+                    ? 'PROCESSING...'
+                    : (_selectedPaymentMode == 'credit'
+                        ? 'COMPLETE CREDIT SALE'
+                        : 'CONFIRM & COMPLETE SALE'),
+                icon: Icons.check_circle_rounded,
+                isLoading: _isProcessing,
+                onPressed: (_isProcessing || isCreditNoCustomer)
+                    ? null
+                    : _handleConfirmCheckout,
+              );
+            }),
           ],
         ),
       ),

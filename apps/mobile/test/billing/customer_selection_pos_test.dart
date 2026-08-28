@@ -113,7 +113,8 @@ void main() {
       expect(walkInBill.customerPhone, isNull);
     });
 
-    test('4. Customer Data Persistence on Completed Sale in SQLite Database', () async {
+    test('4. Customer Data Persistence on Completed Sale in SQLite Database',
+        () async {
       // 1. Insert Customer in Drift DB
       final custCompanion = CustomersTableCompanion.insert(
         id: 'cust-777',
@@ -151,7 +152,8 @@ void main() {
       expect(savedBill.totalPaise, equals(BigInt.from(25000)));
 
       // 4. Query customer sales history
-      final customerSales = await db.customersDao.getCustomerSalesHistory(shopA, 'cust-777');
+      final customerSales =
+          await db.customersDao.getCustomerSalesHistory(shopA, 'cust-777');
       expect(customerSales.length, equals(1));
       expect(customerSales.first.id, equals('bill-777'));
     });
