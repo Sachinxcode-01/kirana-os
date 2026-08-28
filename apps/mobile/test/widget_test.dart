@@ -16,7 +16,8 @@ void main() {
     expect(find.text('Next-Gen Retail & POS System'), findsOneWidget);
 
     // Settle async auth check & navigation to Login screen
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
     expect(find.text('Sign In'), findsOneWidget);
   });
 }

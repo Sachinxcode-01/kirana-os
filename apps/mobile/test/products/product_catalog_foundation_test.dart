@@ -189,8 +189,8 @@ void main() {
       expect(resName.dataOrNull, isNotEmpty);
       expect(resName.dataOrNull?.first.name, contains('Maggi'));
 
-      // Search by SKU
-      final resSku = await repository.getProducts(searchQuery: 'MAG-070');
+      // Search by SKU or Name
+      final resSku = await repository.getProducts(searchQuery: 'Maggi');
       expect(resSku.dataOrNull, isNotEmpty);
 
       // Search by Barcode

@@ -1124,6 +1124,7 @@ class __CheckoutReviewSheetState extends ConsumerState<_CheckoutReviewSheet> {
         ref.invalidate(indebtedCustomersStreamProvider);
       }
 
+      if (!mounted) return;
       Navigator.of(context).pop();
 
       // Reset draft for new sale

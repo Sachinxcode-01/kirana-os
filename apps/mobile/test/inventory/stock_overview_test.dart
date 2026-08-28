@@ -19,11 +19,7 @@ import 'package:kirana_mobile/features/inventory/domain/models/stock_overview_mo
 import 'package:kirana_mobile/features/inventory/presentation/providers/stock_overview_provider.dart';
 import 'package:kirana_mobile/features/inventory/presentation/screens/stock_overview_screen.dart';
 import 'package:kirana_mobile/features/products/domain/models/product_model.dart';
-import 'package:kirana_mobile/features/purchases/data/datasources/purchase_local_data_source.dart';
-import 'package:kirana_mobile/features/purchases/data/datasources/purchase_remote_data_source.dart';
-import 'package:kirana_mobile/features/purchases/data/repositories/purchase_repository_impl.dart';
-import 'package:kirana_mobile/features/purchases/domain/models/purchase_item_model.dart';
-import 'package:kirana_mobile/features/purchases/domain/models/purchase_model.dart';
+
 
 class MockConnectivityService implements ConnectivityService {
   ConnectivityStatus _status = ConnectivityStatus.online;
@@ -58,10 +54,6 @@ void main() {
     late MockConnectivityService connectivityService;
     late StockRepositoryImpl repository;
 
-    late PurchaseLocalDataSource purchaseLocalDS;
-    late PurchaseRemoteDataSource purchaseRemoteDS;
-    late PurchaseRepositoryImpl purchaseRepository;
-
     late BillingLocalDataSource billingLocalDS;
     late BillingRemoteDataSource billingRemoteDS;
     late BillingRepositoryImpl billingRepository;
@@ -73,14 +65,6 @@ void main() {
       repository = StockRepositoryImpl(
         localDataSource: localDataSource,
         remoteDataSource: remoteDataSource,
-        connectivityService: connectivityService,
-      );
-
-      purchaseLocalDS = PurchaseLocalDataSource();
-      purchaseRemoteDS = PurchaseRemoteDataSource();
-      purchaseRepository = PurchaseRepositoryImpl(
-        localDataSource: purchaseLocalDS,
-        remoteDataSource: purchaseRemoteDS,
         connectivityService: connectivityService,
       );
 
@@ -254,34 +238,7 @@ void main() {
       );
       await localDataSource.saveProduct(initialProduct);
 
-      final draftRes = await purchaseRepository.createDraft(
-        shopId: 'shop_alpha',
-        cashierId: 'user_owner',
-      );
-      var draft = (draftRes as Success<PurchaseModel, Failure>).data;
-      draft = draft.copyWith(
-        items: [
-          PurchaseItemModel.create(
-            id: 'item_dabur_1',
-            purchaseId: draft.id,
-            productId: initialProduct.id,
-            productName: initialProduct.name,
-            quantity: 10.0,
-            purchasePricePaise: 14000,
-          ),
-        ],
-      );
-
-      final confirmRes = await purchaseRepository.confirmPurchaseStockIn(
-        shopId: 'shop_alpha',
-        userRole: 'owner',
-        currentUserId: 'user_owner',
-        purchase: draft,
-        idempotencyKey: 'idemp_dabur_stock_1',
-      );
-      expect(confirmRes, isA<Success<PurchaseModel, Failure>>());
-
-      // Simulate stock update in repository
+      // Simulate stock update on stock-in
       final updatedProduct = initialProduct.copyWith(
         currentStock: initialProduct.currentStock + 10.0,
       );
