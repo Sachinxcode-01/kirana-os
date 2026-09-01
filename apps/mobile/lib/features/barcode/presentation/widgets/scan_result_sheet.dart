@@ -277,8 +277,12 @@ class ScanResultSheet extends StatelessWidget {
               Expanded(
                 child: hasProduct
                     ? AppButton(
-                        label: 'Add to Cart',
-                        icon: Icons.add_shopping_cart,
+                        label: onAddToCart != null
+                            ? 'Add to Cart'
+                            : 'View Product',
+                        icon: onAddToCart != null
+                            ? Icons.add_shopping_cart
+                            : Icons.arrow_forward,
                         onPressed: onAddToCart ?? onViewProduct,
                       )
                     : AppButton(

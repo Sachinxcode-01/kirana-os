@@ -6,6 +6,24 @@ import 'package:kirana_mobile/features/credit/data/repositories/credit_repositor
 import 'package:kirana_mobile/features/customers/data/datasources/customer_local_data_source.dart';
 import 'package:kirana_mobile/features/customers/data/datasources/customer_remote_data_source.dart';
 
+class FakeCustomerRemoteDataSource extends CustomerRemoteDataSource {
+  @override
+  Future<Map<String, dynamic>> recordCreditTransactionAtomic({
+    required String shopId,
+    required String customerId,
+    required int amountPaise,
+    required String type,
+    String? billId,
+    String? notes,
+  }) async {
+    return {
+      'status': 'SUCCESS',
+      'transaction_id': 'mock-txn-credit-test-101',
+      'new_debt_paise': 150000,
+    };
+  }
+}
+
 void main() {
   late AppDatabase db;
   late CustomerLocalDataSource localDataSource;
@@ -16,7 +34,7 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     localDataSource = CustomerLocalDataSource(db);
-    remoteDataSource = CustomerRemoteDataSource();
+    remoteDataSource = FakeCustomerRemoteDataSource();
     repository = CreditRepositoryImpl(
       localDataSource: localDataSource,
       remoteDataSource: remoteDataSource,

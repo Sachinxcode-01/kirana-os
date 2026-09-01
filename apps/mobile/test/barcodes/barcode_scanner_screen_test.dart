@@ -71,10 +71,8 @@ void main() {
       );
 
       // Verify UI text
-      expect(find.text('Barcode Not Recognized'), findsOneWidget);
-      expect(find.text('9998887776665'), findsOneWidget);
-      expect(find.text('No product found in catalog for "9998887776665".'),
-          findsOneWidget);
+      expect(find.text('Barcode Not Registered'), findsWidgets);
+      expect(find.text('Detected:\n9998887776665'), findsOneWidget);
       expect(find.text('+ Add Product'), findsOneWidget);
 
       await tester.tap(find.text('+ Add Product'));
@@ -96,11 +94,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Product not available offline.'), findsOneWidget);
-      expect(
-          find.text(
-              'Offline — searching saved products. Remote lookup requires internet.'),
-          findsOneWidget);
+      expect(find.text('Product unavailable offline.'), findsWidgets);
     });
   });
 

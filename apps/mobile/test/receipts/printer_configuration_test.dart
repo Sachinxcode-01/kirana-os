@@ -321,6 +321,9 @@ void main() {
       await tester.pump();
 
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+      // Settle the delayed future to clean up the test timer
+      await tester.pump(const Duration(seconds: 6));
     });
   });
 }
