@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../app/app_providers.dart';
+import '../../../../database/drift/database.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
@@ -232,16 +234,26 @@ class PurchaseDetailsModal extends ConsumerWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      item.productId.length > 8
-                                          ? 'Product #${index + 1}'
-                                          : item.productId,
-                                      style:
-                                          KiranaTypography.bodyMedium.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    FutureBuilder<ProductData?>(
+                                      future: ref
+                                          .read(databaseProvider)
+                                          .productsDao
+                                          .getProductById(item.productId),
+                                      builder: (context, prodSnap) {
+                                        final prodName = prodSnap.data?.name ??
+                                            (item.productId.length > 8
+                                                ? 'Product #${index + 1}'
+                                                : item.productId);
+                                        return Text(
+                                          prodName,
+                                          style: KiranaTypography.bodyMedium
+                                              .copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        );
+                                      },
                                     ),
                                     Text(
                                       '${item.quantity.toStringAsFixed(0)} units × ${_formatRupees(item.purchasePricePaise.toInt())}  •  Tax ${item.taxRate.toStringAsFixed(0)}%',
