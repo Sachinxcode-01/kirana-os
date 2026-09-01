@@ -10,6 +10,9 @@ import '../../../billing/domain/models/bill_model.dart';
 import '../../../billing/presentation/widgets/bill_details_modal.dart';
 import '../../../credit/presentation/providers/credit_providers.dart';
 import '../../../credit/presentation/screens/record_khata_payment_dialog.dart';
+import '../../../receipts/domain/services/whats_app_service.dart';
+import '../../../settings/presentation/providers/shop_settings_provider.dart';
+import '../providers/loyalty_provider.dart';
 import '../providers/customer_providers.dart';
 import 'add_edit_customer_dialog.dart';
 
@@ -379,6 +382,136 @@ class CustomerDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: KiranaSpacing.md),
 
+                      // Loyalty Rewards Card (Phase 16)
+                      Builder(builder: (context) {
+                        final loyaltyProfile = ref.watch(customerLoyaltyProfileProvider(
+                            (customerId: customerId, shopId: customer.shopId)));
+                        return Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: KiranaRadius.borderMd,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(KiranaSpacing.md),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.stars,
+                                            color: Colors.amber, size: 22),
+                                        const SizedBox(width: KiranaSpacing.xs),
+                                        Text(
+                                          'Loyalty Rewards',
+                                          style: KiranaTypography.titleMedium
+                                              .copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            Colors.amber.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: Colors.amber.shade700),
+                                      ),
+                                      child: Text(
+                                        loyaltyProfile.tier.displayName,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.amber.shade900,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: KiranaSpacing.sm),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(
+                                            KiranaSpacing.sm),
+                                        decoration: BoxDecoration(
+                                          color: KiranaColors.surfaceVariant,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('Available Points',
+                                                style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: KiranaColors
+                                                        .textSecondary)),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${loyaltyProfile.pointBalance} pts',
+                                              style: KiranaTypography.titleLarge
+                                                  .copyWith(
+                                                color: KiranaColors.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: KiranaSpacing.xs),
+                                    Expanded(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(
+                                            KiranaSpacing.sm),
+                                        decoration: BoxDecoration(
+                                          color: KiranaColors.surfaceVariant,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('Discount Value',
+                                                style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: KiranaColors
+                                                        .textSecondary)),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              _formatRupees(
+                                                  loyaltyProfile.pointBalance *
+                                                      100),
+                                              style: KiranaTypography.titleLarge
+                                                  .copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: KiranaColors.success,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: KiranaSpacing.md),
+
                       // Khata Balance Card
                       Card(
                         elevation: 2,
@@ -430,6 +563,34 @@ class CustomerDetailScreen extends ConsumerWidget {
                                   ],
                                 ),
                               ),
+                              if (debtPaise > 0) ...[
+                                IconButton.filled(
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: const Color(0xFF25D366),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  icon: const Icon(Icons.chat),
+                                  tooltip: 'Send WhatsApp Reminder',
+                                  onPressed: () async {
+                                    final whatsAppService =
+                                        ref.read(whatsAppServiceProvider);
+                                    final shopSettings = ref
+                                        .read(shopSettingsNotifierProvider)
+                                        .settings;
+                                    final msg = whatsAppService
+                                        .formatKhataReminderMessage(
+                                      customerName: customer.name,
+                                      currentDebtPaise: debtPaise,
+                                      shopSettings: shopSettings,
+                                    );
+                                    await whatsAppService.shareMessage(
+                                      msg,
+                                      subject: 'Khata Balance Reminder',
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: KiranaSpacing.xs),
+                              ],
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: KiranaColors.primary,

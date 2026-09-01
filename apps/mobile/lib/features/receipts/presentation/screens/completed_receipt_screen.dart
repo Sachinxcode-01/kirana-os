@@ -13,6 +13,7 @@ import '../../../settings/domain/models/shop_settings_model.dart';
 import '../../../settings/presentation/providers/shop_settings_provider.dart';
 import '../../domain/services/receipt_formatter_service.dart';
 import '../../domain/services/share_receipt_service.dart';
+import '../../domain/services/whats_app_service.dart';
 import '../providers/printer_provider.dart';
 import '../sheets/printer_selection_sheet.dart';
 import 'pdf_receipt_preview_screen.dart';
@@ -65,6 +66,28 @@ class _CompletedReceiptScreenState
           ),
         );
       }
+    }
+  }
+
+  Future<void> _handleWhatsAppShare(
+      BuildContext context, ShopSettingsModel? shopSettings) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final whatsAppService = ref.read(whatsAppServiceProvider);
+    final msg = whatsAppService.formatReceiptMessage(
+      bill: widget.bill,
+      shopSettings: shopSettings,
+    );
+    final shared = await whatsAppService.shareMessage(
+      msg,
+      subject: 'Bill Receipt #${widget.bill.billNumber}',
+    );
+    if (mounted && shared) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Receipt dispatched via WhatsApp.'),
+          backgroundColor: KiranaColors.success,
+        ),
+      );
     }
   }
 
@@ -464,6 +487,16 @@ class _CompletedReceiptScreenState
                     isLoading: _isSharing,
                     onPressed: () => _handleShare(context, shopSettings),
                   ),
+                ),
+                const SizedBox(width: KiranaSpacing.xs),
+                IconButton.filled(
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.chat),
+                  tooltip: 'Share on WhatsApp',
+                  onPressed: () => _handleWhatsAppShare(context, shopSettings),
                 ),
                 const SizedBox(width: KiranaSpacing.xs),
                 IconButton.filledTonal(
