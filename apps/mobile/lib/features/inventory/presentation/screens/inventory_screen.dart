@@ -6,7 +6,11 @@ import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
+import 'package:kirana_mobile/core/widgets/animated_list_item.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
+import 'package:kirana_mobile/core/widgets/empty_state.dart';
+import 'package:kirana_mobile/core/widgets/error_view.dart';
+import 'package:kirana_mobile/core/widgets/state_transition_switcher.dart';
 import 'package:kirana_mobile/features/categories/presentation/providers/category_provider.dart';
 import 'package:kirana_mobile/features/products/domain/models/product_model.dart';
 import 'package:kirana_mobile/features/products/presentation/providers/product_provider.dart';
@@ -277,75 +281,74 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   ),
                   const SizedBox(height: KiranaSpacing.lg),
 
-                  // 6. Filtered Inventory List with AnimatedSwitcher
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
+                  // 6. Filtered Inventory List with StateTransitionSwitcher
+                  StateTransitionSwitcher(
                     child: filteredProductsAsync.when(
                       data: (products) {
                         if (products.isEmpty) {
                           return Padding(
                             key: const ValueKey('empty_state'),
                             padding: const EdgeInsets.symmetric(
-                                vertical: KiranaSpacing.xxl),
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.inventory_outlined,
-                                    size: 48,
-                                    color: KiranaColors.neutral400,
-                                  ),
-                                  const SizedBox(height: KiranaSpacing.md),
-                                  Text(
-                                    'No inventory items match active filters',
-                                    style:
-                                        KiranaTypography.titleMedium.copyWith(
-                                      color: KiranaColors.neutral700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: KiranaSpacing.xs),
-                                  Text(
-                                    'Try adjusting your search query, category, or stock status filter.',
-                                    style: KiranaTypography.bodySmall.copyWith(
-                                      color: KiranaColors.neutral500,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
+                                vertical: KiranaSpacing.xl),
+                            child: EmptyState(
+                              icon: Icons.inventory_outlined,
+                              title: 'No inventory items match active filters',
+                              description:
+                                  'Try adjusting your search query, category, or stock status filter.',
+                              actionLabel: 'Reset Filters',
+                              onAction: () {
+                                _searchController.clear();
+                                ref
+                                    .read(inventorySearchQueryProvider.notifier)
+                                    .state = '';
+                                ref
+                                    .read(inventoryCategoryFilterProvider
+                                        .notifier)
+                                    .state = null;
+                                ref
+                                    .read(
+                                        inventoryStatusFilterProvider.notifier)
+                                    .state = StockStatusFilter.all;
+                                setState(() {});
+                              },
                             ),
                           );
                         }
 
                         return Column(
-                          key: ValueKey('list_${products.length}'),
-                          children: products.map((product) {
-                            return _InventoryProductCard(
+                          key: const ValueKey('inventory_list'),
+                          children: products.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final product = entry.value;
+                            return AnimatedListItem(
                               key: ValueKey(product.id),
-                              product: product,
-                              onSettingsTap: () async {
-                                final updated =
-                                    await InventorySettingsDialog.show(
-                                        context, product);
-                                if (updated == true) {
-                                  ref.invalidate(
-                                      inventoryFilteredProductsStreamProvider);
-                                  ref.invalidate(productsStreamProvider);
-                                  ref.invalidate(lowStockProductsProvider);
-                                }
-                              },
-                              onAdjustTap: () async {
-                                final adjusted =
-                                    await StockAdjustmentSheet.show(
-                                        context, product);
-                                if (adjusted == true) {
-                                  ref.invalidate(
-                                      inventoryFilteredProductsStreamProvider);
-                                  ref.invalidate(productsStreamProvider);
-                                  ref.invalidate(lowStockProductsProvider);
-                                }
-                              },
+                              index: index,
+                              child: _InventoryProductCard(
+                                key: ValueKey(product.id),
+                                product: product,
+                                onSettingsTap: () async {
+                                  final updated =
+                                      await InventorySettingsDialog.show(
+                                          context, product);
+                                  if (updated == true) {
+                                    ref.invalidate(
+                                        inventoryFilteredProductsStreamProvider);
+                                    ref.invalidate(productsStreamProvider);
+                                    ref.invalidate(lowStockProductsProvider);
+                                  }
+                                },
+                                onAdjustTap: () async {
+                                  final adjusted =
+                                      await StockAdjustmentSheet.show(
+                                          context, product);
+                                  if (adjusted == true) {
+                                    ref.invalidate(
+                                        inventoryFilteredProductsStreamProvider);
+                                    ref.invalidate(productsStreamProvider);
+                                    ref.invalidate(lowStockProductsProvider);
+                                  }
+                                },
+                              ),
                             );
                           }).toList(),
                         );
@@ -357,12 +360,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           child: CircularProgressIndicator(),
                         ),
                       ),
-                      error: (err, _) => Center(
+                      error: (err, _) => ErrorView(
                         key: const ValueKey('error'),
-                        child: Text(
-                          'Error loading inventory: $err',
-                          style: const TextStyle(color: KiranaColors.error),
-                        ),
+                        customMessage: 'Error loading inventory: $err',
+                        onRetry: () {
+                          ref.invalidate(
+                              inventoryFilteredProductsStreamProvider);
+                          ref.invalidate(productsStreamProvider);
+                        },
                       ),
                     ),
                   ),

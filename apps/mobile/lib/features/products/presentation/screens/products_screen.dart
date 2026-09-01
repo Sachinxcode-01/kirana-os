@@ -6,8 +6,12 @@ import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
+import 'package:kirana_mobile/core/widgets/animated_list_item.dart';
 import 'package:kirana_mobile/core/widgets/app_button.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
+import 'package:kirana_mobile/core/widgets/empty_state.dart';
+import 'package:kirana_mobile/core/widgets/error_view.dart';
+import 'package:kirana_mobile/core/widgets/state_transition_switcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kirana_mobile/features/categories/presentation/providers/category_provider.dart';
 import 'package:kirana_mobile/features/barcodes/presentation/widgets/product_barcode_section.dart';
@@ -236,65 +240,68 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
           // 4. Products List / Grid
           Expanded(
-            child: productsAsync.when(
-              data: (products) {
-                if (products.isEmpty) {
-                  return _buildEmptyView();
-                }
+            child: StateTransitionSwitcher(
+              child: productsAsync.when(
+                data: (products) {
+                  if (products.isEmpty) {
+                    return _buildEmptyView();
+                  }
 
-                if (context.isWideScreen) {
-                  return GridView.builder(
+                  if (context.isWideScreen) {
+                    return GridView.builder(
+                      key: const ValueKey('products_grid'),
+                      padding: const EdgeInsets.all(KiranaSpacing.md),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 2.8,
+                        crossAxisSpacing: KiranaSpacing.md,
+                        mainAxisSpacing: KiranaSpacing.md,
+                      ),
+                      itemCount: products.length,
+                      itemBuilder: (context, index) {
+                        final product = products[index];
+                        return AnimatedListItem(
+                          key: ValueKey(product.id),
+                          index: index,
+                          child: _ProductCard(
+                            product: product,
+                            onEdit: () => _showProductDialog(product: product),
+                            onArchive: () => _confirmArchive(product),
+                          ),
+                        );
+                      },
+                    );
+                  }
+
+                  return ListView.separated(
+                    key: const ValueKey('products_list'),
                     padding: const EdgeInsets.all(KiranaSpacing.md),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 2.8,
-                      crossAxisSpacing: KiranaSpacing.md,
-                      mainAxisSpacing: KiranaSpacing.md,
-                    ),
                     itemCount: products.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: KiranaSpacing.sm),
                     itemBuilder: (context, index) {
                       final product = products[index];
-                      return _ProductCard(
-                        product: product,
-                        onEdit: () => _showProductDialog(product: product),
-                        onArchive: () => _confirmArchive(product),
+                      return AnimatedListItem(
+                        key: ValueKey(product.id),
+                        index: index,
+                        child: _ProductCard(
+                          product: product,
+                          onEdit: () => _showProductDialog(product: product),
+                          onArchive: () => _confirmArchive(product),
+                        ),
                       );
                     },
                   );
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.all(KiranaSpacing.md),
-                  itemCount: products.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: KiranaSpacing.sm),
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    return _ProductCard(
-                      product: product,
-                      onEdit: () => _showProductDialog(product: product),
-                      onArchive: () => _confirmArchive(product),
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, st) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 48, color: KiranaColors.error),
-                    const SizedBox(height: KiranaSpacing.md),
-                    Text('Failed to load products',
-                        style: KiranaTypography.titleMedium),
-                    const SizedBox(height: KiranaSpacing.lg),
-                    ElevatedButton(
-                      onPressed: () => ref.refresh(productsStreamProvider),
-                      child: const Text('Retry'),
-                    ),
-                  ],
+                },
+                loading: () => const Center(
+                  key: ValueKey('loading'),
+                  child: CircularProgressIndicator(),
+                ),
+                error: (err, st) => ErrorView(
+                  key: const ValueKey('error'),
+                  customMessage: err.toString(),
+                  onRetry: () => ref.refresh(productsStreamProvider),
                 ),
               ),
             ),
@@ -309,62 +316,24 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     final categoryFilter = ref.watch(productCategoryFilterProvider);
     final isFiltering = query.trim().isNotEmpty || categoryFilter != null;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(KiranaSpacing.xxl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(KiranaSpacing.xl),
-              decoration: const BoxDecoration(
-                color: KiranaColors.primaryContainer,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isFiltering ? Icons.search_off : Icons.inventory_2_outlined,
-                size: 48,
-                color: KiranaColors.primary,
-              ),
-            ),
-            const SizedBox(height: KiranaSpacing.lg),
-            Text(
-              isFiltering
-                  ? 'No matching products found'
-                  : 'No products in catalog',
-              style: KiranaTypography.titleMedium
-                  .copyWith(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: KiranaSpacing.xs),
-            Text(
-              isFiltering
-                  ? 'Try searching with another name or clear active category filters.'
-                  : 'Add your first product to manage prices, categories, and inventory stock.',
-              style: KiranaTypography.bodyMedium
-                  .copyWith(color: KiranaColors.neutral600),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: KiranaSpacing.xl),
-            if (isFiltering)
-              OutlinedButton.icon(
-                onPressed: () {
-                  _searchController.clear();
-                  ref.read(productSearchQueryProvider.notifier).state = '';
-                  ref.read(productCategoryFilterProvider.notifier).state = null;
-                  setState(() {});
-                },
-                icon: const Icon(Icons.clear),
-                label: const Text('Clear Filters'),
-              )
-            else
-              AppButton(
-                label: '+ Add First Product',
-                onPressed: () => _showProductDialog(),
-              ),
-          ],
-        ),
-      ),
+    return EmptyState(
+      key: ValueKey(isFiltering ? 'empty_filtered' : 'empty_catalog'),
+      icon: isFiltering ? Icons.search_off : Icons.inventory_2_outlined,
+      title: isFiltering
+          ? 'No matching products found'
+          : 'No products in catalog',
+      description: isFiltering
+          ? 'Try searching with another name or clear active category filters.'
+          : 'Add your first product to manage prices, categories, and inventory stock.',
+      actionLabel: isFiltering ? 'Clear Filters' : '+ Add First Product',
+      onAction: isFiltering
+          ? () {
+              _searchController.clear();
+              ref.read(productSearchQueryProvider.notifier).state = '';
+              ref.read(productCategoryFilterProvider.notifier).state = null;
+              setState(() {});
+            }
+          : () => _showProductDialog(),
     );
   }
 }

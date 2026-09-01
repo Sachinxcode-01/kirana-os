@@ -8,7 +8,11 @@ import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/core/theme/radius.dart';
 import 'package:kirana_mobile/core/theme/spacing.dart';
 import 'package:kirana_mobile/core/theme/typography.dart';
+import 'package:kirana_mobile/core/widgets/animated_list_item.dart';
 import 'package:kirana_mobile/core/widgets/app_text_field.dart';
+import 'package:kirana_mobile/core/widgets/empty_state.dart';
+import 'package:kirana_mobile/core/widgets/error_view.dart';
+import 'package:kirana_mobile/core/widgets/state_transition_switcher.dart';
 import 'package:kirana_mobile/database/drift/database.dart';
 import 'package:kirana_mobile/features/customers/presentation/providers/customer_providers.dart';
 import 'package:kirana_mobile/features/customers/presentation/screens/add_edit_customer_dialog.dart';
@@ -112,97 +116,65 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                     )
                   : null,
             ),
-          ),
-
-          // Directory List
+          ),          // Directory List
           Expanded(
-            child: customersAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, st) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 48, color: KiranaColors.error),
-                    const SizedBox(height: KiranaSpacing.md),
-                    const Text('Failed to load customer directory',
-                        style: KiranaTypography.titleMedium),
-                    const SizedBox(height: KiranaSpacing.lg),
-                    ElevatedButton(
-                      onPressed: () => ref.invalidate(customersStreamProvider),
-                      child: const Text('Retry'),
-                    ),
-                  ],
+            child: StateTransitionSwitcher(
+              child: customersAsync.when(
+                loading: () => const Center(
+                  key: ValueKey('loading'),
+                  child: CircularProgressIndicator(),
                 ),
-              ),
-              data: (customers) {
-                if (customers.isEmpty) {
-                  if (searchQuery.isNotEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.search_off,
-                              size: 48, color: KiranaColors.neutral400),
-                          const SizedBox(height: KiranaSpacing.md),
-                          Text(
-                            'No customers match "$searchQuery"',
-                            style: KiranaTypography.titleMedium
-                                .copyWith(color: KiranaColors.neutral700),
-                          ),
-                          const SizedBox(height: KiranaSpacing.xs),
-                          const Text(
+                error: (err, st) => ErrorView(
+                  key: const ValueKey('error'),
+                  customMessage: 'Failed to load customer directory: $err',
+                  onRetry: () => ref.invalidate(customersStreamProvider),
+                ),
+                data: (customers) {
+                  if (customers.isEmpty) {
+                    if (searchQuery.isNotEmpty) {
+                      return EmptyState(
+                        key: const ValueKey('empty_search'),
+                        icon: Icons.search_off,
+                        title: 'No customers match "$searchQuery"',
+                        description:
                             'Try searching with a different name or phone number.',
-                            style: TextStyle(
-                                fontSize: 12, color: KiranaColors.neutral500),
-                          ),
-                        ],
-                      ),
+                        actionLabel: 'Clear Search',
+                        onAction: () {
+                          _searchController.clear();
+                          ref.read(customerSearchQueryProvider.notifier).state =
+                              '';
+                        },
+                      );
+                    }
+
+                    return EmptyState(
+                      key: const ValueKey('empty_customers'),
+                      icon: Icons.people_outline,
+                      title: 'No customers added yet',
+                      description:
+                          'Track udhaar, credit limits, and purchase history by creating your first customer.',
+                      actionLabel: '+ Add First Customer',
+                      onAction: () => AddEditCustomerDialog.show(context),
                     );
                   }
 
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.people_outline,
-                            size: 56, color: KiranaColors.neutral400),
-                        const SizedBox(height: KiranaSpacing.md),
-                        Text(
-                          'No customers added yet',
-                          style: KiranaTypography.headlineMedium.copyWith(
-                            color: KiranaColors.neutral700,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  return ListView.separated(
+                    key: const ValueKey('customers_list'),
+                    padding: const EdgeInsets.all(KiranaSpacing.md),
+                    itemCount: customers.length,
+                    separatorBuilder: (_, __) =>
                         const SizedBox(height: KiranaSpacing.xs),
-                        const Text(
-                          'Tap "+ Add Customer" below to create your first customer.',
-                          style: TextStyle(
-                              fontSize: 13, color: KiranaColors.neutral600),
-                        ),
-                        const SizedBox(height: KiranaSpacing.lg),
-                        ElevatedButton.icon(
-                          onPressed: () => AddEditCustomerDialog.show(context),
-                          icon: const Icon(Icons.person_add),
-                          label: const Text('Add First Customer'),
-                        ),
-                      ],
-                    ),
+                    itemBuilder: (context, index) {
+                      final customer = customers[index];
+                      return AnimatedListItem(
+                        key: ValueKey(customer.id),
+                        index: index,
+                        child: _CustomerCard(customer: customer),
+                      );
+                    },
                   );
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.all(KiranaSpacing.md),
-                  itemCount: customers.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: KiranaSpacing.xs),
-                  itemBuilder: (context, index) {
-                    final customer = customers[index];
-                    return _CustomerCard(customer: customer);
-                  },
-                );
-              },
+                },
+              ),
             ),
           ),
         ],

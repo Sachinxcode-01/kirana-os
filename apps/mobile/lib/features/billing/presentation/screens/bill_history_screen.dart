@@ -5,6 +5,10 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/widgets/animated_list_item.dart';
+import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/state_transition_switcher.dart';
 import '../../domain/models/bill_history_filter.dart';
 import '../../domain/models/bill_model.dart';
 import '../providers/bill_history_provider.dart';
@@ -229,136 +233,140 @@ class _BillHistoryScreenState extends ConsumerState<BillHistoryScreen> {
 
           // 4. Bills List View
           Expanded(
-            child: state.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : state.errorMessage != null && state.bills.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline,
-                                size: 48, color: KiranaColors.error),
-                            const SizedBox(height: KiranaSpacing.xs),
-                            Text(state.errorMessage!,
-                                style: KiranaTypography.bodyMedium),
-                            ElevatedButton(
-                              onPressed: () =>
+            child: StateTransitionSwitcher(
+              child: state.isLoading && state.bills.isEmpty
+                  ? const Center(
+                      key: ValueKey('loading'),
+                      child: CircularProgressIndicator(),
+                    )
+                  : state.errorMessage != null && state.bills.isEmpty
+                      ? ErrorView(
+                          key: const ValueKey('error'),
+                          customMessage: state.errorMessage!,
+                          onRetry: () => notifier.loadBills(refresh: true),
+                        )
+                      : state.bills.isEmpty
+                          ? EmptyState(
+                              key: const ValueKey('empty_bills'),
+                              icon: Icons.receipt_long_outlined,
+                              title: state.filter.hasActiveFilters
+                                  ? 'No bills match active filters'
+                                  : 'No billing history yet',
+                              description: state.filter.hasActiveFilters
+                                  ? 'Try clearing date range or status filters.'
+                                  : 'Complete your first checkout in POS Billing to view historical receipts.',
+                              actionLabel: state.filter.hasActiveFilters
+                                  ? 'Reset Filters'
+                                  : null,
+                              onAction: state.filter.hasActiveFilters
+                                  ? () {
+                                      _searchController.clear();
+                                      notifier.resetFilters();
+                                    }
+                                  : null,
+                            )
+                          : RefreshIndicator(
+                              key: const ValueKey('bills_list'),
+                              onRefresh: () =>
                                   notifier.loadBills(refresh: true),
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : state.bills.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.receipt_long_outlined,
-                                    size: 48, color: KiranaColors.textMuted),
-                                const SizedBox(height: KiranaSpacing.xs),
-                                Text(
-                                  state.filter.hasActiveFilters
-                                      ? 'No bills match the selected filters.'
-                                      : 'No historical bills found.',
-                                  style: KiranaTypography.bodyMedium,
-                                ),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: () => notifier.loadBills(refresh: true),
-                            child: ListView.separated(
-                              controller: _scrollController,
-                              padding: const EdgeInsets.all(KiranaSpacing.md),
-                              itemCount: state.bills.length +
-                                  (state.isLoadingMore ? 1 : 0),
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: KiranaSpacing.xs),
-                              itemBuilder: (context, index) {
-                                if (index >= state.bills.length) {
-                                  return const Padding(
-                                    padding: EdgeInsets.all(KiranaSpacing.md),
-                                    child: Center(
-                                        child: CircularProgressIndicator()),
-                                  );
-                                }
+                              child: ListView.separated(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.all(KiranaSpacing.md),
+                                itemCount: state.bills.length +
+                                    (state.isLoadingMore ? 1 : 0),
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: KiranaSpacing.xs),
+                                itemBuilder: (context, index) {
+                                  if (index >= state.bills.length) {
+                                    return const Padding(
+                                      padding:
+                                          EdgeInsets.all(KiranaSpacing.md),
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
 
-                                final bill = state.bills[index];
-                                return AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Card(
-                                    elevation: 1,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                  final bill = state.bills[index];
+                                  return AnimatedListItem(
+                                    key: ValueKey(bill.id),
+                                    index: index,
+                                    child: Card(
+                                      elevation: 1,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: ListTile(
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: KiranaSpacing.md,
+                                          vertical: KiranaSpacing.xs,
+                                        ),
+                                        title: Row(
+                                          children: [
+                                            Text(
+                                              '#${bill.billNumber}',
+                                              style:
+                                                  KiranaTypography.titleMedium,
+                                            ),
+                                            const SizedBox(
+                                                width: KiranaSpacing.xs),
+                                            _buildStatusBadge(bill.status),
+                                          ],
+                                        ),
+                                        subtitle: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'Customer: ${bill.customerName ?? "Walk-in"} • ${DateFormatter.formatDateTime(bill.createdAt)}',
+                                              style: KiranaTypography.bodySmall,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'Cashier: ${bill.cashierId}',
+                                              style: KiranaTypography.labelSmall
+                                                  .copyWith(
+                                                color: KiranaColors.textMuted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        trailing: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              bill.totalPaise.toRupeesString(),
+                                              style:
+                                                  KiranaTypography.priceTabular
+                                                      .copyWith(
+                                                color: KiranaColors.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              bill.paymentStatus.toUpperCase(),
+                                              style:
+                                                  KiranaTypography.labelSmall
+                                                      .copyWith(
+                                                color: KiranaColors.success,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        onTap: () =>
+                                            _showBillDetails(context, bill),
+                                      ),
                                     ),
-                                    child: ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                        horizontal: KiranaSpacing.md,
-                                        vertical: KiranaSpacing.xs,
-                                      ),
-                                      title: Row(
-                                        children: [
-                                          Text(
-                                            '#${bill.billNumber}',
-                                            style: KiranaTypography.titleMedium,
-                                          ),
-                                          const SizedBox(
-                                              width: KiranaSpacing.xs),
-                                          _buildStatusBadge(bill.status),
-                                        ],
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Customer: ${bill.customerName ?? "Walk-in"} • ${DateFormatter.formatDateTime(bill.createdAt)}',
-                                            style: KiranaTypography.bodySmall,
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Cashier: ${bill.cashierId}',
-                                            style: KiranaTypography.labelSmall
-                                                .copyWith(
-                                              color: KiranaColors.textMuted,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      trailing: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            bill.totalPaise.toRupeesString(),
-                                            style: KiranaTypography.priceTabular
-                                                .copyWith(
-                                              color: KiranaColors.primary,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          Text(
-                                            bill.paymentStatus.toUpperCase(),
-                                            style: KiranaTypography.labelSmall
-                                                .copyWith(
-                                              color: KiranaColors.success,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      onTap: () =>
-                                          _showBillDetails(context, bill),
-                                    ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
-                          ),
+            ),
           ),
         ],
       ),
