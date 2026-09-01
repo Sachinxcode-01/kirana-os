@@ -122,16 +122,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   // Logo & Header
                   Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(KiranaSpacing.lg),
-                      decoration: const BoxDecoration(
-                        color: KiranaColors.primaryContainer,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.storefront,
-                        size: 48,
-                        color: KiranaColors.primary,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/app_logo.png',
+                        width: 76,
+                        height: 76,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 76,
+                          height: 76,
+                          decoration: const BoxDecoration(
+                            color: KiranaColors.primaryContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.storefront,
+                            size: 44,
+                            color: KiranaColors.primary,
+                          ),
+                        ),
                       ),
                     ),
                   ),

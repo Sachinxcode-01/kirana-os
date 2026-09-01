@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kirana_mobile/core/animation/page_transitions.dart';
 import 'package:kirana_mobile/core/extensions/context_extensions.dart';
 import 'package:kirana_mobile/core/theme/colors.dart';
 import 'package:kirana_mobile/features/auth/domain/models/auth_state_model.dart';
@@ -98,35 +99,67 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (context, state) => const SplashScreen(),
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          context: context,
+          state: state,
+          child: const SplashScreen(),
+        ),
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          context: context,
+          state: state,
+          child: const LoginScreen(),
+        ),
       ),
       GoRoute(
         path: '/auth',
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          context: context,
+          state: state,
+          child: const LoginScreen(),
+        ),
       ),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const RegisterScreen(),
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          context: context,
+          state: state,
+          child: const RegisterScreen(),
+        ),
       ),
       GoRoute(
         path: '/forgot-password',
-        builder: (context, state) => const ForgotPasswordScreen(),
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          context: context,
+          state: state,
+          child: const ForgotPasswordScreen(),
+        ),
       ),
       GoRoute(
         path: '/reset-password',
-        builder: (context, state) => const ResetPasswordScreen(),
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          context: context,
+          state: state,
+          child: const ResetPasswordScreen(),
+        ),
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          context: context,
+          state: state,
+          child: const OnboardingScreen(),
+        ),
       ),
       GoRoute(
         path: '/shop-setup',
-        builder: (context, state) => const ShopSetupScreen(),
+        pageBuilder: (context, state) => AppPageTransitions.fade(
+          context: context,
+          state: state,
+          child: const ShopSetupScreen(),
+        ),
       ),
 
       // Adaptive App Shell Route
@@ -137,127 +170,241 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/dashboard',
-            builder: (context, state) => const DashboardScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const DashboardScreen(),
+            ),
           ),
           GoRoute(
             path: '/billing',
-            builder: (context, state) => const BillingScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const BillingScreen(),
+            ),
           ),
           GoRoute(
             path: '/barcode',
-            builder: (context, state) => const BarcodeScannerScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.modalSlideUp(
+              context: context,
+              state: state,
+              child: const BarcodeScannerScreen(),
+            ),
           ),
           GoRoute(
             path: '/products',
-            builder: (context, state) => const ProductsScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const ProductsScreen(),
+            ),
           ),
           GoRoute(
             path: '/categories',
-            builder: (context, state) => const CategoriesScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const CategoriesScreen(),
+            ),
           ),
           GoRoute(
             path: '/inventory',
-            builder: (context, state) => const InventoryScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const InventoryScreen(),
+            ),
           ),
           GoRoute(
             path: '/purchases',
-            builder: (context, state) => const SuppliersScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const SuppliersScreen(),
+            ),
             routes: [
               GoRoute(
                 path: 'new',
-                builder: (context, state) => const RecordPurchaseScreen(),
+                pageBuilder: (context, state) =>
+                    AppPageTransitions.slideForward(
+                  context: context,
+                  state: state,
+                  child: const RecordPurchaseScreen(),
+                ),
               ),
             ],
           ),
           GoRoute(
             path: '/suppliers',
-            builder: (context, state) => const SuppliersScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const SuppliersScreen(),
+            ),
           ),
           GoRoute(
             path: '/customers',
-            builder: (context, state) => const CustomersScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const CustomersScreen(),
+            ),
             routes: [
               GoRoute(
                 path: ':id',
-                builder: (context, state) => CustomerDetailScreen(
-                  customerId: state.pathParameters['id']!,
+                pageBuilder: (context, state) =>
+                    AppPageTransitions.slideForward(
+                  context: context,
+                  state: state,
+                  child: CustomerDetailScreen(
+                    customerId: state.pathParameters['id']!,
+                  ),
                 ),
               ),
             ],
           ),
           GoRoute(
             path: '/credit',
-            builder: (context, state) => const CreditScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const CreditScreen(),
+            ),
           ),
           GoRoute(
             path: '/payments',
-            builder: (context, state) => const PaymentsScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const PaymentsScreen(),
+            ),
           ),
           GoRoute(
             path: '/invoices',
-            builder: (context, state) => const InvoicesScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const InvoicesScreen(),
+            ),
           ),
           GoRoute(
             path: '/bills',
-            builder: (context, state) => const InvoicesScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const InvoicesScreen(),
+            ),
           ),
           GoRoute(
             path: '/returns',
-            builder: (context, state) => const ReturnsScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const ReturnsScreen(),
+            ),
           ),
           GoRoute(
             path: '/expenses',
-            builder: (context, state) => const ExpensesScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const ExpensesScreen(),
+            ),
           ),
           GoRoute(
             path: '/reports',
-            builder: (context, state) => const ReportsScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const ReportsScreen(),
+            ),
           ),
           GoRoute(
             path: '/notifications',
-            builder: (context, state) => const NotificationsScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const NotificationsScreen(),
+            ),
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const ProfileScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const ProfileScreen(),
+            ),
           ),
           GoRoute(
             path: '/staff',
-            builder: (context, state) => const StaffScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const StaffScreen(),
+            ),
           ),
           GoRoute(
             path: '/change-password',
-            builder: (context, state) => const ChangePasswordScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.modalSlideUp(
+              context: context,
+              state: state,
+              child: const ChangePasswordScreen(),
+            ),
           ),
           GoRoute(
             path: '/receipt',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final bill = state.extra as BillModel;
-              return CompletedReceiptScreen(bill: bill);
+              return AppPageTransitions.modalSlideUp(
+                context: context,
+                state: state,
+                child: CompletedReceiptScreen(bill: bill),
+              );
             },
           ),
           GoRoute(
             path: '/receipt/pdf',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final bill = state.extra as BillModel;
-              return PdfReceiptPreviewScreen(bill: bill);
+              return AppPageTransitions.modalSlideUp(
+                context: context,
+                state: state,
+                child: PdfReceiptPreviewScreen(bill: bill),
+              );
             },
           ),
           GoRoute(
             path: '/settings',
-            builder: (context, state) => const SettingsScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const SettingsScreen(),
+            ),
           ),
           GoRoute(
             path: '/settings/shop',
-            builder: (context, state) => const ShopSettingsScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.fadeSlide(
+              context: context,
+              state: state,
+              child: const ShopSettingsScreen(),
+            ),
           ),
           GoRoute(
             path: '/settings/printer',
-            builder: (context, state) => const PrinterSettingsScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.modalSlideUp(
+              context: context,
+              state: state,
+              child: const PrinterSettingsScreen(),
+            ),
           ),
           GoRoute(
             path: '/barcode-labels',
-            builder: (context, state) => const BarcodeLabelGeneratorScreen(),
+            pageBuilder: (context, state) => AppPageTransitions.modalSlideUp(
+              context: context,
+              state: state,
+              child: const BarcodeLabelGeneratorScreen(),
+            ),
           ),
         ],
       ),
