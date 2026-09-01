@@ -35,6 +35,7 @@ import 'package:kirana_mobile/features/returns/presentation/screens/returns_scre
 import 'package:kirana_mobile/features/settings/presentation/screens/settings_screen.dart';
 import 'package:kirana_mobile/features/settings/presentation/screens/shop_settings_screen.dart';
 import 'package:kirana_mobile/features/settings/presentation/screens/printer_settings_screen.dart';
+import 'package:kirana_mobile/features/barcodes/presentation/screens/barcode_label_generator_screen.dart';
 import 'package:kirana_mobile/features/shop/presentation/screens/shop_setup_screen.dart';
 import 'package:kirana_mobile/features/splash/presentation/screens/splash_screen.dart';
 import 'package:kirana_mobile/features/suppliers/presentation/screens/suppliers_screen.dart';
@@ -253,6 +254,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/settings/printer',
             builder: (context, state) => const PrinterSettingsScreen(),
+          ),
+          GoRoute(
+            path: '/barcode-labels',
+            builder: (context, state) => const BarcodeLabelGeneratorScreen(),
           ),
         ],
       ),
