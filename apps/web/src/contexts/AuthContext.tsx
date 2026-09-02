@@ -45,6 +45,7 @@ interface AuthContextType {
   login: (emailOrPhone: string, pinOrPass: string) => Promise<{ success: boolean; message?: string }>;
   loginCashierPin: (pin: string) => Promise<{ success: boolean; message?: string }>;
   loginWithOtp: (phone: string, otp: string) => Promise<{ success: boolean; message?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; message?: string }>;
   loginDemo: () => Promise<void>;
   logout: () => void;
 }
@@ -145,6 +146,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
+  const loginWithGoogle = async (): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const session: UserSession = {
+        ...DEFAULT_OWNER_SESSION,
+        name: "Ramesh Kumar (Google)",
+        email: "ramesh.kumar.kirana@gmail.com",
+        sessionStartedAt: new Date().toISOString(),
+      };
+      setUser(session);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session));
+      document.cookie = `${AUTH_COOKIE_NAME}=token_google_${Date.now()}; path=/; max-age=86400; SameSite=Lax`;
+      return { success: true };
+    } catch {
+      return { success: false, message: "Google authentication failed." };
+    }
+  };
+
   const loginDemo = async () => {
     setUser(DEFAULT_OWNER_SESSION);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(DEFAULT_OWNER_SESSION));
@@ -166,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         loginCashierPin,
         loginWithOtp,
+        loginWithGoogle,
         loginDemo,
         logout,
       }}
