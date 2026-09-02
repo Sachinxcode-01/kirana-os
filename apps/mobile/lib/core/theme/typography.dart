@@ -76,6 +76,14 @@ abstract final class KiranaTypography {
     color: KiranaColors.textPrimary,
   );
 
+  static const TextStyle labelMedium = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.25,
+    height: 1.3,
+    color: KiranaColors.textPrimary,
+  );
+
   static const TextStyle labelSmall = TextStyle(
     fontSize: 11,
     fontWeight: FontWeight.w500,

@@ -276,7 +276,6 @@ class _IndebtedCustomerCard extends ConsumerWidget {
       customerName: customer.name,
       currentDebtPaise: customer.currentDebtPaise.toInt(),
       shopSettings: shopSettings,
-      upiId: shopSettings?.upiId,
     );
 
     final shared = await whatsAppService.shareMessage(
