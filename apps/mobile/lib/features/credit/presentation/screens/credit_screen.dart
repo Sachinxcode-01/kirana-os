@@ -8,6 +8,8 @@ import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../database/drift/database.dart';
+import '../../../receipts/domain/services/whats_app_service.dart';
+import '../../../settings/presentation/providers/shop_settings_provider.dart';
 import '../providers/credit_providers.dart';
 import 'record_khata_payment_dialog.dart';
 
@@ -257,7 +259,7 @@ class _CreditScreenState extends ConsumerState<CreditScreen> {
   }
 }
 
-class _IndebtedCustomerCard extends StatelessWidget {
+class _IndebtedCustomerCard extends ConsumerWidget {
   final CustomerData customer;
 
   const _IndebtedCustomerCard({required this.customer});
@@ -267,8 +269,33 @@ class _IndebtedCustomerCard extends StatelessWidget {
     return '₹${rupees.toStringAsFixed(2)}';
   }
 
+  void _sendWhatsAppReminder(BuildContext context, WidgetRef ref) async {
+    final whatsAppService = ref.read(whatsAppServiceProvider);
+    final shopSettings = ref.read(shopSettingsNotifierProvider).settings;
+    final message = whatsAppService.formatKhataReminderMessage(
+      customerName: customer.name,
+      currentDebtPaise: customer.currentDebtPaise.toInt(),
+      shopSettings: shopSettings,
+      upiId: shopSettings?.upiId,
+    );
+
+    final shared = await whatsAppService.shareMessage(
+      message,
+      subject: 'Khata Payment Reminder - ${customer.name}',
+    );
+
+    if (context.mounted && shared) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment reminder dispatched via WhatsApp'),
+          backgroundColor: KiranaColors.success,
+        ),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final debtPaise = customer.currentDebtPaise.toInt();
 
     return Card(
@@ -324,6 +351,11 @@ class _IndebtedCustomerCard extends StatelessWidget {
               ],
             ),
             const SizedBox(width: KiranaSpacing.xs),
+            IconButton(
+              icon: const Icon(Icons.chat_outlined, color: KiranaColors.success, size: 20),
+              tooltip: 'WhatsApp UPI Reminder',
+              onPressed: () => _sendWhatsAppReminder(context, ref),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: KiranaColors.primary,
