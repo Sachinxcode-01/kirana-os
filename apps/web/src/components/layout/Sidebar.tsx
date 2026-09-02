@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import {
@@ -40,9 +41,16 @@ export function Sidebar() {
             <motion.div
               whileHover={{ scale: 1.08, rotate: 2 }}
               whileTap={{ scale: 0.95 }}
-              className="p-2.5 bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 rounded-xl shadow-lg shadow-emerald-950/60 border border-emerald-400/20"
+              className="relative p-1 bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 rounded-xl shadow-lg shadow-emerald-950/60 border border-emerald-400/20 shrink-0 overflow-hidden flex items-center justify-center"
             >
-              <Store className="w-5 h-5 text-white drop-shadow" />
+              <Image
+                src="/logo.png"
+                alt="KiranaOS Logo"
+                width={36}
+                height={36}
+                className="rounded-lg object-cover"
+                priority
+              />
             </motion.div>
             <div>
               <div className="flex items-center gap-1.5">

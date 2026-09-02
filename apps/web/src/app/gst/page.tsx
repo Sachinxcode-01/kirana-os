@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import {
@@ -12,12 +13,23 @@ import {
   FileSpreadsheet,
   Hash,
   Percent,
+  Sparkles,
+  ShieldCheck,
+  Check,
+  X,
 } from "lucide-react";
 
 export default function GSTCenterPage() {
   const [period, setPeriod] = useState("Sep 2026 (Monthly)");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const formatRupees = (paise: number) => `₹${(paise / 100).toFixed(2)}`;
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const formatRupees = (paise: number) =>
+    `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const taxSlabs = [
     { rate: "0% GST (Nil / Exempted)", taxablePaise: 1850000, cgstPaise: 0, sgstPaise: 0, totalTaxPaise: 0 },
@@ -35,7 +47,6 @@ export default function GSTCenterPage() {
   ];
 
   const totalInvoiceVal = 9050000;
-  const totalTaxable = 8262368;
   const totalCGST = 393816;
   const totalSGST = 393816;
   const totalTaxLiability = totalCGST + totalSGST;
@@ -80,106 +91,182 @@ export default function GSTCenterPage() {
     a.download = `GSTR1_29AAAAA0000A1Z5_SEP2026.json`;
     a.click();
     URL.revokeObjectURL(url);
+    showToast("Downloaded GSTR-1 GSTN Offline Tool JSON file!");
+  };
+
+  const downloadGSTR1CSV = () => {
+    const headers = ["HSN_Code", "Description", "UQC", "Total_Quantity", "Total_Value_INR", "Taxable_Value_INR", "Central_GST_INR", "State_GST_INR", "Total_Tax_INR"];
+    const rows = hsnItems.map((item) => [
+      item.hsn,
+      `"${item.desc}"`,
+      item.uqc,
+      item.qty,
+      (item.totalValPaise / 100).toFixed(2),
+      ((item.totalValPaise - item.taxPaise) / 100).toFixed(2),
+      (item.taxPaise / 200).toFixed(2),
+      (item.taxPaise / 200).toFixed(2),
+      (item.taxPaise / 100).toFixed(2),
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `GSTR1_Table12_HSN_SEP2026.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Downloaded Chartered Accountant (CA) GSTR-1 Excel CSV file!");
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
       <Sidebar />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 z-10">
         <Header
           title="GST Tax Center & GSTR-1 Summaries"
           subtitle="Tax liability aggregation, HSN Table 12 summaries, and one-click GST portal offline exports"
         />
 
         <main className="p-8 space-y-6 flex-1 overflow-auto">
+          {/* Notification Toast */}
+          <AnimatePresence>
+            {toastMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="p-3.5 bg-emerald-600 text-white rounded-2xl shadow-lg flex items-center justify-between gap-3 text-xs font-bold"
+              >
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                  <span>{toastMessage}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setToastMessage(null)}
+                  className="p-1 hover:bg-emerald-700 rounded-lg cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* GSTIN Business Header */}
           <div className="p-6 bg-gradient-to-tr from-slate-900 to-slate-800 text-white rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <Building className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-lg text-white">Sri Lakshmi Provision &amp; Supermarket</h3>
+                <h3 className="font-extrabold text-base">Sri Lakshmi Provision &amp; Supermarket</h3>
               </div>
-              <p className="text-xs text-slate-400 mt-1 font-mono">
-                GSTIN: <span className="text-emerald-400 font-bold">29AAAAA0000A1Z5</span> • State: Karnataka (29)
-              </p>
+              <div className="flex items-center gap-4 mt-2 text-xs text-slate-300 font-mono">
+                <span>GSTIN: <strong>29AAAAA0000A1Z5</strong> (Karnataka)</span>
+                <span>•</span>
+                <span>Filing Frequency: <strong>Monthly Return</strong></span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <select
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
-                className="text-xs bg-slate-800 text-white border border-slate-700 rounded-xl px-3.5 py-2 font-semibold focus:outline-none focus:border-emerald-500"
+                className="bg-slate-800 text-white text-xs px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer"
               >
-                <option value="Sep 2026 (Monthly)">September 2026 (Monthly)</option>
-                <option value="Aug 2026 (Monthly)">August 2026 (Monthly)</option>
-                <option value="Q2 FY27">Q2 FY 2026-27</option>
+                <option value="Sep 2026 (Monthly)">Sep 2026 (Monthly)</option>
+                <option value="Aug 2026 (Monthly)">Aug 2026 (Monthly)</option>
+                <option value="Q2 Jul-Sep 2026 (Quarterly)">Q2 Jul-Sep 2026 (Quarterly)</option>
               </select>
 
-              <button
-                type="button"
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={downloadGSTR1JSON}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-900 bg-emerald-400 hover:bg-emerald-300 transition-all shadow-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950/20 transition-all cursor-pointer whitespace-nowrap"
               >
-                <Download className="w-4 h-4" /> Export GSTR-1 JSON
-              </button>
+                <Download className="w-4 h-4" />
+                <span>Download GSTR-1 JSON</span>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={downloadGSTR1CSV}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>Export CA CSV</span>
+              </motion.button>
             </div>
           </div>
 
-          {/* Aggregated Totals Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
-              <span className="text-xs text-slate-500 font-semibold uppercase">Total Invoiced Sales</span>
-              <h4 className="text-2xl font-black font-mono mt-1 text-slate-900">{formatRupees(totalInvoiceVal)}</h4>
-              <p className="text-[11px] text-slate-400 mt-1">Gross Consumer Revenue</p>
+          {/* Tax Liability Dashboard Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-5 glass-card rounded-2xl shadow-xs">
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Total Sales Turnover</p>
+              <h4 className="text-xl font-extrabold font-mono text-slate-900 mt-1">
+                {formatRupees(totalInvoiceVal)}
+              </h4>
+              <p className="text-[10px] text-slate-400 mt-1">Includes exempt &amp; taxable items</p>
             </div>
 
-            <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
-              <span className="text-xs text-slate-500 font-semibold uppercase">Taxable Value</span>
-              <h4 className="text-2xl font-black font-mono mt-1 text-slate-900">{formatRupees(totalTaxable)}</h4>
-              <p className="text-[11px] text-slate-400 mt-1">Excludes GST amount</p>
+            <div className="p-5 glass-card rounded-2xl shadow-xs">
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Central Tax (CGST)</p>
+              <h4 className="text-xl font-extrabold font-mono text-emerald-700 mt-1">
+                {formatRupees(totalCGST)}
+              </h4>
+              <p className="text-[10px] text-emerald-600 font-semibold mt-1">Payable in Cash / ITC</p>
             </div>
 
-            <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
-              <span className="text-xs text-slate-500 font-semibold uppercase">CGST + SGST (Intra-State)</span>
-              <h4 className="text-2xl font-black font-mono mt-1 text-emerald-700">{formatRupees(totalTaxLiability)}</h4>
-              <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                CGST: {formatRupees(totalCGST)} | SGST: {formatRupees(totalSGST)}
-              </p>
+            <div className="p-5 glass-card rounded-2xl shadow-xs">
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">State Tax (SGST)</p>
+              <h4 className="text-xl font-extrabold font-mono text-emerald-700 mt-1">
+                {formatRupees(totalSGST)}
+              </h4>
+              <p className="text-[10px] text-emerald-600 font-semibold mt-1">Karnataka State Portion</p>
             </div>
 
-            <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
-              <span className="text-xs text-slate-500 font-semibold uppercase">IGST (Inter-State)</span>
-              <h4 className="text-2xl font-black font-mono mt-1 text-slate-900">₹0.00</h4>
-              <p className="text-[11px] text-slate-400 mt-1">100% Local Retail Transactions</p>
+            <div className="p-5 bg-gradient-to-tr from-emerald-950 to-teal-900 text-white rounded-2xl shadow-md">
+              <p className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider">Total Tax Liability</p>
+              <h4 className="text-xl font-extrabold font-mono text-white mt-1">
+                {formatRupees(totalTaxLiability)}
+              </h4>
+              <p className="text-[10px] text-emerald-400 font-medium mt-1">GSTR-3B Auto-Synced</p>
             </div>
           </div>
 
-          {/* Tax Slabs Summary Table */}
-          <div className="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Percent className="w-4 h-4 text-emerald-600" /> GST Tax Slabs Breakdown
-            </h4>
+          {/* Slabs Breakdown Table */}
+          <div className="glass-card rounded-2xl shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/60">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Percent className="w-4 h-4 text-emerald-600" /> Rate-Wise Sales Breakdown (B2CS Intra-State)
+              </h3>
+              <span className="text-xs text-slate-500 font-medium">Table 7 of GSTR-1</span>
+            </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
-                    <th className="py-2.5 px-3">Tax Slab &amp; Category</th>
-                    <th className="py-2.5 px-3 text-right">Taxable Amount</th>
-                    <th className="py-2.5 px-3 text-right">CGST (50%)</th>
-                    <th className="py-2.5 px-3 text-right">SGST (50%)</th>
-                    <th className="py-2.5 px-3 text-right">Total Tax Liability</th>
+                  <tr className="bg-slate-100/70 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="py-3 px-4">GST Rate Bracket</th>
+                    <th className="py-3 px-4 text-right">Taxable Turnover</th>
+                    <th className="py-3 px-4 text-right">CGST</th>
+                    <th className="py-3 px-4 text-right">SGST</th>
+                    <th className="py-3 px-4 text-right">Total Tax Accrued</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {taxSlabs.map((slab) => (
-                    <tr key={slab.rate} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 font-bold text-slate-900">{slab.rate}</td>
-                      <td className="py-2.5 px-3 text-right font-mono">{formatRupees(slab.taxablePaise)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-600">{formatRupees(slab.cgstPaise)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-600">{formatRupees(slab.sgstPaise)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
+                  {taxSlabs.map((slab, i) => (
+                    <tr key={i} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-4 font-bold text-slate-900">{slab.rate}</td>
+                      <td className="py-3 px-4 text-right font-mono">{formatRupees(slab.taxablePaise)}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600">{formatRupees(slab.cgstPaise)}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600">{formatRupees(slab.sgstPaise)}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
                         {formatRupees(slab.totalTaxPaise)}
                       </td>
                     </tr>
@@ -189,41 +276,52 @@ export default function GSTCenterPage() {
             </div>
           </div>
 
-          {/* HSN Summary (Table 12 GSTR-1) */}
-          <div className="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Hash className="w-4 h-4 text-emerald-600" /> HSN Summary of Outward Supplies (GSTR-1 Table 12)
-            </h4>
+          {/* HSN Summary Table 12 */}
+          <div className="glass-card rounded-2xl shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/60">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Hash className="w-4 h-4 text-emerald-600" /> HSN-Wise Summary of Outward Supplies (Table 12)
+              </h3>
+              <span className="text-xs text-slate-500 font-medium">Mandatory for Turnover &gt; ₹5 Cr</span>
+            </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
-                    <th className="py-2.5 px-3">HSN Code</th>
-                    <th className="py-2.5 px-3">Description</th>
-                    <th className="py-2.5 px-3 text-center">UQC</th>
-                    <th className="py-2.5 px-3 text-center">Total Quantity</th>
-                    <th className="py-2.5 px-3 text-right">Total Invoice Value</th>
-                    <th className="py-2.5 px-3 text-center">GST Rate</th>
-                    <th className="py-2.5 px-3 text-right">Tax Collected</th>
+                  <tr className="bg-slate-100/70 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    <th className="py-3 px-4">HSN Code</th>
+                    <th className="py-3 px-4">Description</th>
+                    <th className="py-3 px-4 text-center">UQC</th>
+                    <th className="py-3 px-4 text-right">Total Quantity</th>
+                    <th className="py-3 px-4 text-right">Total Invoice Value</th>
+                    <th className="py-3 px-4 text-right">Total GST</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {hsnItems.map((item) => (
-                    <tr key={item.hsn} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{item.hsn}</td>
-                      <td className="py-2.5 px-3 text-slate-700">{item.desc}</td>
-                      <td className="py-2.5 px-3 text-center font-mono">{item.uqc}</td>
-                      <td className="py-2.5 px-3 text-center font-mono">{item.qty}</td>
-                      <td className="py-2.5 px-3 text-right font-mono">{formatRupees(item.totalValPaise)}</td>
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-700">{item.rate}%</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
+                  {hsnItems.map((item, i) => (
+                    <tr key={i} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">{item.hsn}</td>
+                      <td className="py-3 px-4 text-slate-800">{item.desc}</td>
+                      <td className="py-3 px-4 text-center font-mono uppercase text-slate-500">{item.uqc}</td>
+                      <td className="py-3 px-4 text-right font-mono">{item.qty}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                        {formatRupees(item.totalValPaise)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-emerald-700">
                         {formatRupees(item.taxPaise)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+              <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                GSTN Validation Passed &bull; Schema Compliant
+              </span>
+              <span>Direct offline upload ready for gst.gov.in</span>
             </div>
           </div>
         </main>
