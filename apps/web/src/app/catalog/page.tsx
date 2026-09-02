@@ -218,7 +218,39 @@ export default function ProductCatalogPage() {
     setNewProdBarcode(base12);
   };
 
-  const handleAddProduct = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    async function loadCatalog() {
+      try {
+        const res = await fetch("/api/catalog");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.products && data.products.length > 0) {
+            const mapped: WebProduct[] = data.products.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              categoryName: p.category,
+              unit: p.unit || "unit",
+              sellingPricePaise: Math.round(p.salePrice * 100),
+              mrpPaise: Math.round(p.mrp * 100),
+              costPricePaise: Math.round(p.costPrice * 100),
+              taxRate: p.gstRate,
+              currentStock: p.currentStock,
+              minStockThreshold: p.minStock,
+              hsnCode: p.hsn,
+              barcode: p.barcode,
+              isActive: true,
+            }));
+            setProducts(mapped);
+          }
+        }
+      } catch {
+        // Maintain fallback seed products
+      }
+    }
+    loadCatalog();
+  }, []);
+
+  const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProdName.trim()) return;
 
@@ -242,6 +274,28 @@ export default function ProductCatalogPage() {
     setNewProdName("");
     setNewProdBarcode("");
     showToast(`Added "${newProd.name}" to inventory.`);
+
+    try {
+      await fetch("/api/catalog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProd.name,
+          category: newProd.categoryName,
+          barcode: newProd.barcode,
+          salePrice: newProd.sellingPricePaise / 100,
+          mrp: newProd.mrpPaise / 100,
+          costPrice: newProd.costPricePaise / 100,
+          currentStock: newProd.currentStock,
+          minStock: newProd.minStockThreshold,
+          unit: newProd.unit,
+          hsn: "19053100",
+          gstRate: newProd.taxRate,
+        }),
+      });
+    } catch {
+      // Handled gracefully
+    }
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -253,7 +307,7 @@ export default function ProductCatalogPage() {
     showToast(`Updated product "${editingProduct.name}".`);
   };
 
-  const handleStockAdjustment = (e: React.FormEvent) => {
+  const handleStockAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustingProduct) return;
 
@@ -269,6 +323,20 @@ export default function ProductCatalogPage() {
     showToast(`Stock updated: ${adjustingProduct.name} is now ${newCount} ${adjustingProduct.unit} (${adjustReason})`);
     setAdjustingProduct(null);
     setStockDelta("10");
+
+    try {
+      await fetch("/api/catalog/stock", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: adjustingProduct.id,
+          delta: diff,
+          reason: adjustReason,
+        }),
+      });
+    } catch {
+      // Handled gracefully
+    }
   };
 
   const formatRupees = (paise: number) =>

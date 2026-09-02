@@ -113,21 +113,42 @@ export class KiranaRepository {
       }
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
-        return data.map((p) => ({
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          barcode: p.barcode,
-          mrp: Number(p.mrp),
-          salePrice: Number(p.sale_price),
-          costPrice: Number(p.cost_price || p.sale_price * 0.85),
-          currentStock: Number(p.current_stock ?? p.stock_quantity ?? 10),
-          minStock: Number(p.min_stock ?? 5),
-          unit: p.unit || "unit",
-          hsn: p.hsn || "19053100",
-          gstRate: Number(p.gst_rate ?? 18),
-          shelfLocation: p.shelf_location || "Shelf A1",
-        }));
+        const remoteProducts: ProductItem[] = data.map((p) => {
+          const mrp = Number(p.mrp ?? (p.mrp_paise ? p.mrp_paise / 100 : 100));
+          const salePrice = Number(p.sale_price ?? (p.selling_price_paise ? p.selling_price_paise / 100 : mrp * 0.95));
+          const costPrice = Number(p.cost_price ?? (p.purchase_price_paise ? p.purchase_price_paise / 100 : salePrice * 0.85));
+          const barcode = p.barcode || ("890" + p.id.replace(/\D/g, "").slice(-9).padStart(9, "1"));
+          return {
+            id: p.id,
+            name: p.name,
+            category: p.category || "Grains & Flours",
+            barcode,
+            mrp,
+            salePrice,
+            costPrice,
+            currentStock: Number(p.current_stock ?? p.stock_quantity ?? 10),
+            minStock: Number(p.min_stock ?? p.min_stock_alert ?? 5),
+            unit: p.unit || "packet",
+            hsn: p.hsn || p.hsn_code || "11010000",
+            gstRate: Number(p.gst_rate ?? p.tax_rate_percentage ?? 5),
+            shelfLocation: p.shelf_location || "Shelf A1",
+          };
+        });
+
+        const combined = [...remoteProducts];
+        for (const sp of memoryProducts) {
+          if (!combined.some((cp) => cp.name.toLowerCase() === sp.name.toLowerCase())) {
+            combined.push(sp);
+          }
+        }
+        return combined.filter((p) => {
+          const matchSearch =
+            !search ||
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            p.barcode.includes(search);
+          const matchCat = !category || category === "All" || p.category === category;
+          return matchSearch && matchCat;
+        });
       }
     } catch {
       // fallback
@@ -174,6 +195,49 @@ export class KiranaRepository {
     }
 
     return { success: false, newStock: 0 };
+  }
+
+  /**
+   * Add a new product SKU
+   */
+  static async addProduct(product: Omit<ProductItem, "id">): Promise<ProductItem> {
+    const newId = `prod_${Date.now()}`;
+    const newProduct: ProductItem = {
+      id: newId,
+      ...product,
+    };
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("products")
+        .insert([
+          {
+            name: product.name,
+            category: product.category,
+            barcode: product.barcode,
+            mrp: product.mrp,
+            sale_price: product.salePrice,
+            cost_price: product.costPrice,
+            current_stock: product.currentStock,
+            min_stock: product.minStock,
+            unit: product.unit,
+            hsn: product.hsn,
+            gst_rate: product.gstRate,
+            shelf_location: product.shelfLocation,
+          },
+        ])
+        .select()
+        .single();
+
+      if (!error && data) {
+        newProduct.id = data.id;
+      }
+    } catch {
+      // fallback
+    }
+
+    memoryProducts.unshift(newProduct);
+    return newProduct;
   }
 
   /**
