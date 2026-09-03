@@ -142,6 +142,19 @@ class AudioFeedbackManager {
       // Audio autoplay policy fallback
     }
   }
+
+  // Convenient Aliases
+  public beepSuccess() {
+    this.playBarcodeBeep();
+  }
+
+  public cashRegisterChime() {
+    this.playSuccessChime();
+  }
+
+  public beepError() {
+    this.playWarningBuzzer();
+  }
 }
 
 export const posAudio = new AudioFeedbackManager();

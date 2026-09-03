@@ -78,3 +78,27 @@ export interface DayEndZReport {
   billsCount: number;
   isBalanced: boolean;
 }
+
+export interface WebCartItem {
+  id: string;
+  productId: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  unitPricePaise: number;
+  mrpPaise: number;
+  discountPaise: number;
+  taxRate: number;
+  hsnCode?: string;
+  barcode?: string;
+  isLoose?: boolean;
+}
+
+export interface WebHeldBill {
+  id: string;
+  parkedAt: string;
+  customerName?: string;
+  customerPhone?: string;
+  items: WebCartItem[];
+  subtotalPaise: number;
+}

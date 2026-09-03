@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { WebProduct } from "@/types";
 import { posAudio } from "@/utils/audioFeedback";
+import { BarcodeLabelStudioModal } from "@/components/catalog/BarcodeLabelStudioModal";
 
 const INITIAL_PRODUCTS: WebProduct[] = [
   {
@@ -161,6 +162,8 @@ export default function ProductCatalogPage() {
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBarcodeStudio, setShowBarcodeStudio] = useState(false);
+  const [studioProduct, setStudioProduct] = useState<WebProduct | null>(null);
   const [adjustingProduct, setAdjustingProduct] = useState<WebProduct | null>(null);
   const [tagProduct, setTagProduct] = useState<WebProduct | null>(null);
   const [editingProduct, setEditingProduct] = useState<WebProduct | null>(null);
@@ -427,7 +430,19 @@ export default function ProductCatalogPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setStudioProduct(null);
+                  setShowBarcodeStudio(true);
+                }}
+                className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-100 border border-slate-700/80 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              >
+                <Barcode className="w-4 h-4 text-emerald-400" />
+                <span>Barcode Studio</span>
+              </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -557,6 +572,17 @@ export default function ProductCatalogPage() {
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStudioProduct(p);
+                                setShowBarcodeStudio(true);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:bg-teal-50 hover:text-teal-700 transition-colors cursor-pointer"
+                              title="Print Barcode Stickers"
+                            >
+                              <Barcode className="w-3.5 h-3.5 text-teal-600" />
+                            </button>
                             <button
                               type="button"
                               onClick={() => setTagProduct(p)}
@@ -1071,6 +1097,14 @@ export default function ProductCatalogPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal 4: Barcode Label Studio & Batch Print */}
+      <BarcodeLabelStudioModal
+        isOpen={showBarcodeStudio}
+        onClose={() => setShowBarcodeStudio(false)}
+        products={products}
+        selectedProduct={studioProduct}
+      />
     </div>
   );
 }

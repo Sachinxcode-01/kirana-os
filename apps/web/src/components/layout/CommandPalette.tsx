@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Search,
   LayoutDashboard,
+  ShoppingCart,
   Package,
   BookOpen,
   TrendingUp,
@@ -52,6 +53,14 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       icon: LayoutDashboard,
       href: "/",
       badge: "Home",
+    },
+    {
+      id: "nav-pos",
+      title: "Live POS Billing Counter (Fast Cashier)",
+      category: "Navigation",
+      icon: ShoppingCart,
+      href: "/pos",
+      badge: "F2",
     },
     {
       id: "nav-catalog",

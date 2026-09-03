@@ -88,6 +88,7 @@ export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "zreport" | "deadstock" | "rush">("overview");
   const [timeRange, setTimeRange] = useState("Today");
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const formatRupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -117,12 +118,13 @@ export default function AnalyticsPage() {
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-300/15 rounded-full blur-3xl pointer-events-none -mr-40 -mt-40"></div>
       <div className="absolute bottom-0 left-64 w-[450px] h-[450px] bg-teal-300/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <Sidebar />
+      <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 z-10">
         <Header
           title="Executive Analytics & Intelligence"
           subtitle="Real-time financial telemetry, cash drawer reconciliation, and margin performance"
+          onMenuClick={() => setMobileNavOpen(true)}
         />
 
         <main className="p-8 space-y-6 flex-1 overflow-auto">

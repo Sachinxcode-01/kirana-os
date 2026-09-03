@@ -22,6 +22,7 @@ interface QuickTenderModalProps {
   onClose: () => void;
   defaultBillAmount?: number; // In Rupees
   onSuccess?: (details: { billAmount: number; tenderReceived: number; changeReturned: number; mode: string }) => void;
+  onTenderSuccess?: (mode: "CASH" | "UPI" | "UDHAAR") => void;
 }
 
 export function QuickTenderModal({
@@ -29,6 +30,7 @@ export function QuickTenderModal({
   onClose,
   defaultBillAmount = 340,
   onSuccess,
+  onTenderSuccess,
 }: QuickTenderModalProps) {
   const [billAmount, setBillAmount] = useState<number>(defaultBillAmount);
   const [tenderReceived, setTenderReceived] = useState<number>(defaultBillAmount);
@@ -76,6 +78,7 @@ export function QuickTenderModal({
         changeReturned,
         mode: paymentMode,
       });
+      onTenderSuccess?.(paymentMode);
       setIsCompleted(false);
       onClose();
     }, 1200);

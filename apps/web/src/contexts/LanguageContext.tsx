@@ -23,6 +23,7 @@ export const SUPPORTED_LANGUAGES: LanguageInfo[] = [
 export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
   en: {
     // Navigation
+    "nav.pos": "Live POS Counter",
     "nav.dashboard": "Dashboard",
     "nav.catalog": "Inventory & Catalog",
     "nav.udhaar": "Digital Khata",
@@ -81,6 +82,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
   },
   hi: {
     // Navigation
+    "nav.pos": "पीओएस बिलिंग काउंटर",
     "nav.dashboard": "डैशबोर्ड",
     "nav.catalog": "सामग्री सूची (कैटलॉग)",
     "nav.udhaar": "डिजिटल उधार खाता",
@@ -139,6 +141,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
   },
   kn: {
     // Navigation
+    "nav.pos": "ಲೈವ್ ಬಿಲ್ಲಿಂಗ್ ಕೌಂಟರ್",
     "nav.dashboard": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
     "nav.catalog": "ದಾಸ್ತಾನು ಮತ್ತು ಕ್ಯಾಟಲಾಗ್",
     "nav.udhaar": "ಡಿಜಿಟಲ್ ಉದ್ರಿ ಖಾತೆ",
@@ -197,6 +200,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
   },
   ta: {
     // Navigation
+    "nav.pos": "நேரடி பில்லிங் கவுண்டர்",
     "nav.dashboard": "டாஷ்போர்டு",
     "nav.catalog": "பொருட்கள் பட்டியல்",
     "nav.udhaar": "டிஜிட்டல் கடன் கணக்கு",
@@ -255,6 +259,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
   },
   te: {
     // Navigation
+    "nav.pos": "లైవ్ బిల్లింగ్ కౌంటర్",
     "nav.dashboard": "డ్యాష్‌బోర్డ్",
     "nav.catalog": "సరుకుల జాబితా (కేటలాగ్)",
     "nav.udhaar": "డిజిటల్ అప్పుల ఖాతా",

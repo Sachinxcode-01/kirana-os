@@ -16,6 +16,7 @@ import { VoiceSearchButton } from "@/components/pos/VoiceSearchButton";
 import { usePosHotkeys } from "@/hooks/usePosHotkeys";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { posAudio } from "@/utils/audioFeedback";
+import { KiranaAiCopilotDrawer } from "@/components/ai/KiranaAiCopilotDrawer";
 import {
   Search,
   Bell,
@@ -60,6 +61,7 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
   const [tenderOpen, setTenderOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [zReportOpen, setZReportOpen] = useState(false);
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -197,6 +199,7 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
       <QuickTenderModal isOpen={tenderOpen} onClose={() => setTenderOpen(false)} />
       <ThermalReceiptModal isOpen={receiptOpen} onClose={() => setReceiptOpen(false)} />
       <DayEndZReportModal isOpen={zReportOpen} onClose={() => setZReportOpen(false)} />
+      <KiranaAiCopilotDrawer isOpen={aiDrawerOpen} onClose={() => setAiDrawerOpen(false)} />
 
       <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/70 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
         {/* Title / Search */}
@@ -313,6 +316,22 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
             <Keyboard className="w-3.5 h-3.5 text-slate-500" />
             <span className="font-mono text-[10px] bg-slate-200/80 px-1 py-0.5 rounded text-slate-600 font-bold">
               ?
+            </span>
+          </motion.button>
+
+          {/* Ask Kirana AI Store Copilot Pill */}
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            type="button"
+            onClick={() => setAiDrawerOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-700 hover:to-teal-700 text-white border border-emerald-400/40 text-xs font-extrabold shadow-sm shadow-emerald-950/20 transition-all cursor-pointer"
+            title="Ask Vernacular Kirana AI Copilot"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span className="hidden sm:inline">Kirana AI</span>
+            <span className="text-[9px] font-black uppercase px-1 rounded bg-white/20 text-white">
+              AI
             </span>
           </motion.button>
 

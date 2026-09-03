@@ -95,6 +95,8 @@ export default function UdhaarLedgerPage() {
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showHistoryCustomer, setShowHistoryCustomer] = useState<WebCustomer | null>(null);
+  const [showBulkReminderModal, setShowBulkReminderModal] = useState(false);
+  const [selectedDebtorIds, setSelectedDebtorIds] = useState<string[]>([]);
   const [receiptModal, setReceiptModal] = useState<PaymentReceiptData | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -293,15 +295,33 @@ export default function UdhaarLedgerPage() {
               />
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowAddCustomerModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950/20 transition-all cursor-pointer whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Khata Customer</span>
-            </motion.button>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  const debtors = customers.filter((c) => c.currentBalancePaise > 0).map((c) => c.id);
+                  setSelectedDebtorIds(debtors);
+                  setShowBulkReminderModal(true);
+                }}
+                className="flex items-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              >
+                <Send className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Bulk WhatsApp Reminders</span>
+                <span className="px-1.5 py-0.2 rounded bg-emerald-200 text-[10px] font-mono font-black text-emerald-900">
+                  {customers.filter((c) => c.currentBalancePaise > 0).length}
+                </span>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowAddCustomerModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950/20 transition-all cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Khata Customer</span>
+              </motion.button>
+            </div>
           </div>
 
           {/* Customers Table */}
@@ -746,6 +766,140 @@ export default function UdhaarLedgerPage() {
                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer"
                 >
                   Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal 4: Bulk WhatsApp Reminders & Dynamic UPI Pay Links (Phase 16) */}
+      <AnimatePresence>
+        {showBulkReminderModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-xl bg-white rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                    <Send className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-base">
+                      Bulk WhatsApp Khata Payment Reminders
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Dispatches direct UPI Payment Links with shop VPA
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkReminderModal(false)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Debtors List with checkboxes */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1">
+                  <span>Select Debtors ({selectedDebtorIds.length} selected)</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const all = customers.filter((c) => c.currentBalancePaise > 0).map((c) => c.id);
+                      setSelectedDebtorIds(selectedDebtorIds.length === all.length ? [] : all);
+                    }}
+                    className="text-emerald-600 hover:underline font-bold cursor-pointer"
+                  >
+                    {selectedDebtorIds.length === customers.filter((c) => c.currentBalancePaise > 0).length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {customers
+                    .filter((c) => c.currentBalancePaise > 0)
+                    .map((c) => {
+                      const isSelected = selectedDebtorIds.includes(c.id);
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => {
+                            setSelectedDebtorIds((prev) =>
+                              isSelected ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                            );
+                          }}
+                          className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-colors ${
+                            isSelected
+                              ? "bg-emerald-50/70 border-emerald-300"
+                              : "bg-slate-50 border-slate-200 text-slate-500"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              className="rounded text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <div>
+                              <p className="font-bold text-slate-900 text-xs">{c.name}</p>
+                              <p className="text-[11px] text-slate-500 font-mono">{c.phone}</p>
+                            </div>
+                          </div>
+                          <span className="font-bold font-mono text-xs text-rose-600">
+                            {formatRupees(c.currentBalancePaise)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Message & UPI Pay Link Preview */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 uppercase">
+                  <span>WhatsApp Message Preview</span>
+                  <span className="text-emerald-700">UPI Intent Active</span>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 font-mono space-y-1">
+                  <p className="font-bold text-slate-900">Sri Lakshmi Provision Store</p>
+                  <p className="text-slate-600">Dear Customer, you have a pending Khata balance.</p>
+                  <p className="text-emerald-700 font-bold">
+                    📲 Pay instantly via UPI: upi://pay?pa=srilakshmi@okaxis&amp;pn=SriLakshmiProvision
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkReminderModal(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedDebtorIds.length === 0}
+                  onClick={() => {
+                    posAudio.playSuccessChime();
+                    showToast(`Dispatched WhatsApp reminders to ${selectedDebtorIds.length} customers.`);
+                    setShowBulkReminderModal(false);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-bold shadow-md shadow-emerald-950/20 cursor-pointer flex items-center gap-2"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send {selectedDebtorIds.length} WhatsApp Reminders</span>
                 </button>
               </div>
             </motion.div>
