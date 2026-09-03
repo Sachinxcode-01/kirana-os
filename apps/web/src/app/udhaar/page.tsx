@@ -25,6 +25,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { WebCustomer } from "@/types";
+import { posAudio } from "@/utils/audioFeedback";
 
 const INITIAL_CUSTOMERS: WebCustomer[] = [
   {
@@ -150,6 +151,7 @@ export default function UdhaarLedgerPage() {
 
     setShowSettleModal(false);
     setSettleAmount("");
+    posAudio.playSuccessChime();
     showToast(`Payment of ${formatRupees(settlePaise)} recorded for ${selectedCustomer.name}`);
   };
 
@@ -171,10 +173,12 @@ export default function UdhaarLedgerPage() {
     setShowAddCustomerModal(false);
     setNewName("");
     setNewPhone("");
+    posAudio.playSuccessChime();
     showToast(`Added ${newCust.name} to Khata ledger.`);
   };
 
   const triggerWhatsAppReminder = (customer: WebCustomer) => {
+    posAudio.playBarcodeBeep();
     const upiLink = `upi://pay?pa=srilakshmi@okaxis&pn=Sri%20Lakshmi%20Provision&am=${(
       customer.currentBalancePaise / 100
     ).toFixed(2)}&cu=INR`;

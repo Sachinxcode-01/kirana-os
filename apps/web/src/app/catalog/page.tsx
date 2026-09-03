@@ -28,6 +28,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { WebProduct } from "@/types";
+import { posAudio } from "@/utils/audioFeedback";
 
 const INITIAL_PRODUCTS: WebProduct[] = [
   {
@@ -250,6 +251,19 @@ export default function ProductCatalogPage() {
     loadCatalog();
   }, []);
 
+  const handleQuickStockDelta = (productId: string, delta: number) => {
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          const newStock = Math.max(0, p.currentStock + delta);
+          return { ...p, currentStock: newStock };
+        }
+        return p;
+      })
+    );
+    posAudio.playBarcodeBeep();
+  };
+
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProdName.trim()) return;
@@ -273,6 +287,7 @@ export default function ProductCatalogPage() {
     setShowAddModal(false);
     setNewProdName("");
     setNewProdBarcode("");
+    posAudio.playSuccessChime();
     showToast(`Added "${newProd.name}" to inventory.`);
 
     try {
@@ -496,26 +511,43 @@ export default function ProductCatalogPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => setAdjustingProduct(p)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-transform hover:scale-105 ${
-                              isLowStock
-                                ? "bg-amber-50 text-amber-800 border-amber-200"
-                                : "bg-emerald-50 text-emerald-800 border-emerald-200"
-                            }`}
-                            title="Click to adjust stock"
-                          >
-                            {isLowStock ? (
-                              <AlertTriangle className="w-3 h-3 text-amber-600" />
-                            ) : (
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            )}
-                            <span>
-                              {p.currentStock} {p.unit}
-                            </span>
-                            <span className="text-[10px] text-slate-400">✏️</span>
-                          </button>
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleQuickStockDelta(p.id, -1)}
+                              className="w-5 h-5 rounded-md bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-600 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer"
+                              title="Decrease Stock (-1)"
+                            >
+                              -
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAdjustingProduct(p)}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-transform hover:scale-105 ${
+                                isLowStock
+                                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                                  : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              }`}
+                              title="Click for detailed stock adjustment"
+                            >
+                              {isLowStock ? (
+                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              ) : (
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              )}
+                              <span>
+                                {p.currentStock} {p.unit}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickStockDelta(p.id, 1)}
+                              className="w-5 h-5 rounded-md bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700 text-slate-600 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer"
+                              title="Increase Stock (+1)"
+                            >
+                              +
+                            </button>
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
                           <span className="font-bold text-slate-900">{formatRupees(marginPaise)}</span>

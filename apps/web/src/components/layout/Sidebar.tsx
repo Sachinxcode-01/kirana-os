@@ -18,18 +18,20 @@ import {
   Wifi,
   ChevronRight,
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   const navigation = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Product Catalog", href: "/catalog", icon: Package },
-    { name: "Udhaar (Khata)", href: "/udhaar", icon: Users },
-    { name: "Executive Analytics", href: "/analytics", icon: TrendingUp },
-    { name: "Purchases & Inward", href: "/purchases", icon: Truck },
-    { name: "GSTR-1 Tax Center", href: "/gst", icon: FileText },
-    { name: "Store Settings", href: "/settings", icon: Settings },
+    { name: t("nav.dashboard"), href: "/", icon: LayoutDashboard },
+    { name: t("nav.catalog"), href: "/catalog", icon: Package, hotkey: "F1" },
+    { name: t("nav.udhaar"), href: "/udhaar", icon: Users },
+    { name: t("nav.analytics"), href: "/analytics", icon: TrendingUp },
+    { name: t("nav.purchases"), href: "/purchases", icon: Truck },
+    { name: t("nav.gst"), href: "/gst", icon: FileText },
+    { name: t("nav.settings"), href: "/settings", icon: Settings },
   ];
 
   return (
@@ -111,15 +113,24 @@ export function Sidebar() {
                     />
                     <span>{item.name}</span>
                   </div>
-                  {isActive && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -4 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <ChevronRight className="w-3.5 h-3.5 text-emerald-300" />
-                    </motion.div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {item.hotkey && (
+                      <kbd className={`px-1.5 py-0.2 text-[10px] font-mono font-bold rounded ${
+                        isActive ? "bg-emerald-700/60 text-white" : "bg-slate-800 text-slate-400 border border-slate-700"
+                      }`}>
+                        {item.hotkey}
+                      </kbd>
+                    )}
+                    {isActive && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -4 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronRight className="w-3.5 h-3.5 text-emerald-300" />
+                      </motion.div>
+                    )}
+                  </div>
                 </motion.div>
 
                 {/* Animated Active Pill Indicator */}
