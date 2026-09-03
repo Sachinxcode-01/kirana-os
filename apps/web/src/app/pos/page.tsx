@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -41,6 +41,7 @@ import { ThermalReceiptModal } from "@/components/pos/ThermalReceiptModal";
 import { WhatsAppInvoiceModal } from "@/components/pos/WhatsAppInvoiceModal";
 import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal";
 import { QuickCustomerModal, NewCustomerData } from "@/components/pos/QuickCustomerModal";
+import { useHardwareBarcodeScanner } from "@/hooks/useHardwareBarcodeScanner";
 import { VoiceSearchButton } from "@/components/pos/VoiceSearchButton";
 import { posAudio } from "@/utils/audioFeedback";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -538,6 +539,38 @@ export default function PosBillingPage() {
     }
   };
 
+  // Hardware Barcode Scanner Pipe (Phase 19.4)
+  const handleHardwareScan = useCallback(
+    (scannedCode: string) => {
+      const cleanCode = scannedCode.trim();
+
+      // 1. Direct barcode match
+      const exactMatch = INVENTORY_ITEMS.find((p) => p.barcode === cleanCode);
+      if (exactMatch) {
+        addToCart(exactMatch, 1);
+        showNotification(`Laser Scan: ${exactMatch.name}`);
+        return;
+      }
+
+      // 2. Direct SKU id match
+      const idMatch = INVENTORY_ITEMS.find((p) => p.id.toLowerCase() === cleanCode.toLowerCase());
+      if (idMatch) {
+        addToCart(idMatch, 1);
+        showNotification(`Laser Scan: ${idMatch.name}`);
+        return;
+      }
+
+      posAudio.beepError();
+      showNotification(`Unregistered barcode: ${cleanCode}`);
+    },
+    [addToCart]
+  );
+
+  useHardwareBarcodeScanner({
+    onScan: handleHardwareScan,
+    enabled: !tenderOpen && !receiptOpen && !whatsAppOpen && !shortcutsOpen && !customerModalOpen,
+  });
+
   // Hold / Recall Bills
   const handleHoldBill = () => {
     if (cart.length === 0) {
@@ -697,6 +730,13 @@ export default function PosBillingPage() {
             <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 pl-2 border-l border-slate-800">
               <Clock className="w-3.5 h-3.5 text-slate-500" />
               <span className="font-mono text-slate-300">{currentTime || "Live"}</span>
+            </div>
+
+            {/* Hardware Scanner Live Indicator (Phase 19.4) */}
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/70 border border-emerald-800/80 text-emerald-300 text-xs font-mono shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <Barcode className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Laser Ready</span>
             </div>
           </div>
 

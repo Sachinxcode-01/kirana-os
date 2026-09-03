@@ -77,6 +77,37 @@ class AudioFeedbackManager {
   }
 
   /**
+   * Fast burst scan beep with dynamic pitch shift to give cashiers distinct rapid feedback
+   */
+  public playRapidScanBeep(scanIndex: number = 0) {
+    if (this.isMuted) return;
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+
+      const baseFreq = 1800;
+      const freq = baseFreq + ((scanIndex % 5) * 75);
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.055);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.055);
+    } catch {
+      // Audio autoplay policy fallback
+    }
+  }
+
+  /**
    * Harmonious ascending two-tone chime for bill settlement / payment received (587Hz -> 880Hz)
    */
   public playSuccessChime() {
