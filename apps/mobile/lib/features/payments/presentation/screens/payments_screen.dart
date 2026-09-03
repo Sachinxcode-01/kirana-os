@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/extensions/num_extensions.dart';
 import '../../../../core/theme/colors.dart';
+import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../billing/presentation/providers/billing_provider.dart';
+import '../widgets/dynamic_upi_qr_modal.dart';
 
 class PaymentsScreen extends ConsumerStatefulWidget {
   const PaymentsScreen({super.key});
@@ -16,10 +20,10 @@ class PaymentsScreen extends ConsumerStatefulWidget {
 }
 
 class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
-  String _selectedMode = 'cash';
+  String _selectedMode = 'upi_qr';
   bool _isSubmitting = false;
 
-  void _showConfirmationDialog(BuildContext context) {
+  void _handleCheckout(BuildContext context) {
     final billingState = ref.read(billingNotifierProvider);
     final activeDraft = billingState.activeDraft;
 
@@ -43,11 +47,49 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       return;
     }
 
+    if (_selectedMode == 'upi_qr') {
+      _showDynamicUpiModal(context);
+    } else {
+      _showConfirmationDialog(context);
+    }
+  }
+
+  void _showDynamicUpiModal(BuildContext context) {
+    final activeDraft = ref.read(billingNotifierProvider).activeDraft;
+    if (activeDraft == null) return;
+
+    DynamicUpiQrModal.show(
+      context,
+      billNumber: activeDraft.billNumber,
+      amountPaise: activeDraft.totalPaise,
+      onConfirmPayment: () async {
+        final success = await ref
+            .read(billingNotifierProvider.notifier)
+            .completeCheckout(paymentMode: 'upi_qr');
+
+        if (success && context.mounted) {
+          _showSuccessDialog(
+            context,
+            billNumber: activeDraft.billNumber,
+            amountFormatted: activeDraft.totalPaise.toRupeesString(),
+            paymentMode: 'BHARAT UPI QR',
+          );
+        }
+        return success;
+      },
+    );
+  }
+
+  void _showConfirmationDialog(BuildContext context) {
+    final billingState = ref.read(billingNotifierProvider);
+    final activeDraft = billingState.activeDraft;
+    if (activeDraft == null) return;
+
     final modeLabel = _selectedMode == 'cash'
         ? 'CASH'
-        : _selectedMode == 'upi_qr'
-            ? 'UPI'
-            : 'CARD';
+        : _selectedMode == 'card'
+            ? 'CARD'
+            : 'CREDIT (UDHAAR)';
 
     showDialog(
       context: context,
@@ -56,6 +98,9 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
+              shape: const RoundedRectangleBorder(
+                borderRadius: KiranaRadius.borderLg,
+              ),
               title: const Text('Confirm Payment'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -71,7 +116,8 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Total Items:'),
-                      Text('${activeDraft.items.length}'),
+                      Text('${activeDraft.items.length}',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                   Row(
@@ -86,7 +132,8 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Discount:'),
-                        Text('- ${activeDraft.discountPaise.toRupeesString()}'),
+                        Text('- ${activeDraft.discountPaise.toRupeesString()}',
+                            style: const TextStyle(color: KiranaColors.error)),
                       ],
                     ),
                   if (activeDraft.taxTotalPaise > 0)
@@ -106,8 +153,9 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                       Text(
                         activeDraft.totalPaise.toRupeesString(),
                         style: KiranaTypography.displayTotal.copyWith(
-                          color: KiranaColors.primary,
+                          color: KiranaColors.primaryDark,
                           fontSize: 24,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
@@ -122,7 +170,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                   child: const Text('Cancel'),
                 ),
                 AppButton(
-                  label: 'CONFIRM PAYMENT',
+                  label: 'CONFIRM SALE',
                   isLoading: _isSubmitting,
                   onPressed: _isSubmitting
                       ? null
@@ -170,47 +218,83 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     required String amountFormatted,
     required String paymentMode,
   }) {
+    HapticFeedback.heavyImpact();
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.check_circle_outline,
-            size: 64, color: KiranaColors.success),
-        title: const Text('Payment Successful'),
+        shape: const RoundedRectangleBorder(
+          borderRadius: KiranaRadius.borderXl,
+        ),
+        icon: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: KiranaColors.success.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_circle,
+            size: 64,
+            color: KiranaColors.success,
+          ),
+        ).animate().scale(begin: const Offset(0.5, 0.5), curve: Curves.elasticOut, duration: 600.ms),
+        title: const Text(
+          'Payment Successful',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Text(
-                'Sale completed atomically.',
-                style: KiranaTypography.bodySmall,
+                'Bill synchronized and receipt generated.',
+                style: KiranaTypography.bodySmall.copyWith(
+                  color: KiranaColors.neutral600,
+                ),
               ),
             ),
             const Divider(height: KiranaSpacing.lg),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Bill Number:'),
-                Text(billNumber, style: KiranaTypography.titleMedium),
+                const Text('Bill Number:', style: TextStyle(color: KiranaColors.neutral600)),
+                Text(billNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: KiranaSpacing.xs),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Amount Paid:'),
+                const Text('Amount Paid:', style: TextStyle(color: KiranaColors.neutral600)),
                 Text(amountFormatted,
-                    style: KiranaTypography.titleMedium
-                        .copyWith(color: KiranaColors.success)),
+                    style: KiranaTypography.titleMedium.copyWith(
+                      color: KiranaColors.success,
+                      fontWeight: FontWeight.w900,
+                    )),
               ],
             ),
             const SizedBox(height: KiranaSpacing.xs),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Payment Method:'),
-                Text(paymentMode, style: KiranaTypography.bodyMedium),
+                const Text('Payment Method:', style: TextStyle(color: KiranaColors.neutral600)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: KiranaColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    paymentMode,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: KiranaColors.primaryDark,
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -226,15 +310,19 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                 context.go('/bills');
               }
             },
-            icon: const Icon(Icons.receipt_long),
+            icon: const Icon(Icons.receipt_long, size: 18),
             label: const Text('VIEW RECEIPT'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: KiranaColors.primary,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () {
               Navigator.of(ctx).pop();
               context.go('/bills');
             },
-            child: const Text('Done'),
+            child: const Text('Start New Sale'),
           ),
         ],
       ),
@@ -242,9 +330,13 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
   }
 
   void _showFailureDialog(BuildContext context, String message) {
+    HapticFeedback.mediumImpact();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: KiranaRadius.borderLg,
+        ),
         icon: const Icon(Icons.error_outline,
             size: 64, color: KiranaColors.error),
         title: const Text('Checkout Failed'),
@@ -277,12 +369,12 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                 padding: const EdgeInsets.all(KiranaSpacing.sm),
                 decoration: BoxDecoration(
                   color: KiranaColors.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: KiranaColors.error),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.wifi_off, color: KiranaColors.error),
+                    const Icon(Icons.wifi_off, color: KiranaColors.error, size: 20),
                     const SizedBox(width: KiranaSpacing.xs),
                     Expanded(
                       child: Text(
@@ -297,63 +389,99 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                 ),
               ),
 
-            Card(
-              color: KiranaColors.primaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(KiranaSpacing.lg),
-                child: Column(
-                  children: [
-                    const Text('Total Bill Payable',
-                        style: KiranaTypography.labelSmall),
-                    const SizedBox(height: KiranaSpacing.xs),
-                    Text(
-                      totalPaise.toRupeesString(),
-                      style: KiranaTypography.displayTotal.copyWith(
-                        color: KiranaColors.primaryDark,
-                      ),
-                    ),
+            // Bill Total Banner Card
+            Container(
+              padding: const EdgeInsets.all(KiranaSpacing.lg),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    KiranaColors.primaryContainer,
+                    KiranaColors.primaryContainer.withValues(alpha: 0.5),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: KiranaRadius.borderLg,
+                border: Border.all(
+                  color: KiranaColors.primary.withValues(alpha: 0.2),
                 ),
               ),
-            ),
+              child: Column(
+                children: [
+                  const Text('Total Bill Payable',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: KiranaColors.neutral600,
+                      )),
+                  const SizedBox(height: KiranaSpacing.xxs),
+                  Text(
+                    totalPaise.toRupeesString(),
+                    style: KiranaTypography.displayTotal.copyWith(
+                      color: KiranaColors.primaryDark,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 200.ms).slideY(begin: -0.05, end: 0),
             const SizedBox(height: KiranaSpacing.xl),
 
-            // Payment Options
-            _PaymentOptionCard(
-              icon: Icons.money,
-              title: 'Cash Payment',
-              subtitle: 'Pay via cash tendered',
-              color: KiranaColors.success,
-              isSelected: _selectedMode == 'cash',
-              onTap: () => setState(() => _selectedMode = 'cash'),
+            // Payment Options Label
+            const Text(
+              'Select Payment Mode',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: KiranaColors.neutral800,
+              ),
             ),
             const SizedBox(height: KiranaSpacing.md),
+
+            // Dynamic UPI Card (Default & Recommended for India)
             _PaymentOptionCard(
-              icon: Icons.qr_code,
-              title: 'Dynamic UPI',
-              subtitle: 'Pay via GPay, PhonePe, Paytm',
+              icon: Icons.qr_code_2,
+              title: 'Dynamic Bharat UPI QR',
+              subtitle: 'GPay, PhonePe, Paytm, BHIM with 3-min timer',
+              badge: 'POPULAR',
+              badgeColor: KiranaColors.primary,
               color: KiranaColors.primary,
               isSelected: _selectedMode == 'upi_qr',
               onTap: () => setState(() => _selectedMode = 'upi_qr'),
-            ),
+            ).animate().fadeIn(duration: 220.ms, delay: 50.ms).slideX(begin: 0.04, end: 0),
             const SizedBox(height: KiranaSpacing.md),
+
+            // Cash Payment Card
+            _PaymentOptionCard(
+              icon: Icons.payments_outlined,
+              title: 'Cash Payment',
+              subtitle: 'Collect cash tendered in store register',
+              color: KiranaColors.success,
+              isSelected: _selectedMode == 'cash',
+              onTap: () => setState(() => _selectedMode = 'cash'),
+            ).animate().fadeIn(duration: 220.ms, delay: 100.ms).slideX(begin: 0.04, end: 0),
+            const SizedBox(height: KiranaSpacing.md),
+
+            // Card Payment Card
             _PaymentOptionCard(
               icon: Icons.credit_card,
-              title: 'Card Payment',
-              subtitle: 'Debit or Credit Card POS terminal',
+              title: 'Debit / Credit Card',
+              subtitle: 'Swipe or Tap on POS Card Terminal',
               color: KiranaColors.secondary,
               isSelected: _selectedMode == 'card',
               onTap: () => setState(() => _selectedMode = 'card'),
-            ),
+            ).animate().fadeIn(duration: 220.ms, delay: 150.ms).slideX(begin: 0.04, end: 0),
             const Spacer(),
 
             AppButton(
-              label: 'PROCEED TO CHECKOUT',
-              icon: Icons.payment,
+              label: _selectedMode == 'upi_qr'
+                  ? 'SHOW DYNAMIC UPI QR'
+                  : 'PROCEED TO CHECKOUT',
+              icon: _selectedMode == 'upi_qr' ? Icons.qr_code_2 : Icons.payment,
               isLoading: billingState.isLoading,
               onPressed: billingState.isOffline
                   ? null
-                  : () => _showConfirmationDialog(context),
+                  : () => _handleCheckout(context),
             ),
           ],
         ),
@@ -367,6 +495,8 @@ class _PaymentOptionCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final Color color;
+  final String? badge;
+  final Color? badgeColor;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -375,6 +505,8 @@ class _PaymentOptionCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.color,
+    this.badge,
+    this.badgeColor,
     required this.isSelected,
     required this.onTap,
   });
@@ -382,27 +514,81 @@ class _PaymentOptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: isSelected ? 3 : 1,
+      elevation: isSelected ? 2 : 0.5,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isSelected ? BorderSide(color: color, width: 2) : BorderSide.none,
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(KiranaSpacing.md),
-        leading: Container(
-          padding: const EdgeInsets.all(KiranaSpacing.md),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 28),
+        borderRadius: KiranaRadius.borderLg,
+        side: BorderSide(
+          color: isSelected ? color : KiranaColors.outlineVariant.withValues(alpha: 0.8),
+          width: isSelected ? 2 : 1,
         ),
-        title: Text(title, style: KiranaTypography.titleMedium),
-        subtitle: Text(subtitle, style: KiranaTypography.bodySmall),
-        trailing: isSelected
-            ? Icon(Icons.check_circle, color: color)
-            : const Icon(Icons.chevron_right),
+      ),
+      child: InkWell(
         onTap: onTap,
+        borderRadius: KiranaRadius.borderLg,
+        child: Padding(
+          padding: const EdgeInsets.all(KiranaSpacing.md),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(KiranaSpacing.md),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 26),
+              ),
+              const SizedBox(width: KiranaSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: KiranaTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (badge != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: (badgeColor ?? color).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              badge!,
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                color: badgeColor ?? color,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: KiranaColors.neutral500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isSelected ? color : KiranaColors.neutral400,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
