@@ -33,12 +33,14 @@ import {
   Percent,
   Coins,
   Package,
+  UserPlus,
 } from "lucide-react";
 import { WebProduct, WebCustomer, WebCartItem, WebHeldBill } from "@/types";
 import { QuickTenderModal } from "@/components/pos/QuickTenderModal";
 import { ThermalReceiptModal } from "@/components/pos/ThermalReceiptModal";
 import { WhatsAppInvoiceModal } from "@/components/pos/WhatsAppInvoiceModal";
 import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal";
+import { QuickCustomerModal, NewCustomerData } from "@/components/pos/QuickCustomerModal";
 import { VoiceSearchButton } from "@/components/pos/VoiceSearchButton";
 import { posAudio } from "@/utils/audioFeedback";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -285,6 +287,7 @@ export default function PosBillingPage() {
 
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [customersList, setCustomersList] = useState<WebCustomer[]>(CUSTOMERS_LIST);
   const [selectedCustomer, setSelectedCustomer] = useState<WebCustomer>(CUSTOMERS_LIST[0]);
   const [billSequence, setBillSequence] = useState(43);
   const [heldBills, setHeldBills] = useState<WebHeldBill[]>([]);
@@ -296,6 +299,7 @@ export default function PosBillingPage() {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState<any>(null);
 
   // Real-time clock update
@@ -320,12 +324,13 @@ export default function PosBillingPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger if user is inside a modal
-      if (tenderOpen || receiptOpen || whatsAppOpen || shortcutsOpen) {
+      if (tenderOpen || receiptOpen || whatsAppOpen || shortcutsOpen || customerModalOpen) {
         if (e.key === "Escape") {
           setTenderOpen(false);
           setReceiptOpen(false);
           setWhatsAppOpen(false);
           setShortcutsOpen(false);
+          setCustomerModalOpen(false);
         }
         return;
       }
@@ -336,6 +341,9 @@ export default function PosBillingPage() {
         e.preventDefault();
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
+      } else if (e.key === "F3") {
+        e.preventDefault();
+        setCustomerModalOpen(true);
       } else if (e.key === "F4") {
         e.preventDefault();
         if (cart.length > 0) {
@@ -559,7 +567,7 @@ export default function PosBillingPage() {
       handleHoldBill();
     }
     setCart(held.items);
-    const cust = CUSTOMERS_LIST.find((c) => c.phone === held.customerPhone) || CUSTOMERS_LIST[0];
+    const cust = customersList.find((c) => c.phone === held.customerPhone) || customersList[0];
     setSelectedCustomer(cust);
     setHeldBills((prev) => prev.filter((b) => b.id !== held.id));
     posAudio.beepSuccess();
@@ -595,6 +603,21 @@ export default function PosBillingPage() {
     setTenderOpen(false);
     setReceiptOpen(true);
     setCart([]);
+  };
+
+  // Quick Customer Registration Handler (Phase 19.3)
+  const handleCustomerCreated = (newCust: NewCustomerData) => {
+    const formatted: WebCustomer = {
+      id: newCust.id,
+      name: newCust.name,
+      phone: newCust.phone,
+      creditLimitPaise: newCust.creditLimitPaise,
+      currentBalancePaise: newCust.currentBalancePaise,
+      loyaltyPoints: newCust.loyaltyPoints,
+    };
+    setCustomersList((prev) => [formatted, ...prev]);
+    setSelectedCustomer(formatted);
+    showNotification(`Customer linked: ${formatted.name} (+91 ${formatted.phone})`);
   };
 
   // Filter Catalog
@@ -640,6 +663,12 @@ export default function PosBillingPage() {
       <KeyboardShortcutsModal
         isOpen={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
+      />
+      <QuickCustomerModal
+        isOpen={customerModalOpen}
+        onClose={() => setCustomerModalOpen(false)}
+        onCustomerCreated={handleCustomerCreated}
+        existingPhones={customersList.map((c) => c.phone)}
       />
 
       {/* Sidebar for Navigation */}
@@ -886,23 +915,38 @@ export default function PosBillingPage() {
                   <span className="text-[10px] text-slate-500">•</span>
                   <span className="text-xs text-slate-400">{cart.length} line items</span>
                 </div>
-                {/* Customer Dropdown */}
-                <div className="relative">
-                  <select
-                    value={selectedCustomer.id}
-                    onChange={(e) => {
-                      const found = CUSTOMERS_LIST.find((c) => c.id === e.target.value);
-                      if (found) setSelectedCustomer(found);
-                    }}
-                    className="w-full py-1.5 pl-2 pr-7 bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none truncate"
+                {/* Customer Dropdown & Quick Add (Phase 19.3) */}
+                <div className="flex items-center gap-1.5">
+                  <div className="relative flex-1">
+                    <select
+                      value={selectedCustomer.id}
+                      onChange={(e) => {
+                        const found = customersList.find((c) => c.id === e.target.value);
+                        if (found) setSelectedCustomer(found);
+                      }}
+                      className="w-full py-1.5 pl-2 pr-7 bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none truncate"
+                    >
+                      {customersList.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.phone !== "9999999999" ? `(${c.phone})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setCustomerModalOpen(true)}
+                    className="py-1.5 px-2.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                    title="Register new customer account (F3)"
                   >
-                    {CUSTOMERS_LIST.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.phone !== "9999999999" ? `(${c.phone})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>+ Add</span>
+                    <kbd className="hidden sm:inline text-[9px] font-mono bg-emerald-950 px-1 rounded text-emerald-200">
+                      F3
+                    </kbd>
+                  </button>
                 </div>
               </div>
 
