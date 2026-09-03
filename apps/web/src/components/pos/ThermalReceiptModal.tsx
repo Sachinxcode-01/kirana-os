@@ -53,8 +53,6 @@ export function ThermalReceiptModal({
   const [whatsAppOpen, setWhatsAppOpen] = useState(false);
   const [hardwareStatus, setHardwareStatus] = useState<{ message: string; isError?: boolean } | null>(null);
 
-  if (!isOpen) return null;
-
   const defaultItems: ReceiptItem[] = [
     { name: "Aashirvaad Shudh Atta 5kg", qty: 1, ratePaise: 24500, totalPaise: 24500, hsn: "1101" },
     { name: "Fortune Sunlite Oil 1L", qty: 2, ratePaise: 13500, totalPaise: 27000, hsn: "1512" },
@@ -156,16 +154,19 @@ export function ThermalReceiptModal({
   };
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm cursor-pointer"
-        />
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <div key="thermal-receipt-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              key="thermal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm cursor-pointer"
+            />
 
         {/* Modal Surface */}
         <motion.div
@@ -439,10 +440,13 @@ export function ThermalReceiptModal({
             </div>
           </div>
         </motion.div>
-      </div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* WhatsApp Invoice Modal */}
       <WhatsAppInvoiceModal
+        key="thermal-receipt-whatsapp"
         isOpen={whatsAppOpen}
         onClose={() => setWhatsAppOpen(false)}
         invoice={{
@@ -474,6 +478,6 @@ export function ThermalReceiptModal({
           }
         }
       `}</style>
-    </AnimatePresence>
+    </>
   );
 }
