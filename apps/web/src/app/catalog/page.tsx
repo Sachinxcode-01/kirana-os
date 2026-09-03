@@ -164,6 +164,7 @@ export default function ProductCatalogPage() {
   const [adjustingProduct, setAdjustingProduct] = useState<WebProduct | null>(null);
   const [tagProduct, setTagProduct] = useState<WebProduct | null>(null);
   const [editingProduct, setEditingProduct] = useState<WebProduct | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // New Product Form State
@@ -362,15 +363,16 @@ export default function ProductCatalogPage() {
       {/* Aurora Ambient Glows */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <Sidebar />
+      <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 z-10">
         <Header
           title="Master Product Catalog"
           subtitle="Manage pricing, barcodes, GST slabs, and safety stock thresholds"
+          onMenuClick={() => setMobileNavOpen(true)}
         />
 
-        <main className="p-8 space-y-6 flex-1 overflow-auto">
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 overflow-auto">
           {/* Notification Toast */}
           <AnimatePresence>
             {toastMessage && (

@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Store,
   LayoutDashboard,
@@ -17,10 +17,16 @@ import {
   Sparkles,
   Wifi,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { t } = useLanguage();
 
@@ -34,12 +40,16 @@ export function Sidebar() {
     { name: t("nav.settings"), href: "/settings", icon: Settings },
   ];
 
-  return (
-    <aside className="w-64 bg-slate-900 text-slate-200 min-h-screen flex flex-col justify-between border-r border-slate-800/80 shadow-2xl shrink-0 z-30 relative select-none">
+  const renderContent = (isMobile = false) => (
+    <div className="flex flex-col h-full justify-between">
       <div>
         {/* Brand Header */}
-        <div className="p-6 border-b border-slate-800/80">
-          <Link href="/" className="flex items-center gap-3 group">
+        <div className="p-5 sm:p-6 border-b border-slate-800/80 flex items-center justify-between">
+          <Link
+            href="/"
+            onClick={() => isMobile && onClose?.()}
+            className="flex items-center gap-3 group"
+          >
             <motion.div
               whileHover={{ scale: 1.08, rotate: 2 }}
               whileTap={{ scale: 0.95 }}
@@ -48,8 +58,8 @@ export function Sidebar() {
               <Image
                 src="/logo.png"
                 alt="KiranaOS Logo"
-                width={36}
-                height={36}
+                width={34}
+                height={34}
                 className="rounded-lg object-cover"
                 priority
               />
@@ -66,6 +76,15 @@ export function Sidebar() {
               <p className="text-xs text-slate-400 font-medium">Back-Office Suite</p>
             </div>
           </Link>
+
+          {isMobile && (
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Store Switcher Pill */}
@@ -94,6 +113,7 @@ export function Sidebar() {
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => isMobile && onClose?.()}
                 className="relative block"
               >
                 <motion.div
@@ -136,7 +156,7 @@ export function Sidebar() {
                 {/* Animated Active Pill Indicator */}
                 {isActive && (
                   <motion.div
-                    layoutId="activeNavBackground"
+                    layoutId={isMobile ? "activeNavBackgroundMobile" : "activeNavBackground"}
                     transition={{ type: "spring", stiffness: 350, damping: 30 }}
                     className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl shadow-md shadow-emerald-950/60 border border-emerald-400/30"
                   />
@@ -164,6 +184,42 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* 1. Desktop Fixed Sidebar */}
+      <aside className="hidden lg:flex w-64 bg-slate-900 text-slate-200 min-h-screen flex-col justify-between border-r border-slate-800/80 shadow-2xl shrink-0 z-30 relative select-none">
+        {renderContent(false)}
+      </aside>
+
+      {/* 2. Mobile Drawer */}
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden flex">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm cursor-pointer"
+            />
+
+            {/* Slide-over Drawer */}
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="relative w-72 max-w-[85vw] bg-slate-900 text-slate-200 h-full flex flex-col justify-between shadow-2xl border-r border-slate-800 z-10 select-none overflow-y-auto"
+            >
+              {renderContent(true)}
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

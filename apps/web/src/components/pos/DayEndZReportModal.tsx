@@ -173,7 +173,7 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2.5 text-xs text-slate-400 font-mono">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs text-slate-400 font-mono">
                     <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800">
                       <p className="text-[10px] text-slate-500 uppercase">Opening Float</p>
                       <p className="text-sm font-black text-white mt-1">₹{openingFloat.toFixed(2)}</p>
@@ -189,7 +189,7 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
                   </div>
 
                   {/* Expected vs Actual Counted Row */}
-                  <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                     <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 space-y-1">
                       <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
                         Expected Drawer Cash
@@ -215,7 +215,7 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
 
                   {/* Discrepancy Indicator Banner */}
                   <div
-                    className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+                    className={`p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-bold ${
                       isBalanced
                         ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
                         : isOver
@@ -225,9 +225,9 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
                   >
                     <div className="flex items-center gap-2">
                       {isBalanced ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                       ) : (
-                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                       )}
                       <span>
                         {isBalanced
@@ -237,14 +237,14 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
                           : `Drawer is SHORT by -₹${Math.abs(discrepancy).toFixed(2)} (Missing Cash)`}
                       </span>
                     </div>
-                    <span className="font-mono text-sm font-black">
+                    <span className="font-mono text-sm font-black self-end sm:self-auto">
                       {isOver ? `+₹${discrepancy.toFixed(2)}` : isShort ? `-₹${Math.abs(discrepancy).toFixed(2)}` : "₹0.00"}
                     </span>
                   </div>
                 </div>
 
                 {/* 2. Total Daily Revenue Breakdown */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="p-3 bg-slate-950/70 rounded-2xl border border-slate-800 space-y-1">
                     <div className="flex items-center gap-1 text-[11px] font-bold text-teal-400 uppercase">
                       <QrCode className="w-3.5 h-3.5" /> UPI Settlements
@@ -275,12 +275,12 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
 
           {/* Footer Controls */}
           {!isShiftClosed && (
-            <div className="p-4 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between gap-3">
+            <div className="p-4 border-t border-slate-800 bg-slate-900/90 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleExportCsv}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Export CSV</span>
@@ -289,7 +289,7 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
                 <button
                   type="button"
                   onClick={handlePrintZReport}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Print Z-Report</span>
@@ -308,7 +308,7 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
                 <button
                   type="button"
                   onClick={handleCloseShift}
-                  className="px-5 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-950/60 flex items-center gap-1.5 cursor-pointer transition-all"
+                  className="flex-1 sm:flex-initial px-5 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-950/60 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Confirm &amp; Close Shift</span>

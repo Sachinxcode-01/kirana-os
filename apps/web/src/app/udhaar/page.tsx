@@ -96,6 +96,7 @@ export default function UdhaarLedgerPage() {
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showHistoryCustomer, setShowHistoryCustomer] = useState<WebCustomer | null>(null);
   const [receiptModal, setReceiptModal] = useState<PaymentReceiptData | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // New Customer Form State
@@ -197,15 +198,16 @@ export default function UdhaarLedgerPage() {
       {/* Ambient background glow */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <Sidebar />
+      <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 z-10">
         <Header
           title="Customer Udhaar (Khata) Ledger"
           subtitle="Real-time credit monitoring, payment settlements, and 1-tap WhatsApp reminders"
+          onMenuClick={() => setMobileNavOpen(true)}
         />
 
-        <main className="p-8 space-y-6 flex-1 overflow-auto">
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 overflow-auto">
           {/* Notification Toast */}
           <AnimatePresence>
             {toastMessage && (

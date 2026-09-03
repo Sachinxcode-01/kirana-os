@@ -45,6 +45,7 @@ export default function BackOfficeDashboard() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [zReportOpen, setZReportOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
 
   const kpis = [
@@ -150,23 +151,24 @@ export default function BackOfficeDashboard() {
         onClose={() => setZReportOpen(false)}
       />
 
-      <Sidebar />
+      <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 z-10">
         <Header
           title="Executive Store Dashboard"
           subtitle="Real-time live telemetry from POS counters & cloud database"
+          onMenuClick={() => setMobileNavOpen(true)}
         />
 
-        <main className="p-6 sm:p-8 space-y-6 flex-1 overflow-auto">
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 overflow-auto">
           {/* Quick Action Ribbon & Store Pulse */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-wrap items-center justify-between gap-3 p-3.5 glass-card rounded-2xl shadow-xs"
+            className="flex items-center justify-between gap-3 p-3.5 glass-card rounded-2xl shadow-xs overflow-x-auto no-scrollbar"
           >
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-2 pr-1 flex items-center gap-1.5">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-2 pr-1 flex items-center gap-1.5 whitespace-nowrap">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" /> {t("dash.quickActions")}:
               </span>
               <button

@@ -40,14 +40,16 @@ import {
   VolumeX,
   Sun,
   Moon,
+  Menu,
 } from "lucide-react";
 
 interface HeaderProps {
   title?: string;
   subtitle?: string;
+  onMenuClick?: () => void;
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const [timeStr, setTimeStr] = useState<string>("");
@@ -196,11 +198,21 @@ export function Header({ title, subtitle }: HeaderProps) {
       <ThermalReceiptModal isOpen={receiptOpen} onClose={() => setReceiptOpen(false)} />
       <DayEndZReportModal isOpen={zReportOpen} onClose={() => setZReportOpen(false)} />
 
-      <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/70 px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+      <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/70 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
         {/* Title / Search */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Hamburger Menu on Mobile */}
+          <button
+            type="button"
+            onClick={onMenuClick}
+            className="lg:hidden p-2 -ml-1 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Open Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
           {/* Mobile Logo */}
-          <Link href="/" className="lg:hidden flex items-center gap-2 shrink-0">
+          <Link href="/" className="lg:hidden flex items-center gap-1.5 shrink-0">
             <div className="p-0.5 rounded-lg bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 border border-emerald-400/30 shadow-xs">
               <Image
                 src="/logo.png"
@@ -215,25 +227,25 @@ export function Header({ title, subtitle }: HeaderProps) {
           <div>
             {title ? (
               <div>
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight leading-tight">{title}</h2>
-                {subtitle && <p className="text-xs text-slate-500 font-medium">{subtitle}</p>}
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">{title}</h2>
+                {subtitle && <p className="text-[11px] sm:text-xs text-slate-500 font-medium hidden sm:block">{subtitle}</p>}
               </div>
             ) : (
-              <div className="relative w-80 group flex items-center">
-                <Search className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition-colors absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <div className="relative w-full max-w-[160px] sm:max-w-xs md:max-w-sm group flex items-center">
+                <Search className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition-colors absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <div
                   onClick={() => setPaletteOpen(true)}
-                  className="w-full bg-slate-100/90 group-hover:bg-slate-100/100 text-xs text-slate-500 pl-9 pr-20 py-2 rounded-xl border border-slate-200/60 group-hover:border-emerald-500/50 transition-all font-medium flex items-center justify-between cursor-pointer"
+                  className="w-full bg-slate-100/90 group-hover:bg-slate-100/100 text-xs text-slate-500 pl-8 sm:pl-9 pr-14 sm:pr-20 py-2 rounded-xl border border-slate-200/60 group-hover:border-emerald-500/50 transition-all font-medium flex items-center justify-between cursor-pointer"
                 >
                   <span className="truncate">{t("header.search")}</span>
                 </div>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <div className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 sm:gap-1">
                   <VoiceSearchButton
                     onResult={(_text) => {
                       setPaletteOpen(true);
                     }}
                   />
-                  <span className="text-[10px] font-mono text-slate-400 bg-slate-200/80 px-1.5 py-0.5 rounded pointer-events-none">
+                  <span className="hidden sm:inline text-[10px] font-mono text-slate-400 bg-slate-200/80 px-1.5 py-0.5 rounded pointer-events-none">
                     ⌘K
                   </span>
                 </div>
