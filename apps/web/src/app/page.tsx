@@ -171,13 +171,23 @@ export default function BackOfficeDashboard() {
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-2 pr-1 flex items-center gap-1.5 whitespace-nowrap">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" /> {t("dash.quickActions")}:
               </span>
+              <Link
+                href="/pos"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-700 hover:to-teal-700 shadow-sm shadow-emerald-950/20 transition-all hover:scale-102"
+              >
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span>Live Billing Counter</span>
+                <kbd className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-white/20 text-white">
+                  F2
+                </kbd>
+              </Link>
               <button
                 type="button"
                 onClick={() => {
                   setSelectedBillAmount(340);
                   setTenderOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-sm shadow-emerald-950/20 transition-all hover:scale-102 cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 shadow-sm shadow-teal-950/20 transition-all hover:scale-102 cursor-pointer"
               >
                 <Banknote className="w-3.5 h-3.5" />
                 <span>{t("header.quickTender")}</span>

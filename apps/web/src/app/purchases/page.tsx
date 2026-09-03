@@ -86,6 +86,7 @@ export default function PurchasesPage() {
   const [payingSupplier, setPayingSupplier] = useState<WebSupplier | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // New PO form state
   const [poSupplier, setPoSupplier] = useState(INITIAL_SUPPLIERS[0].name);
@@ -169,12 +170,13 @@ export default function PurchasesPage() {
       {/* Background glow */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <Sidebar />
+      <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 z-10">
         <Header
           title="Purchases & Supplier Inwarding"
           subtitle="Manage supplier procurement, inward stock updates, and automated reorder purchase orders"
+          onMenuClick={() => setMobileNavOpen(true)}
         />
 
         <main className="p-8 space-y-6 flex-1 overflow-auto">

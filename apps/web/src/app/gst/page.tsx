@@ -22,6 +22,7 @@ import {
 export default function GSTCenterPage() {
   const [period, setPeriod] = useState("Sep 2026 (Monthly)");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -124,12 +125,13 @@ export default function GSTCenterPage() {
       {/* Background glow */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <Sidebar />
+      <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 z-10">
         <Header
           title="GST Tax Center & GSTR-1 Summaries"
           subtitle="Tax liability aggregation, HSN Table 12 summaries, and one-click GST portal offline exports"
+          onMenuClick={() => setMobileNavOpen(true)}
         />
 
         <main className="p-8 space-y-6 flex-1 overflow-auto">
