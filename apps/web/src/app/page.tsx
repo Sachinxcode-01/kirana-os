@@ -29,10 +29,12 @@ import {
   Activity,
   Keyboard,
   Printer,
+  FileSpreadsheet,
 } from "lucide-react";
 import { QuickTenderModal } from "@/components/pos/QuickTenderModal";
 import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal";
 import { ThermalReceiptModal } from "@/components/pos/ThermalReceiptModal";
+import { DayEndZReportModal } from "@/components/pos/DayEndZReportModal";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function BackOfficeDashboard() {
@@ -42,6 +44,7 @@ export default function BackOfficeDashboard() {
   const [selectedBillAmount, setSelectedBillAmount] = useState<number>(340);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [zReportOpen, setZReportOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
 
   const kpis = [
@@ -142,6 +145,10 @@ export default function BackOfficeDashboard() {
         onClose={() => setReceiptOpen(false)}
         invoiceData={selectedReceipt}
       />
+      <DayEndZReportModal
+        isOpen={zReportOpen}
+        onClose={() => setZReportOpen(false)}
+      />
 
       <Sidebar />
 
@@ -215,6 +222,14 @@ export default function BackOfficeDashboard() {
               >
                 <Download className="w-3.5 h-3.5 text-slate-500" /> {t("dash.exportGst")}
               </Link>
+              <button
+                type="button"
+                onClick={() => setZReportOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs transition-all hover:scale-102 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Z-Report</span>
+              </button>
             </div>
 
             {/* Quick Live Pulse Badge */}

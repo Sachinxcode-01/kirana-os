@@ -11,8 +11,13 @@ import {
   Copy,
   Store,
   Share2,
+  MessageSquare,
+  Usb,
+  Bluetooth,
 } from "lucide-react";
 import { posAudio } from "@/utils/audioFeedback";
+import { EscPosPrinterDriver } from "@/utils/escPosPrinter";
+import { WhatsAppInvoiceModal } from "@/components/pos/WhatsAppInvoiceModal";
 
 export interface ReceiptItem {
   name: string;
@@ -45,6 +50,8 @@ export function ThermalReceiptModal({
 }: ThermalReceiptModalProps) {
   const [paperWidth, setPaperWidth] = useState<"58mm" | "80mm">("80mm");
   const [isCopied, setIsCopied] = useState(false);
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false);
+  const [hardwareStatus, setHardwareStatus] = useState<{ message: string; isError?: boolean } | null>(null);
 
   if (!isOpen) return null;
 
@@ -78,6 +85,64 @@ export function ThermalReceiptModal({
   const handlePrint = () => {
     posAudio.playSuccessChime();
     window.print();
+  };
+
+  const handleRawUsbPrint = async () => {
+    posAudio.playBarcodeBeep();
+    const bytes = EscPosPrinterDriver.generateReceiptBytes({
+      paperWidth,
+      invoiceNumber,
+      dateStr,
+      cashierName,
+      paymentMode,
+      items: items.map((it) => ({
+        name: it.name,
+        qty: it.qty,
+        rate: it.ratePaise / 100,
+        total: it.totalPaise / 100,
+      })),
+      subtotal: subtotalPaise / 100,
+      tax: gstPaise / 100,
+      total: totalPaise / 100,
+    });
+
+    const result = await EscPosPrinterDriver.printViaWebSerial(bytes);
+    setHardwareStatus({ message: result.message, isError: !result.success });
+    if (result.success) {
+      posAudio.playSuccessChime();
+    } else {
+      posAudio.playWarningBuzzer();
+    }
+    setTimeout(() => setHardwareStatus(null), 4000);
+  };
+
+  const handleRawBluetoothPrint = async () => {
+    posAudio.playBarcodeBeep();
+    const bytes = EscPosPrinterDriver.generateReceiptBytes({
+      paperWidth,
+      invoiceNumber,
+      dateStr,
+      cashierName,
+      paymentMode,
+      items: items.map((it) => ({
+        name: it.name,
+        qty: it.qty,
+        rate: it.ratePaise / 100,
+        total: it.totalPaise / 100,
+      })),
+      subtotal: subtotalPaise / 100,
+      tax: gstPaise / 100,
+      total: totalPaise / 100,
+    });
+
+    const result = await EscPosPrinterDriver.printViaBluetooth(bytes);
+    setHardwareStatus({ message: result.message, isError: !result.success });
+    if (result.success) {
+      posAudio.playSuccessChime();
+    } else {
+      posAudio.playWarningBuzzer();
+    }
+    setTimeout(() => setHardwareStatus(null), 4000);
   };
 
   const handleCopyBill = () => {
@@ -292,38 +357,102 @@ export function ThermalReceiptModal({
             </div>
           </div>
 
-          {/* Modal Footer Controls */}
-          <div className="p-4 border-t border-slate-800 bg-slate-900 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={handleCopyBill}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+          {/* Hardware Feedback Status Toast */}
+          {hardwareStatus && (
+            <div
+              className={`px-4 py-2 text-xs font-bold text-center border-t ${
+                hardwareStatus.isError
+                  ? "bg-rose-950/80 text-rose-300 border-rose-800"
+                  : "bg-emerald-950/80 text-emerald-300 border-emerald-800"
+              }`}
             >
-              {isCopied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{isCopied ? "Copied Bill Text" : "Copy Receipt Text"}</span>
-            </button>
+              {hardwareStatus.message}
+            </div>
+          )}
 
+          {/* Modal Footer Controls */}
+          <div className="p-4 border-t border-slate-800 bg-slate-900 flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                onClick={handleCopyBill}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Copy Bill Text"
               >
-                Close (Esc)
+                {isCopied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">{isCopied ? "Copied" : "Copy"}</span>
               </button>
 
               <button
                 type="button"
-                onClick={handlePrint}
-                className="px-5 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                onClick={() => setWhatsAppOpen(true)}
+                className="px-3 py-2 bg-[#25D366]/20 hover:bg-[#25D366]/30 text-[#25D366] border border-[#25D366]/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Dispatch WhatsApp Invoice"
               >
-                <Printer className="w-4 h-4" />
-                <span>Direct Print (F8)</span>
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Direct ESC/POS Web Serial (USB) */}
+              <button
+                type="button"
+                onClick={handleRawUsbPrint}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Send raw ESC/POS bytes directly via USB Web Serial"
+              >
+                <Usb className="w-3.5 h-3.5" />
+                <span>USB ESC/POS</span>
+              </button>
+
+              {/* Direct ESC/POS Web Bluetooth */}
+              <button
+                type="button"
+                onClick={handleRawBluetoothPrint}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Send raw ESC/POS bytes directly via Web Bluetooth"
+              >
+                <Bluetooth className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Bluetooth</span>
+              </button>
+
+              {/* Standard Browser Print */}
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-950/60 flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Print Receipt (F8)"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print (F8)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
         </motion.div>
       </div>
+
+      {/* WhatsApp Invoice Modal */}
+      <WhatsAppInvoiceModal
+        isOpen={whatsAppOpen}
+        onClose={() => setWhatsAppOpen(false)}
+        invoice={{
+          invoiceNumber,
+          customerName: invoiceData?.customerName || "Walk-in Customer",
+          dateStr,
+          totalPaise,
+          paymentMode,
+        }}
+      />
 
       {/* Print Isolated CSS */}
       <style jsx global>{`

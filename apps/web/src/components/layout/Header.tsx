@@ -9,6 +9,7 @@ import { CommandPalette } from "@/components/layout/CommandPalette";
 import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal";
 import { QuickTenderModal } from "@/components/pos/QuickTenderModal";
 import { ThermalReceiptModal } from "@/components/pos/ThermalReceiptModal";
+import { DayEndZReportModal } from "@/components/pos/DayEndZReportModal";
 import { SyncStatusPill } from "@/components/layout/SyncStatusPill";
 import { LanguageSelector } from "@/components/layout/LanguageSelector";
 import { VoiceSearchButton } from "@/components/pos/VoiceSearchButton";
@@ -34,6 +35,7 @@ import {
   Keyboard,
   Banknote,
   Printer,
+  FileSpreadsheet,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -53,6 +55,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [tenderOpen, setTenderOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [zReportOpen, setZReportOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -167,6 +170,7 @@ export function Header({ title, subtitle }: HeaderProps) {
       <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <QuickTenderModal isOpen={tenderOpen} onClose={() => setTenderOpen(false)} />
       <ThermalReceiptModal isOpen={receiptOpen} onClose={() => setReceiptOpen(false)} />
+      <DayEndZReportModal isOpen={zReportOpen} onClose={() => setZReportOpen(false)} />
 
       <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/70 px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
         {/* Title / Search */}
@@ -246,6 +250,19 @@ export function Header({ title, subtitle }: HeaderProps) {
             <kbd className="px-1 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-200/80 text-slate-600">
               F8
             </kbd>
+          </motion.button>
+
+          {/* Day-End Z-Report Trigger */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => setZReportOpen(true)}
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/70 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+            title="Day-End Cash Drawer & Z-Report Audit"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Z-Report</span>
           </motion.button>
 
           {/* Shortcuts Guide ? Trigger */}
