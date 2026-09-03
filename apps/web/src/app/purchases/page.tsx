@@ -23,6 +23,7 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { WebSupplier, WebPurchaseOrder } from "@/types";
+import { Supplier360Drawer } from "@/components/suppliers/Supplier360Drawer";
 
 const INITIAL_SUPPLIERS: WebSupplier[] = [
   {
@@ -84,6 +85,7 @@ export default function PurchasesPage() {
   const [showAutoPOModal, setShowAutoPOModal] = useState(false);
   const [showNewInwardModal, setShowNewInwardModal] = useState(false);
   const [payingSupplier, setPayingSupplier] = useState<WebSupplier | null>(null);
+  const [selectedSupplierForDrawer, setSelectedSupplierForDrawer] = useState<WebSupplier | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -255,22 +257,31 @@ export default function PurchasesPage() {
                         {formatRupees(s.pendingBalancePaise)}
                       </p>
                     </div>
-                    {s.pendingBalancePaise > 0 ? (
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => {
-                          setPayingSupplier(s);
-                          setPayAmount((s.pendingBalancePaise / 100).toFixed(2));
-                        }}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                        onClick={() => setSelectedSupplierForDrawer(s)}
+                        className="px-2 py-1 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
                       >
-                        Pay Supplier
+                        360° Profile
                       </button>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500">
-                        All Cleared
-                      </span>
-                    )}
+                      {s.pendingBalancePaise > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPayingSupplier(s);
+                            setPayAmount((s.pendingBalancePaise / 100).toFixed(2));
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                        >
+                          Pay
+                        </button>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500">
+                          Cleared
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -560,6 +571,16 @@ export default function PurchasesPage() {
           </div>
         )}
       </AnimatePresence>
+      {/* Phase 22: Supplier 360° Procurement Drawer */}
+      <Supplier360Drawer
+        supplier={selectedSupplierForDrawer}
+        isOpen={Boolean(selectedSupplierForDrawer)}
+        onClose={() => setSelectedSupplierForDrawer(null)}
+        onRecordPayment={(sup) => {
+          setPayingSupplier(sup);
+          setPayAmount((sup.pendingBalancePaise / 100).toFixed(2));
+        }}
+      />
     </div>
   );
 }

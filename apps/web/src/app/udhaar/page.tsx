@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { WebCustomer } from "@/types";
 import { posAudio } from "@/utils/audioFeedback";
+import { Customer360Drawer } from "@/components/customers/Customer360Drawer";
 
 const INITIAL_CUSTOMERS: WebCustomer[] = [
   {
@@ -704,74 +705,17 @@ export default function UdhaarLedgerPage() {
         )}
       </AnimatePresence>
 
-      {/* Modal 4: Customer Khata Ledger History */}
-      <AnimatePresence>
-        {showHistoryCustomer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-4"
-            >
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <History className="w-4 h-4 text-emerald-600" /> Khata Statement: {showHistoryCustomer.name}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowHistoryCustomer(null)}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs flex justify-between items-center">
-                <span>Current Debt Balance:</span>
-                <span className="font-bold font-mono text-amber-800 text-sm">
-                  {formatRupees(showHistoryCustomer.currentBalancePaise)}
-                </span>
-              </div>
-
-              {/* Sample Statement Ledger */}
-              <div className="space-y-2 text-xs font-mono max-h-60 overflow-y-auto">
-                <div className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-slate-900 font-sans">Grocery Basket Purchase</p>
-                    <p className="text-[10px] text-slate-400">Bill #INV-2026-0042 &bull; Today</p>
-                  </div>
-                  <span className="font-bold text-rose-600">+₹1,850.00</span>
-                </div>
-                <div className="p-2.5 bg-emerald-50/50 border border-emerald-200 rounded-xl flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-emerald-950 font-sans">UPI Khata Payment Received</p>
-                    <p className="text-[10px] text-emerald-600 font-sans">Ref: BharatPe QR</p>
-                  </div>
-                  <span className="font-bold text-emerald-700">-₹2,000.00</span>
-                </div>
-                <div className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-slate-900 font-sans">Dairy &amp; Tea Supplies</p>
-                    <p className="text-[10px] text-slate-400">Bill #INV-2026-0038 &bull; Yesterday</p>
-                  </div>
-                  <span className="font-bold text-rose-600">+₹950.00</span>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setShowHistoryCustomer(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer"
-                >
-                  Done
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Modal 4: Phase 22 Customer 360° Slide-Over Drawer */}
+      <Customer360Drawer
+        customer={showHistoryCustomer}
+        isOpen={Boolean(showHistoryCustomer)}
+        onClose={() => setShowHistoryCustomer(null)}
+        onRecordPayment={(cust) => {
+          setSelectedCustomer(cust);
+          setSettleAmount((cust.currentBalancePaise / 100).toString());
+          setShowSettleModal(true);
+        }}
+      />
 
       {/* Modal 4: Bulk WhatsApp Reminders & Dynamic UPI Pay Links (Phase 16) */}
       <AnimatePresence>
