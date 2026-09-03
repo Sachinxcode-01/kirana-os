@@ -11,14 +11,14 @@ abstract final class KiranaComponentThemes {
     style: ElevatedButton.styleFrom(
       backgroundColor: KiranaColors.primary,
       foregroundColor: KiranaColors.textOnPrimary,
-      elevation: 0,
+      elevation: 0.5,
       minimumSize: const Size(88, 48), // Touch-friendly 48dp+
       padding: const EdgeInsets.symmetric(
         horizontal: KiranaSpacing.xl,
         vertical: KiranaSpacing.md,
       ),
-      shape: const RoundedRectangleBorder(borderRadius: KiranaRadius.borderMd),
-      textStyle: KiranaTypography.labelLarge.copyWith(color: Colors.white),
+      shape: const RoundedRectangleBorder(borderRadius: KiranaRadius.borderLg),
+      textStyle: KiranaTypography.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
     ),
   );
 
@@ -32,8 +32,8 @@ abstract final class KiranaComponentThemes {
         vertical: KiranaSpacing.md,
       ),
       side: const BorderSide(color: KiranaColors.outline, width: 1.5),
-      shape: const RoundedRectangleBorder(borderRadius: KiranaRadius.borderMd),
-      textStyle: KiranaTypography.labelLarge,
+      shape: const RoundedRectangleBorder(borderRadius: KiranaRadius.borderLg),
+      textStyle: KiranaTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
     ),
   );
 
@@ -45,19 +45,19 @@ abstract final class KiranaComponentThemes {
       vertical: KiranaSpacing.md,
     ),
     border: const OutlineInputBorder(
-      borderRadius: KiranaRadius.borderMd,
+      borderRadius: KiranaRadius.borderLg,
       borderSide: BorderSide(color: KiranaColors.outline),
     ),
     enabledBorder: const OutlineInputBorder(
-      borderRadius: KiranaRadius.borderMd,
+      borderRadius: KiranaRadius.borderLg,
       borderSide: BorderSide(color: KiranaColors.outlineVariant),
     ),
     focusedBorder: const OutlineInputBorder(
-      borderRadius: KiranaRadius.borderMd,
+      borderRadius: KiranaRadius.borderLg,
       borderSide: BorderSide(color: KiranaColors.primary, width: 2),
     ),
     errorBorder: const OutlineInputBorder(
-      borderRadius: KiranaRadius.borderMd,
+      borderRadius: KiranaRadius.borderLg,
       borderSide: BorderSide(color: KiranaColors.error),
     ),
     hintStyle:
@@ -66,13 +66,13 @@ abstract final class KiranaComponentThemes {
         KiranaTypography.bodyMedium.copyWith(color: KiranaColors.textSecondary),
   );
 
-  static const CardThemeData cardTheme = CardThemeData(
+  static final CardThemeData cardTheme = CardThemeData(
     color: KiranaColors.surface,
-    elevation: 0,
+    elevation: 0.5,
     margin: EdgeInsets.zero,
     shape: RoundedRectangleBorder(
-      borderRadius: KiranaRadius.borderMd,
-      side: BorderSide(color: KiranaColors.outlineVariant, width: 1),
+      borderRadius: KiranaRadius.borderLg,
+      side: BorderSide(color: KiranaColors.outlineVariant.withValues(alpha: 0.8), width: 1),
     ),
   );
 

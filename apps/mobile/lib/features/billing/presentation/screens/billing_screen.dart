@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/app_providers.dart';
@@ -376,26 +377,37 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
-                                Icons.shopping_cart_outlined,
-                                size: 64,
-                                color: KiranaColors.textSecondary,
+                              Container(
+                                padding: const EdgeInsets.all(KiranaSpacing.xl),
+                                decoration: BoxDecoration(
+                                  color: KiranaColors.surfaceVariant.withValues(alpha: 0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.shopping_cart_outlined,
+                                  size: 56,
+                                  color: KiranaColors.neutral400,
+                                ),
                               ),
                               const SizedBox(height: KiranaSpacing.md),
                               Text(
                                 'No items in draft bill',
                                 style: KiranaTypography.titleMedium.copyWith(
-                                  color: KiranaColors.textSecondary,
+                                  color: KiranaColors.neutral800,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                               const SizedBox(height: KiranaSpacing.xs),
                               const Text(
                                 'Search catalog or scan barcode to add items.',
-                                style: KiranaTypography.bodySmall,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: KiranaColors.neutral500,
+                                ),
                               ),
                             ],
                           ),
-                        )
+                        ).animate().fadeIn(duration: 250.ms).scale(begin: const Offset(0.95, 0.95))
                       : ListView.separated(
                           padding: const EdgeInsets.symmetric(
                               horizontal: KiranaSpacing.md,
@@ -408,10 +420,10 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                             return Card(
                               elevation: 0.5,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(12),
                                 side: BorderSide(
                                     color: KiranaColors.outlineVariant
-                                        .withValues(alpha: 0.5)),
+                                        .withValues(alpha: 0.6)),
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(KiranaSpacing.sm),
@@ -429,6 +441,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                             style: KiranaTypography.titleMedium
                                                 .copyWith(
                                               fontWeight: FontWeight.bold,
+                                              fontSize: 14,
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
@@ -463,20 +476,16 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                           style: KiranaTypography.bodySmall
                                               .copyWith(
                                             color: KiranaColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
 
                                         // Quantity Controls
                                         Row(
                                           children: [
-                                            IconButton(
-                                              icon: const Icon(
-                                                  Icons.remove_circle_outline,
-                                                  size: 22),
-                                              constraints:
-                                                  const BoxConstraints(),
-                                              padding: const EdgeInsets.all(4),
-                                              onPressed: item.quantity > 1
+                                            InkWell(
+                                              borderRadius: BorderRadius.circular(20),
+                                              onTap: item.quantity > 1
                                                   ? () => ref
                                                       .read(
                                                           billingNotifierProvider
@@ -484,7 +493,27 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                                       .updateQuantity(item.id,
                                                           item.quantity - 1)
                                                   : null,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: item.quantity > 1
+                                                      ? KiranaColors.surfaceVariant
+                                                      : KiranaColors.surfaceVariant.withValues(alpha: 0.4),
+                                                  border: Border.all(
+                                                    color: KiranaColors.outlineVariant.withValues(alpha: 0.6),
+                                                  ),
+                                                ),
+                                                child: Icon(
+                                                  Icons.remove,
+                                                  size: 16,
+                                                  color: item.quantity > 1
+                                                      ? KiranaColors.neutral800
+                                                      : KiranaColors.neutral400,
+                                                ),
+                                              ),
                                             ),
+                                            const SizedBox(width: KiranaSpacing.xs),
                                             InkWell(
                                               onTap: () =>
                                                   _showExactQuantityDialog(
@@ -497,7 +526,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                                     const EdgeInsets.symmetric(
                                                         horizontal:
                                                             KiranaSpacing.sm,
-                                                        vertical: 2),
+                                                        vertical: 3),
                                                 decoration: BoxDecoration(
                                                   color: KiranaColors
                                                       .surfaceVariant,
@@ -505,7 +534,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                                       color: KiranaColors
                                                           .outlineVariant),
                                                   borderRadius:
-                                                      BorderRadius.circular(6),
+                                                      BorderRadius.circular(8),
                                                 ),
                                                 child: Text(
                                                   item.quantity % 1 == 0
@@ -522,18 +551,29 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                                 ),
                                               ),
                                             ),
-                                            IconButton(
-                                              icon: const Icon(
-                                                  Icons.add_circle_outline,
-                                                  size: 22),
-                                              constraints:
-                                                  const BoxConstraints(),
-                                              padding: const EdgeInsets.all(4),
-                                              onPressed: () => ref
+                                            const SizedBox(width: KiranaSpacing.xs),
+                                            InkWell(
+                                              borderRadius: BorderRadius.circular(20),
+                                              onTap: () => ref
                                                   .read(billingNotifierProvider
                                                       .notifier)
                                                   .updateQuantity(item.id,
                                                       item.quantity + 1),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: KiranaColors.primaryContainer.withValues(alpha: 0.7),
+                                                  border: Border.all(
+                                                    color: KiranaColors.primary.withValues(alpha: 0.3),
+                                                  ),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.add,
+                                                  size: 16,
+                                                  color: KiranaColors.primaryDark,
+                                                ),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -552,7 +592,7 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
                                   ],
                                 ),
                               ),
-                            );
+                            ).animate().fadeIn(duration: 200.ms, delay: Duration(milliseconds: 30 * (index < 6 ? index : 6))).slideX(begin: 0.04, end: 0);
                           },
                         ),
                 ),
