@@ -10,7 +10,10 @@ import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal"
 import { QuickTenderModal } from "@/components/pos/QuickTenderModal";
 import { ThermalReceiptModal } from "@/components/pos/ThermalReceiptModal";
 import { SyncStatusPill } from "@/components/layout/SyncStatusPill";
+import { LanguageSelector } from "@/components/layout/LanguageSelector";
+import { VoiceSearchButton } from "@/components/pos/VoiceSearchButton";
 import { usePosHotkeys } from "@/hooks/usePosHotkeys";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { posAudio } from "@/utils/audioFeedback";
 import {
   Search,
@@ -42,6 +45,7 @@ interface HeaderProps {
 
 export function Header({ title, subtitle }: HeaderProps) {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const [timeStr, setTimeStr] = useState<string>("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -187,14 +191,21 @@ export function Header({ title, subtitle }: HeaderProps) {
                 {subtitle && <p className="text-xs text-slate-500 font-medium">{subtitle}</p>}
               </div>
             ) : (
-              <div
-                onClick={() => setPaletteOpen(true)}
-                className="relative w-80 cursor-pointer group"
-              >
-                <Search className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition-colors absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <div className="w-full bg-slate-100/90 group-hover:bg-slate-100/100 text-xs text-slate-500 pl-9 pr-14 py-2 rounded-xl border border-slate-200/60 group-hover:border-emerald-500/50 transition-all font-medium flex items-center justify-between">
-                  <span>Search or run command...</span>
-                  <span className="text-[10px] font-mono text-slate-400 bg-slate-200/80 px-1.5 py-0.5 rounded">
+              <div className="relative w-80 group flex items-center">
+                <Search className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition-colors absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <div
+                  onClick={() => setPaletteOpen(true)}
+                  className="w-full bg-slate-100/90 group-hover:bg-slate-100/100 text-xs text-slate-500 pl-9 pr-20 py-2 rounded-xl border border-slate-200/60 group-hover:border-emerald-500/50 transition-all font-medium flex items-center justify-between cursor-pointer"
+                >
+                  <span className="truncate">{t("header.search")}</span>
+                </div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <VoiceSearchButton
+                    onResult={(_text) => {
+                      setPaletteOpen(true);
+                    }}
+                  />
+                  <span className="text-[10px] font-mono text-slate-400 bg-slate-200/80 px-1.5 py-0.5 rounded pointer-events-none">
                     ⌘K
                   </span>
                 </div>
@@ -204,7 +215,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           {/* Quick Cash Tender F4 Trigger */}
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -212,10 +223,10 @@ export function Header({ title, subtitle }: HeaderProps) {
             type="button"
             onClick={() => setTenderOpen(true)}
             className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
-            title="Quick Cash Tender Calculator (F4)"
+            title={t("header.quickTender")}
           >
             <Banknote className="w-3.5 h-3.5" />
-            <span>Quick Tender</span>
+            <span>{t("header.quickTender")}</span>
             <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/20 text-white">
               F4
             </kbd>
@@ -228,10 +239,10 @@ export function Header({ title, subtitle }: HeaderProps) {
             type="button"
             onClick={() => setReceiptOpen(true)}
             className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/70 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-            title="Preview & Direct Print ESC/POS Receipt (F8)"
+            title={t("header.receipt")}
           >
             <Printer className="w-3.5 h-3.5 text-slate-600" />
-            <span>Receipt</span>
+            <span>{t("header.receipt")}</span>
             <kbd className="px-1 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-200/80 text-slate-600">
               F8
             </kbd>
@@ -243,14 +254,17 @@ export function Header({ title, subtitle }: HeaderProps) {
             whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => setShortcutsOpen(true)}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/70 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-            title="Keyboard Shortcuts Guide (?)"
+            className="hidden sm:flex items-center gap-1 px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/70 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+            title={t("header.shortcuts")}
           >
             <Keyboard className="w-3.5 h-3.5 text-slate-500" />
             <span className="font-mono text-[10px] bg-slate-200/80 px-1 py-0.5 rounded text-slate-600 font-bold">
               ?
             </span>
           </motion.button>
+
+          {/* Regional Language Selector */}
+          <LanguageSelector />
 
           {/* Audio Feedback Mute Toggle */}
           <motion.button

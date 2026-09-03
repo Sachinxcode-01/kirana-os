@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/extensions/num_extensions.dart';
 import '../../../../core/theme/colors.dart';
+import '../../../../core/theme/radius.dart';
 import '../../../../core/theme/spacing.dart';
 import '../../../../core/theme/typography.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -10,11 +12,12 @@ import '../../../billing/domain/models/bill_model.dart';
 import '../../../billing/presentation/providers/billing_provider.dart';
 import '../../../settings/domain/models/shop_settings_model.dart';
 import '../../../settings/presentation/providers/shop_settings_provider.dart';
+import '../../domain/models/printer_device_model.dart';
 import '../../domain/services/receipt_formatter_service.dart';
 import '../../domain/services/share_receipt_service.dart';
-import '../../domain/services/whats_app_service.dart';
 import '../providers/printer_provider.dart';
 import '../sheets/printer_selection_sheet.dart';
+import '../sheets/whatsapp_dispatch_modal.dart';
 import 'pdf_receipt_preview_screen.dart';
 
 class CompletedReceiptScreen extends ConsumerStatefulWidget {
@@ -68,26 +71,13 @@ class _CompletedReceiptScreenState
     }
   }
 
-  Future<void> _handleWhatsAppShare(
-      BuildContext context, ShopSettingsModel? shopSettings) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final whatsAppService = ref.read(whatsAppServiceProvider);
-    final msg = whatsAppService.formatReceiptMessage(
+  void _openWhatsAppDispatch(
+      BuildContext context, ShopSettingsModel? shopSettings) {
+    WhatsAppDispatchModal.show(
+      context,
       bill: widget.bill,
       shopSettings: shopSettings,
     );
-    final shared = await whatsAppService.shareMessage(
-      msg,
-      subject: 'Bill Receipt #${widget.bill.billNumber}',
-    );
-    if (mounted && shared) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Receipt dispatched via WhatsApp.'),
-          backgroundColor: KiranaColors.success,
-        ),
-      );
-    }
   }
 
   @override
@@ -127,13 +117,28 @@ class _CompletedReceiptScreenState
             icon: Icon(
               _showThermalText ? Icons.receipt_long : Icons.code,
             ),
-            tooltip: _showThermalText ? 'Visual Receipt' : 'Thermal Preview',
+            tooltip: _showThermalText ? 'Visual Receipt' : 'Thermal ESC/POS Preview',
             onPressed: () {
               setState(() => _showThermalText = !_showThermalText);
             },
           ),
           IconButton(
-            icon: const Icon(Icons.print_outlined),
+            icon: Stack(
+              alignment: Alignment.topRight,
+              children: [
+                const Icon(Icons.print_outlined),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: printerState.isConnected
+                        ? KiranaColors.success
+                        : KiranaColors.warning,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
             tooltip: 'Printer Settings',
             onPressed: () => _showPrinterSettings(context),
           ),
@@ -169,7 +174,62 @@ class _CompletedReceiptScreenState
               ),
             ),
 
-          // 2. Retail POS Receipt Card Body
+          // 2. Paper Width Selector Bar (58mm vs 80mm ESC/POS)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: KiranaSpacing.md, vertical: 6),
+            color: KiranaColors.surfaceVariant.withValues(alpha: 0.5),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.print,
+                      size: 14,
+                      color: printerState.isConnected
+                          ? KiranaColors.success
+                          : KiranaColors.neutral500,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      printerState.isConnected
+                          ? 'Printer: ${printerState.selectedPrinter?.name ?? "Connected"}'
+                          : 'Printer: Offline / Disconnected',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: printerState.isConnected
+                            ? KiranaColors.success
+                            : KiranaColors.neutral600,
+                      ),
+                    ),
+                  ],
+                ),
+                SegmentedButton<PrinterPaperWidth>(
+                  segments: const [
+                    ButtonSegment(
+                      value: PrinterPaperWidth.mm58,
+                      label: Text('58mm', style: TextStyle(fontSize: 11)),
+                    ),
+                    ButtonSegment(
+                      value: PrinterPaperWidth.mm80,
+                      label: Text('80mm', style: TextStyle(fontSize: 11)),
+                    ),
+                  ],
+                  selected: {printerState.paperWidth},
+                  onSelectionChanged: (newSelection) {
+                    printerNotifier.setPaperWidth(newSelection.first);
+                  },
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 3. Retail POS Receipt Card Body
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(KiranaSpacing.md),
@@ -179,7 +239,7 @@ class _CompletedReceiptScreenState
                   padding: const EdgeInsets.all(KiranaSpacing.lg),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: KiranaRadius.borderLg,
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x1A000000),
@@ -444,6 +504,7 @@ class _CompletedReceiptScreenState
                                   style: KiranaTypography.displayTotal.copyWith(
                                     color: KiranaColors.primary,
                                     fontSize: 22,
+                                    fontWeight: FontWeight.w900,
                                   ),
                                 ),
                               ],
@@ -462,9 +523,9 @@ class _CompletedReceiptScreenState
                 ),
               ),
             ),
-          ),
+          ).animate().fadeIn(duration: 200.ms),
 
-          // 3. Action Toolbar Buttons
+          // 4. Action Toolbar Buttons
           Container(
             padding: const EdgeInsets.all(KiranaSpacing.md),
             decoration: BoxDecoration(
@@ -479,6 +540,7 @@ class _CompletedReceiptScreenState
             ),
             child: Row(
               children: [
+                // Primary Share Receipt Action
                 Expanded(
                   child: AppButton(
                     label: 'SHARE RECEIPT',
@@ -488,18 +550,29 @@ class _CompletedReceiptScreenState
                   ),
                 ),
                 const SizedBox(width: KiranaSpacing.xs),
+
+                // WhatsApp Button
                 IconButton.filled(
                   style: IconButton.styleFrom(
                     backgroundColor: const Color(0xFF25D366),
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(12),
                   ),
-                  icon: const Icon(Icons.chat),
-                  tooltip: 'Share on WhatsApp',
-                  onPressed: () => _handleWhatsAppShare(context, shopSettings),
+                  icon: const Icon(Icons.chat, size: 22),
+                  tooltip: 'WhatsApp Digital Invoice',
+                  onPressed: () => _openWhatsAppDispatch(context, shopSettings),
                 ),
                 const SizedBox(width: KiranaSpacing.xs),
+
+                // Print Button
                 IconButton.filledTonal(
-                  icon: const Icon(Icons.print),
+                  icon: printerState.isPrinting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.print, size: 20),
                   tooltip: 'Print Receipt',
                   onPressed: () async {
                     if (!printerState.isConnected) {
@@ -510,6 +583,8 @@ class _CompletedReceiptScreenState
                   },
                 ),
                 const SizedBox(width: KiranaSpacing.xs),
+
+                // Close Button
                 ElevatedButton(
                   onPressed: () {
                     ref

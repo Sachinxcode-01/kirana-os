@@ -33,8 +33,10 @@ import {
 import { QuickTenderModal } from "@/components/pos/QuickTenderModal";
 import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal";
 import { ThermalReceiptModal } from "@/components/pos/ThermalReceiptModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function BackOfficeDashboard() {
+  const { t } = useLanguage();
   const [filterMode, setFilterMode] = useState<"ALL" | "UPI" | "CASH" | "UDHAAR">("ALL");
   const [tenderOpen, setTenderOpen] = useState(false);
   const [selectedBillAmount, setSelectedBillAmount] = useState<number>(340);
@@ -44,9 +46,9 @@ export default function BackOfficeDashboard() {
 
   const kpis = [
     {
-      title: "Today's Revenue",
+      title: t("kpi.revenue"),
       value: "₹24,500.00",
-      change: "+14.2% vs yesterday",
+      change: `+14.2% ${t("kpi.vsYesterday")}`,
       icon: ShoppingCart,
       color: "emerald",
       bgGradient: "from-emerald-500/12 to-teal-500/5",
@@ -54,7 +56,7 @@ export default function BackOfficeDashboard() {
       pillBg: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
     {
-      title: "Bills Finalized",
+      title: t("kpi.bills"),
       value: "42 Invoices",
       change: "Avg: ₹583.33 / bill",
       icon: Receipt,
@@ -64,9 +66,9 @@ export default function BackOfficeDashboard() {
       pillBg: "bg-teal-50 text-teal-700 border-teal-200",
     },
     {
-      title: "Pending Udhaar (Khata)",
+      title: t("kpi.udhaar"),
       value: "₹18,500.00",
-      change: "4 accounts due today",
+      change: `4 ${t("kpi.dueToday")}`,
       icon: Users,
       color: "amber",
       bgGradient: "from-amber-500/12 to-orange-500/5",
@@ -74,9 +76,9 @@ export default function BackOfficeDashboard() {
       pillBg: "bg-amber-50 text-amber-700 border-amber-200",
     },
     {
-      title: "Active Catalog SKUs",
+      title: t("kpi.skus"),
       value: "248 Products",
-      change: "8 Low Stock alerts",
+      change: `8 ${t("kpi.lowStockAlerts")}`,
       icon: Package,
       color: "indigo",
       bgGradient: "from-indigo-500/12 to-purple-500/5",
@@ -158,7 +160,7 @@ export default function BackOfficeDashboard() {
           >
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-2 pr-1 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Quick Actions:
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> {t("dash.quickActions")}:
               </span>
               <button
                 type="button"
@@ -169,7 +171,7 @@ export default function BackOfficeDashboard() {
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-sm shadow-emerald-950/20 transition-all hover:scale-102 cursor-pointer"
               >
                 <Banknote className="w-3.5 h-3.5" />
-                <span>Quick Tender</span>
+                <span>{t("header.quickTender")}</span>
                 <kbd className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-white/20 text-white">
                   F4
                 </kbd>
@@ -179,7 +181,7 @@ export default function BackOfficeDashboard() {
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs transition-all hover:scale-102"
               >
                 <Plus className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Add SKU</span>
+                <span>{t("dash.addSku")}</span>
                 <kbd className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-500 border border-slate-200">
                   F1
                 </kbd>
@@ -190,7 +192,7 @@ export default function BackOfficeDashboard() {
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs transition-all hover:scale-102 cursor-pointer"
               >
                 <Keyboard className="w-3.5 h-3.5 text-teal-600" />
-                <span>Shortcuts</span>
+                <span>{t("header.shortcuts")}</span>
                 <kbd className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-500 border border-slate-200">
                   ?
                 </kbd>
@@ -199,19 +201,19 @@ export default function BackOfficeDashboard() {
                 href="/udhaar"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs transition-all hover:scale-102"
               >
-                <Send className="w-3.5 h-3.5 text-emerald-600" /> Send Khata Reminder
+                <Send className="w-3.5 h-3.5 text-emerald-600" /> {t("dash.sendKhataReminder")}
               </Link>
               <Link
                 href="/purchases"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs transition-all hover:scale-102"
               >
-                <Truck className="w-3.5 h-3.5 text-teal-600" /> Auto-Replenish PO
+                <Truck className="w-3.5 h-3.5 text-teal-600" /> {t("dash.replenishPo")}
               </Link>
               <Link
                 href="/gst"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 shadow-xs transition-all hover:scale-102"
               >
-                <Download className="w-3.5 h-3.5 text-slate-500" /> Export GSTR-1
+                <Download className="w-3.5 h-3.5 text-slate-500" /> {t("dash.exportGst")}
               </Link>
             </div>
 
@@ -221,7 +223,7 @@ export default function BackOfficeDashboard() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span>Cloud Sync: 100% Online</span>
+              <span>{t("dash.cloudOnline")}</span>
             </div>
           </motion.div>
 
@@ -271,9 +273,9 @@ export default function BackOfficeDashboard() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-emerald-600" /> Live Invoices Stream (Counter 01)
+                    <ShoppingCart className="w-4 h-4 text-emerald-600" /> {t("stream.title")}
                   </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">Real-time synchronized transactions</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{t("stream.subtitle")}</p>
                 </div>
 
                 {/* Filter Pills */}
@@ -289,7 +291,7 @@ export default function BackOfficeDashboard() {
                           : "text-slate-500 hover:text-slate-900"
                       }`}
                     >
-                      {m}
+                      {m === "ALL" ? t("filter.all") : m === "UPI" ? t("filter.upi") : m === "CASH" ? t("filter.cash") : t("filter.udhaar")}
                     </button>
                   ))}
                 </div>
@@ -300,12 +302,12 @@ export default function BackOfficeDashboard() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-100/90 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase">
-                      <th className="py-3 px-3.5">Bill Number</th>
-                      <th className="py-3 px-3.5">Time</th>
-                      <th className="py-3 px-3.5">Customer</th>
-                      <th className="py-3 px-3.5 text-right">Amount</th>
-                      <th className="py-3 px-3.5 text-center">Payment Mode</th>
-                      <th className="py-3 px-3.5 text-right">Quick Tender</th>
+                      <th className="py-3 px-3.5">{t("stream.billNumber")}</th>
+                      <th className="py-3 px-3.5">{t("stream.time")}</th>
+                      <th className="py-3 px-3.5">{t("stream.customer")}</th>
+                      <th className="py-3 px-3.5 text-right">{t("stream.amount")}</th>
+                      <th className="py-3 px-3.5 text-center">{t("stream.paymentMode")}</th>
+                      <th className="py-3 px-3.5 text-right">{t("stream.quickTender")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
@@ -356,10 +358,10 @@ export default function BackOfficeDashboard() {
                                 setTenderOpen(true);
                               }}
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
-                              title="Calculate Change & Tender"
+                              title={t("stream.settle")}
                             >
                               <Banknote className="w-3 h-3" />
-                              <span>Settle</span>
+                              <span>{t("stream.settle")}</span>
                             </button>
                           </div>
                         </td>
