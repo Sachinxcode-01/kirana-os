@@ -6,6 +6,9 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { CommandPalette } from "@/components/layout/CommandPalette";
+import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal";
+import { QuickTenderModal } from "@/components/pos/QuickTenderModal";
+import { usePosHotkeys } from "@/hooks/usePosHotkeys";
 import {
   Search,
   Bell,
@@ -22,6 +25,8 @@ import {
   Receipt,
   Check,
   X,
+  Keyboard,
+  Banknote,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -35,8 +40,24 @@ export function Header({ title, subtitle }: HeaderProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [tenderOpen, setTenderOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // Global POS Hotkeys (F1, F4, ?, Esc)
+  usePosHotkeys({
+    onF1: () => setPaletteOpen(true),
+    onF4: () => setTenderOpen(true),
+    onHelp: () => setShortcutsOpen((prev) => !prev),
+    onEscape: () => {
+      setPaletteOpen(false);
+      setShortcutsOpen(false);
+      setTenderOpen(false);
+      setNotifOpen(false);
+      setProfileOpen(false);
+    },
+  });
 
   useEffect(() => {
     const updateTime = () => {
@@ -117,6 +138,8 @@ export function Header({ title, subtitle }: HeaderProps) {
   return (
     <>
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <QuickTenderModal isOpen={tenderOpen} onClose={() => setTenderOpen(false)} />
 
       <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/70 px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
         {/* Title / Search */}
@@ -158,9 +181,40 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3">
+          {/* Quick Cash Tender F4 Trigger */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => setTenderOpen(true)}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+            title="Quick Cash Tender Calculator (F4)"
+          >
+            <Banknote className="w-3.5 h-3.5" />
+            <span>Quick Tender</span>
+            <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/20 text-white">
+              F4
+            </kbd>
+          </motion.button>
+
+          {/* Shortcuts Guide ? Trigger */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="button"
+            onClick={() => setShortcutsOpen(true)}
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/70 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+            title="Keyboard Shortcuts Guide (?)"
+          >
+            <Keyboard className="w-3.5 h-3.5 text-slate-500" />
+            <span className="font-mono text-[10px] bg-slate-200/80 px-1 py-0.5 rounded text-slate-600 font-bold">
+              ?
+            </span>
+          </motion.button>
+
           {/* Clock IST */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 border border-slate-200/60 text-xs font-semibold text-slate-700 font-mono">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 border border-slate-200/60 text-xs font-semibold text-slate-700 font-mono">
             <Clock className="w-3.5 h-3.5 text-emerald-600" />
             <span>{timeStr || "12:00:00 PM"} IST</span>
           </div>
