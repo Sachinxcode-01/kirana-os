@@ -15,6 +15,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 
+import { posAudio } from "@/utils/audioFeedback";
+
 interface QuickTenderModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,16 +52,22 @@ export function QuickTenderModal({
   const quickDenominations = [50, 100, 200, 500, 2000];
 
   const handleAddDenomination = (value: number) => {
+    posAudio.playBarcodeBeep();
     setTenderReceived((prev) => prev + value);
   };
 
   const handleExactCash = () => {
+    posAudio.playBarcodeBeep();
     setTenderReceived(billAmount);
   };
 
   const handleFinalize = () => {
-    if (isShort && paymentMode === "CASH") return;
+    if (isShort && paymentMode === "CASH") {
+      posAudio.playWarningBuzzer();
+      return;
+    }
 
+    posAudio.playSuccessChime();
     setIsCompleted(true);
     setTimeout(() => {
       onSuccess?.({

@@ -28,15 +28,19 @@ import {
   Receipt,
   Activity,
   Keyboard,
+  Printer,
 } from "lucide-react";
 import { QuickTenderModal } from "@/components/pos/QuickTenderModal";
 import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal";
+import { ThermalReceiptModal } from "@/components/pos/ThermalReceiptModal";
 
 export default function BackOfficeDashboard() {
   const [filterMode, setFilterMode] = useState<"ALL" | "UPI" | "CASH" | "UDHAAR">("ALL");
   const [tenderOpen, setTenderOpen] = useState(false);
   const [selectedBillAmount, setSelectedBillAmount] = useState<number>(340);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
 
   const kpis = [
     {
@@ -130,6 +134,11 @@ export default function BackOfficeDashboard() {
       <KeyboardShortcutsModal
         isOpen={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
+      />
+      <ThermalReceiptModal
+        isOpen={receiptOpen}
+        onClose={() => setReceiptOpen(false)}
+        invoiceData={selectedReceipt}
       />
 
       <Sidebar />
@@ -320,19 +329,39 @@ export default function BackOfficeDashboard() {
                           </span>
                         </td>
                         <td className="py-3 px-3.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const parsed = parseFloat(b.amount.replace(/[^0-9.]/g, "")) || 340;
-                              setSelectedBillAmount(parsed);
-                              setTenderOpen(true);
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
-                            title="Calculate Change & Tender"
-                          >
-                            <Banknote className="w-3 h-3" />
-                            <span>Settle</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const parsed = parseFloat(b.amount.replace(/[^0-9.]/g, "")) || 340;
+                                setSelectedReceipt({
+                                  invoiceNumber: b.id,
+                                  dateStr: `${b.time}, Today`,
+                                  customerName: b.customer,
+                                  paymentMode: b.mode,
+                                  totalPaise: Math.round(parsed * 100),
+                                });
+                                setReceiptOpen(true);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
+                              title="Print Thermal 58mm/80mm Receipt (F8)"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const parsed = parseFloat(b.amount.replace(/[^0-9.]/g, "")) || 340;
+                                setSelectedBillAmount(parsed);
+                                setTenderOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                              title="Calculate Change & Tender"
+                            >
+                              <Banknote className="w-3 h-3" />
+                              <span>Settle</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

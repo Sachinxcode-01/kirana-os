@@ -8,7 +8,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { KeyboardShortcutsModal } from "@/components/pos/KeyboardShortcutsModal";
 import { QuickTenderModal } from "@/components/pos/QuickTenderModal";
+import { ThermalReceiptModal } from "@/components/pos/ThermalReceiptModal";
+import { SyncStatusPill } from "@/components/layout/SyncStatusPill";
 import { usePosHotkeys } from "@/hooks/usePosHotkeys";
+import { posAudio } from "@/utils/audioFeedback";
 import {
   Search,
   Bell,
@@ -27,6 +30,9 @@ import {
   X,
   Keyboard,
   Banknote,
+  Printer,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -42,18 +48,34 @@ export function Header({ title, subtitle }: HeaderProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [tenderOpen, setTenderOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  // Global POS Hotkeys (F1, F4, ?, Esc)
+  useEffect(() => {
+    setIsMuted(posAudio.isAudioMuted());
+  }, []);
+
+  const toggleMute = () => {
+    const next = posAudio.toggleMute();
+    setIsMuted(next);
+    if (!next) {
+      posAudio.playBarcodeBeep();
+    }
+  };
+
+  // Global POS Hotkeys (F1, F4, F8, ?, Esc)
   usePosHotkeys({
     onF1: () => setPaletteOpen(true),
     onF4: () => setTenderOpen(true),
+    onF8: () => setReceiptOpen(true),
     onHelp: () => setShortcutsOpen((prev) => !prev),
     onEscape: () => {
       setPaletteOpen(false);
       setShortcutsOpen(false);
       setTenderOpen(false);
+      setReceiptOpen(false);
       setNotifOpen(false);
       setProfileOpen(false);
     },
@@ -140,6 +162,7 @@ export function Header({ title, subtitle }: HeaderProps) {
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <QuickTenderModal isOpen={tenderOpen} onClose={() => setTenderOpen(false)} />
+      <ThermalReceiptModal isOpen={receiptOpen} onClose={() => setReceiptOpen(false)} />
 
       <header className="h-16 bg-white/85 backdrop-blur-md border-b border-slate-200/70 px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
         {/* Title / Search */}
@@ -181,7 +204,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Quick Cash Tender F4 Trigger */}
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -195,6 +218,22 @@ export function Header({ title, subtitle }: HeaderProps) {
             <span>Quick Tender</span>
             <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/20 text-white">
               F4
+            </kbd>
+          </motion.button>
+
+          {/* Thermal Receipt F8 Trigger */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => setReceiptOpen(true)}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/70 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+            title="Preview & Direct Print ESC/POS Receipt (F8)"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-600" />
+            <span>Receipt</span>
+            <kbd className="px-1 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-200/80 text-slate-600">
+              F8
             </kbd>
           </motion.button>
 
@@ -213,21 +252,30 @@ export function Header({ title, subtitle }: HeaderProps) {
             </span>
           </motion.button>
 
+          {/* Audio Feedback Mute Toggle */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="button"
+            onClick={toggleMute}
+            className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+              isMuted
+                ? "bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+                : "bg-slate-100 hover:bg-slate-200/80 border-slate-200/70 text-slate-600 hover:text-slate-900"
+            }`}
+            title={isMuted ? "Unmute POS Audio Feedback" : "Mute POS Audio Feedback"}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </motion.button>
+
           {/* Clock IST */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 border border-slate-200/60 text-xs font-semibold text-slate-700 font-mono">
+          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 border border-slate-200/60 text-xs font-semibold text-slate-700 font-mono">
             <Clock className="w-3.5 h-3.5 text-emerald-600" />
             <span>{timeStr || "12:00:00 PM"} IST</span>
           </div>
 
-          {/* Counter Shift Pill */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 shadow-xs">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-            </span>
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Register 1: Active</span>
-          </div>
+          {/* Live Cloud & Sync Heartbeat Pill */}
+          <SyncStatusPill />
 
           {/* Notification Bell */}
           <div className="relative" ref={notifRef}>
