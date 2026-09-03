@@ -46,6 +46,8 @@ import { VoiceSearchButton } from "@/components/pos/VoiceSearchButton";
 import { posAudio } from "@/utils/audioFeedback";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/contexts/ToastContext";
+import { useSyncEngine } from "@/contexts/SyncContext";
+import { SyncStatusPill } from "@/components/layout/SyncStatusPill";
 import { formatPaise } from "@/utils/currency";
 
 // Initial Catalog Inventory
@@ -298,6 +300,7 @@ export default function PosBillingPage() {
   const [selectedCartIndex, setSelectedCartIndex] = useState<number>(0);
   const [isScanningFlash, setIsScanningFlash] = useState<boolean>(false);
   const toast = useToast();
+  const { enqueueBill, saveCartDraft } = useSyncEngine();
 
   // Modals
   const [tenderOpen, setTenderOpen] = useState(false);
@@ -642,6 +645,7 @@ export default function PosBillingPage() {
     };
 
     setCompletedInvoice(invoicePayload);
+    enqueueBill(invoicePayload);
     setBillSequence((prev) => prev + 1);
     setTenderOpen(false);
     setReceiptOpen(true);
@@ -749,6 +753,9 @@ export default function PosBillingPage() {
               <Barcode className="w-3.5 h-3.5 text-emerald-400" />
               <span>Laser Ready</span>
             </div>
+
+            {/* Phase 20: Offline Sync Status Pill */}
+            <SyncStatusPill />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

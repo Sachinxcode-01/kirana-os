@@ -244,6 +244,9 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
 
         {/* Right Controls */}
         <div className="flex items-center gap-2">
+          {/* Phase 20: Live Sync Status Pill */}
+          <SyncStatusPill />
+
           {/* Quick Cash Tender F4 Trigger */}
           <motion.button
             whileHover={{ scale: 1.02 }}
