@@ -289,6 +289,7 @@ export default function PosBillingPage() {
   const [billSequence, setBillSequence] = useState(43);
   const [heldBills, setHeldBills] = useState<WebHeldBill[]>([]);
   const [scanToast, setScanToast] = useState<string | null>(null);
+  const [selectedCartIndex, setSelectedCartIndex] = useState<number>(0);
 
   // Modals
   const [tenderOpen, setTenderOpen] = useState(false);
@@ -329,6 +330,8 @@ export default function PosBillingPage() {
         return;
       }
 
+      const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
       if (e.key === "F2") {
         e.preventDefault();
         searchInputRef.current?.focus();
@@ -346,16 +349,54 @@ export default function PosBillingPage() {
         e.preventDefault();
         handleHoldBill();
       } else if (e.key === "?") {
-        if (document.activeElement !== searchInputRef.current) {
+        if (!isInput) {
           e.preventDefault();
           setShortcutsOpen(true);
+        }
+      } else if (!isInput) {
+        // NumPad & Single-Key POS Ergonomics (Phase 19.2)
+        if (e.key === "+" || e.key === "=") {
+          e.preventDefault();
+          if (cart.length > 0 && selectedCartIndex >= 0 && selectedCartIndex < cart.length) {
+            updateQuantity(cart[selectedCartIndex].id, 1);
+          }
+        } else if (e.key === "-" || e.key === "_") {
+          e.preventDefault();
+          if (cart.length > 0 && selectedCartIndex >= 0 && selectedCartIndex < cart.length) {
+            updateQuantity(cart[selectedCartIndex].id, -1);
+          }
+        } else if (e.key === "Delete" || e.key === "Backspace") {
+          e.preventDefault();
+          if (cart.length > 0 && selectedCartIndex >= 0 && selectedCartIndex < cart.length) {
+            removeItem(cart[selectedCartIndex].id);
+            setSelectedCartIndex((prev) => Math.max(0, Math.min(prev, cart.length - 2)));
+          }
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setSelectedCartIndex((prev) => Math.max(0, prev - 1));
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setSelectedCartIndex((prev) => Math.min(cart.length - 1, prev + 1));
+        } else if (e.key === "/") {
+          e.preventDefault();
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        } else if (e.key.toLowerCase() === "c") {
+          e.preventDefault();
+          clearCart();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          if (cart.length > 0) {
+            posAudio.beepSuccess();
+            setTenderOpen(true);
+          }
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cart, tenderOpen, receiptOpen, whatsAppOpen, shortcutsOpen]);
+  }, [cart, selectedCartIndex, tenderOpen, receiptOpen, whatsAppOpen, shortcutsOpen]);
 
   const showNotification = (msg: string) => {
     setScanToast(msg);
@@ -450,11 +491,11 @@ export default function PosBillingPage() {
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchQuery.trim()) {
       e.preventDefault();
-      const query = searchQuery.trim().toLowerCase();
+      const q = searchQuery.trim().toLowerCase();
 
       // 1. Direct barcode / SKU match
       const exactMatch = INVENTORY_ITEMS.find(
-        (p) => p.barcode === query || p.id.toLowerCase() === query
+        (p: WebProduct) => p.barcode === searchQuery.trim() || p.id.toLowerCase() === q
       );
 
       if (exactMatch) {
@@ -465,10 +506,10 @@ export default function PosBillingPage() {
 
       // 2. Exact or single filtered match
       const matches = INVENTORY_ITEMS.filter(
-        (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.categoryName.toLowerCase().includes(query) ||
-          p.barcode?.includes(query)
+        (p: WebProduct) =>
+          p.name.toLowerCase().includes(q) ||
+          p.categoryName.toLowerCase().includes(q) ||
+          p.barcode?.includes(q)
       );
 
       if (matches.length > 0) {
@@ -476,8 +517,16 @@ export default function PosBillingPage() {
         setSearchQuery("");
       } else {
         posAudio.beepError();
-        showNotification(`No item matching: "${query}"`);
+        showNotification(`No item matching: "${searchQuery}"`);
       }
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      searchInputRef.current?.blur();
+      setSelectedCartIndex(0);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setSearchQuery("");
+      searchInputRef.current?.blur();
     }
   };
 
@@ -887,71 +936,120 @@ export default function PosBillingPage() {
                   </p>
                 </div>
               ) : (
-                cart.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    layout
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between gap-3 shadow-xs"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-bold text-white truncate leading-tight">
-                        {item.name}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
-                        <span className="font-mono text-slate-300">
-                          {formatRupees(item.unitPricePaise)}
-                        </span>
-                        <span>×</span>
-                        <span className="font-semibold text-emerald-400">
-                          {item.quantity} {item.unit}
-                        </span>
-                        {item.taxRate > 0 && (
-                          <span className="text-[9px] px-1 bg-slate-800 text-slate-400 rounded">
-                            GST {item.taxRate}%
+                cart.map((item, index) => {
+                  const isSelected = index === selectedCartIndex;
+                  return (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      onClick={() => setSelectedCartIndex(index)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer shadow-xs ${
+                        isSelected
+                          ? "bg-slate-800/95 border-emerald-500/80 ring-1 ring-emerald-500/40"
+                          : "bg-slate-900/90 border-slate-800 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-bold text-white truncate leading-tight">
+                              {item.name}
+                            </h4>
+                            {isSelected && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 shrink-0">
+                                Active (+/-)
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                            <span className="font-mono text-slate-300">
+                              {formatRupees(item.unitPricePaise)}
+                            </span>
+                            <span>×</span>
+                            <span className="font-semibold text-emerald-400">
+                              {item.quantity} {item.unit}
+                            </span>
+                            {item.taxRate > 0 && (
+                              <span className="text-[9px] px-1 bg-slate-800 text-slate-400 rounded">
+                                GST {item.taxRate}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Quantity Stepper & Remove Button */}
+                        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, -1)}
+                              className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                              title="Decrease quantity (- on NumPad)"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="w-8 text-center text-xs font-mono font-bold text-white">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, 1)}
+                              className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                              title="Increase quantity (+ on NumPad)"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <span className="w-16 text-right font-mono font-bold text-xs text-white">
+                            {formatRupees(Math.round(item.unitPricePaise * item.quantity))}
                           </span>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Quantity Stepper & Remove Button */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="w-8 text-center text-xs font-mono font-bold text-white">
-                          {item.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.id)}
+                            className="p-1 text-slate-500 hover:text-rose-400 rounded transition-colors"
+                            title="Remove item (Delete)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
-                      <span className="w-16 text-right font-mono font-bold text-xs text-white">
-                        {formatRupees(Math.round(item.unitPricePaise * item.quantity))}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item.id)}
-                        className="p-1 text-slate-500 hover:text-rose-400 rounded transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))
+                      {/* Loose Item Fast Weight Increment Chips (Phase 19.2) */}
+                      {item.isLoose && (
+                        <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+                          <span className="text-slate-400 font-semibold">Quick Weight:</span>
+                          <div className="flex items-center gap-1">
+                            {[0.25, 0.5, 1, 2, 5].map((w) => (
+                              <button
+                                key={w}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCart((prev) =>
+                                    prev.map((it) => (it.id === item.id ? { ...it, quantity: w } : it))
+                                  );
+                                  posAudio.beepSuccess();
+                                }}
+                                className={`px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                                  item.quantity === w
+                                    ? "bg-emerald-600 text-white border-emerald-400 font-bold"
+                                    : "bg-slate-950 text-slate-300 border-slate-700 hover:border-slate-500"
+                                }`}
+                              >
+                                {w >= 1 ? `${w}kg` : `${w * 1000}g`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })
               )}
             </div>
 

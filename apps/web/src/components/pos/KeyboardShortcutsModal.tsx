@@ -30,40 +30,46 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
 
   const billingShortcuts: ShortcutItem[] = [
     {
-      keys: ["F1"],
+      keys: ["/"],
       action: "Focus Barcode / Product Search",
       description: "Instantly ready the scanner or type product name",
       badgeColor: "from-emerald-500 to-teal-500",
     },
     {
-      keys: ["F2"],
-      action: "Select Customer / Khata Account",
-      description: "Attach customer for loyalty or Udhaar debt tracking",
-      badgeColor: "from-amber-500 to-orange-500",
+      keys: ["+", "-"],
+      action: "NumPad Quantity Stepper",
+      description: "Increase (+) or decrease (-) quantity of the active cart item",
+      badgeColor: "from-teal-500 to-emerald-500",
     },
     {
-      keys: ["F4"],
+      keys: ["↑", "↓"],
+      action: "Cart Item Navigation",
+      description: "Select previous or next line item in the active cart",
+      badgeColor: "from-blue-500 to-indigo-500",
+    },
+    {
+      keys: ["Delete"],
+      action: "Remove Active Cart Item",
+      description: "Deletes selected line item from checkout cart",
+      badgeColor: "from-rose-500 to-pink-500",
+    },
+    {
+      keys: ["F4", "Enter"],
       action: "Quick Cash Tender Calculator",
       description: "One-tap denomination chips and instant change return",
-      badgeColor: "from-teal-500 to-cyan-500",
-    },
-    {
-      keys: ["F8"],
-      action: "Re-Print Last Bill",
-      description: "Direct trigger to thermal 58mm/80mm receipt printer",
-      badgeColor: "from-indigo-500 to-blue-500",
-    },
-    {
-      keys: ["F12"],
-      action: "Finalize & Settle Invoice",
-      description: "Locks the transaction and prints customer receipt",
       badgeColor: "from-emerald-600 to-teal-600",
     },
     {
-      keys: ["Ctrl", "Enter"],
-      action: "Express Checkout",
-      description: "Auto-selects exact cash tender and prints in 1 step",
-      badgeColor: "from-rose-500 to-pink-500",
+      keys: ["F9"],
+      action: "Hold / Park Active Bill",
+      description: "Suspends cart to serve next customer in line",
+      badgeColor: "from-amber-500 to-orange-500",
+    },
+    {
+      keys: ["C"],
+      action: "Clear Active Cart",
+      description: "Resets checkout counter for a fresh sale",
+      badgeColor: "from-slate-600 to-slate-700",
     },
   ];
 
