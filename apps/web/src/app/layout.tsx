@@ -6,6 +6,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "KiranaOS — Web Store Portal",
   description: "Next-generation retail POS and business management for Kirana stores",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
