@@ -266,3 +266,52 @@ body {
   background: #475569;
 }
 
+/* Phase 21: UI/UX Micro-Interactions & Tabular Numbers */
+.tnum,
+.tabular-nums {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" on, "zero" on;
+}
+
+/* Vertical Currency Alignments */
+.rupee-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Visual Barcode Laser Scan Flash */
+@keyframes laserFlash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7), inset 0 0 15px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px 6px rgba(16, 185, 129, 0.5), inset 0 0 30px rgba(16, 185, 129, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.scan-flash {
+  animation: laserFlash 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Cart Item Bump On Add / Increment */
+@keyframes cartBump {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.025);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cart-bump {
+  animation: cartBump 0.22s ease-out;
+}
+
+

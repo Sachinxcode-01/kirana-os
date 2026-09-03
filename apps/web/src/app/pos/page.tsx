@@ -45,6 +45,8 @@ import { useHardwareBarcodeScanner } from "@/hooks/useHardwareBarcodeScanner";
 import { VoiceSearchButton } from "@/components/pos/VoiceSearchButton";
 import { posAudio } from "@/utils/audioFeedback";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/contexts/ToastContext";
+import { formatPaise } from "@/utils/currency";
 
 // Initial Catalog Inventory
 const INVENTORY_ITEMS: WebProduct[] = [
@@ -294,6 +296,8 @@ export default function PosBillingPage() {
   const [heldBills, setHeldBills] = useState<WebHeldBill[]>([]);
   const [scanToast, setScanToast] = useState<string | null>(null);
   const [selectedCartIndex, setSelectedCartIndex] = useState<number>(0);
+  const [isScanningFlash, setIsScanningFlash] = useState<boolean>(false);
+  const toast = useToast();
 
   // Modals
   const [tenderOpen, setTenderOpen] = useState(false);
@@ -412,6 +416,11 @@ export default function PosBillingPage() {
     setTimeout(() => setScanToast(null), 2500);
   };
 
+  const triggerScanFlash = () => {
+    setIsScanningFlash(true);
+    setTimeout(() => setIsScanningFlash(false), 380);
+  };
+
   // Math Calculations (Strict integer paise invariants)
   const subtotalPaise = cart.reduce((acc, item) => acc + item.unitPricePaise * item.quantity, 0);
   const mrpTotalPaise = cart.reduce((acc, item) => acc + item.mrpPaise * item.quantity, 0);
@@ -464,7 +473,8 @@ export default function PosBillingPage() {
     });
 
     posAudio.beepSuccess();
-    showNotification(`Added: ${product.name}`);
+    triggerScanFlash();
+    toast.success(`Added: ${product.name}`, `${formatPaise(product.sellingPricePaise)} • Stock: ${product.currentStock}`);
   };
 
   const updateQuantity = (cartItemId: string, delta: number) => {
@@ -665,8 +675,7 @@ export default function PosBillingPage() {
     return matchesCategory && matchesQuery;
   });
 
-  const formatRupees = (paise: number) =>
-    `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatRupees = (paise: number) => formatPaise(paise);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
@@ -709,8 +718,10 @@ export default function PosBillingPage() {
 
       {/* Main POS Interface Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-900">
-        {/* Top Counter Bar */}
-        <header className="h-14 border-b border-slate-800 bg-slate-950/90 px-4 sm:px-6 flex items-center justify-between shrink-0 z-20">
+        {/* Top Counter Bar with Visual Scan Flash */}
+        <header className={`h-14 border-b border-slate-800 bg-slate-950/90 px-4 sm:px-6 flex items-center justify-between shrink-0 z-20 transition-all ${
+          isScanningFlash ? "scan-flash border-emerald-500/80 bg-emerald-950/40" : ""
+        }`}>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileNavOpen(true)}
