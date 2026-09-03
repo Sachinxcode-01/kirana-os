@@ -27,6 +27,8 @@ import {
   Layers,
   BarChart3,
   Flame,
+  Send,
+  X,
 } from "lucide-react";
 import { DayEndZReport } from "@/types";
 
@@ -89,8 +91,32 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState("Today");
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [printingZReport, setPrintingZReport] = useState<DayEndZReport | null>(null);
 
   const formatRupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const handleShareZReportWhatsApp = (report: DayEndZReport) => {
+    const text = `📊 *SRI LAKSHMI PROVISION STORE — DAY-END Z-REPORT*
+📅 Shift: ${report.openedAt} to ${report.closedAt}
+🖥️ Register: ${report.registerName} (${report.cashierName})
+
+💰 *Gross Sales: ₹${(report.grossSalesPaise / 100).toFixed(2)}*
+🧾 Total Invoices: ${report.billsCount} bills
+
+💵 Cash Inflow: ₹${(report.cashSalesPaise / 100).toFixed(2)}
+📱 Digital UPI: ₹${(report.upiSalesPaise / 100).toFixed(2)}
+📒 Udhaar Khata Issued: ₹${(report.creditSalesPaise / 100).toFixed(2)}
+
+🔒 Cash Drawer Status:
+- Opening Float: ₹${(report.openingCashPaise / 100).toFixed(2)}
+- Expected Drawer: ₹${(report.expectedCashPaise / 100).toFixed(2)}
+- Counted In Drawer: ₹${(report.actualCashPaise / 100).toFixed(2)}
+- Status: ${report.isBalanced ? "✅ 100% Balanced (₹0.00 Variance)" : "⚠️ Discrepancy Detected"}
+
+*Generated automatically via KiranaOS Web Intelligence*`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
 
   const handleExport = () => {
     setDownloadSuccess(true);
@@ -491,14 +517,25 @@ export default function AnalyticsPage() {
                           <p className="text-xs text-slate-500 mt-0.5">Cashier: {report.cashierName}</p>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => alert(`Printing Z-Report for ${report.registerName}`)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>Print Z-Report</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleShareZReportWhatsApp(report)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-colors cursor-pointer"
+                            title="Send summary to store owner via WhatsApp"
+                          >
+                            <Send className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>WhatsApp</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPrintingZReport(report)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Print Slip</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Financial Breakdown Table */}
@@ -651,6 +688,129 @@ export default function AnalyticsPage() {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Modal: Thermal Z-Report Slip Preview */}
+      <AnimatePresence>
+        {printingZReport && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-emerald-600" />
+                  <span className="font-bold text-slate-900 text-sm">Official Z-Report Print Preview</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPrintingZReport(null)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Thermal Paper Look-and-Feel Slip */}
+              <div className="p-5 bg-slate-50 rounded-2xl border border-dashed border-slate-300 font-mono text-[11px] text-slate-800 space-y-2 leading-relaxed shadow-inner">
+                <div className="text-center pb-2 border-b border-dashed border-slate-300">
+                  <p className="font-black text-sm uppercase tracking-wide text-slate-900">
+                    Sri Lakshmi Provision Store
+                  </p>
+                  <p className="text-[10px] text-slate-500">14/2, 8th Main, Jayanagar, Bengaluru</p>
+                  <p className="text-[10px] text-slate-500">GSTIN: 29AAAAA0000A1Z5</p>
+                  <p className="font-bold text-xs mt-1 text-slate-900">*** DAY-END Z-REPORT ***</p>
+                </div>
+
+                <div className="space-y-0.5 text-[10px] border-b border-dashed border-slate-300 pb-2">
+                  <p>Register: {printingZReport.registerName}</p>
+                  <p>Cashier: {printingZReport.cashierName}</p>
+                  <p>Open: {printingZReport.openedAt}</p>
+                  <p>Close: {printingZReport.closedAt}</p>
+                </div>
+
+                <div className="space-y-1 py-1 border-b border-dashed border-slate-300">
+                  <div className="flex justify-between font-bold text-xs">
+                    <span>GROSS SALES:</span>
+                    <span>{formatRupees(printingZReport.grossSalesPaise)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>- Cash Sales:</span>
+                    <span>{formatRupees(printingZReport.cashSalesPaise)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>- UPI Digital:</span>
+                    <span>{formatRupees(printingZReport.upiSalesPaise)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>- Udhaar (Khata):</span>
+                    <span>{formatRupees(printingZReport.creditSalesPaise)}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                    <span>Total Invoices Billed:</span>
+                    <span>{printingZReport.billsCount}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <div className="flex justify-between">
+                    <span>Opening Float:</span>
+                    <span>{formatRupees(printingZReport.openingCashPaise)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold">
+                    <span>Expected Drawer:</span>
+                    <span>{formatRupees(printingZReport.expectedCashPaise)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-emerald-700">
+                    <span>Actual Counted:</span>
+                    <span>{formatRupees(printingZReport.actualCashPaise)}</span>
+                  </div>
+                  <div className="flex justify-between font-black text-xs pt-1 border-t border-dashed border-slate-300">
+                    <span>AUDIT VARIANCE:</span>
+                    <span className={printingZReport.isBalanced ? "text-emerald-700" : "text-rose-600"}>
+                      {printingZReport.isBalanced ? "₹0.00 (BALANCED)" : "VARIANCE DETECTED"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-center pt-2 text-[9px] text-slate-400">
+                  <p>End of Official Audit Slip</p>
+                  <p>Powered by KiranaOS Intelligence</p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPrintingZReport(null)}
+                  className="px-3.5 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShareZReportWhatsApp(printingZReport)}
+                  className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>WhatsApp</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Slip</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

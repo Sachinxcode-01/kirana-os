@@ -26,10 +26,12 @@ import {
   MinusCircle,
   ArrowRight,
   TrendingUp,
+  FileSpreadsheet,
 } from "lucide-react";
 import { WebProduct } from "@/types";
 import { posAudio } from "@/utils/audioFeedback";
 import { BarcodeLabelStudioModal } from "@/components/catalog/BarcodeLabelStudioModal";
+import { BulkProductImportModal } from "@/components/catalog/BulkProductImportModal";
 
 const INITIAL_PRODUCTS: WebProduct[] = [
   {
@@ -163,6 +165,7 @@ export default function ProductCatalogPage() {
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBarcodeStudio, setShowBarcodeStudio] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [studioProduct, setStudioProduct] = useState<WebProduct | null>(null);
   const [adjustingProduct, setAdjustingProduct] = useState<WebProduct | null>(null);
   const [tagProduct, setTagProduct] = useState<WebProduct | null>(null);
@@ -431,6 +434,15 @@ export default function ProductCatalogPage() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowBulkImportModal(true)}
+                className="flex items-center gap-2 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Bulk CSV Import</span>
+              </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -1104,6 +1116,16 @@ export default function ProductCatalogPage() {
         onClose={() => setShowBarcodeStudio(false)}
         products={products}
         selectedProduct={studioProduct}
+      />
+
+      {/* Modal 5: Bulk Excel / CSV Importer */}
+      <BulkProductImportModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        onImportSuccess={(imported) => {
+          setProducts([...imported, ...products]);
+          showToast(`Successfully imported ${imported.length} new SKUs to inventory!`);
+        }}
       />
     </div>
   );
