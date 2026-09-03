@@ -7,12 +7,22 @@
   --foreground: #0F172A;
 }
 
+.dark {
+  --background: #0B0F19;
+  --foreground: #F8FAFC;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+.dark body {
+  background-color: #0B0F19;
+  color: #F8FAFC;
 }
 
 ::selection {
@@ -122,3 +132,137 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* ==========================================================================
+   KiranaOS Real-Time Dark Mode Rules (Defaults strictly to Light Mode)
+   ========================================================================== */
+
+.dark .min-h-screen {
+  background-color: #0B0F19 !important;
+}
+
+/* Glassmorphism surfaces in Dark Mode */
+.dark .glass-card {
+  background: rgba(17, 24, 39, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5) !important;
+  color: #F8FAFC;
+}
+
+.dark .glass-card-hover:hover {
+  box-shadow: 0 14px 28px -10px rgba(16, 185, 129, 0.25), 0 0 0 1px rgba(16, 185, 129, 0.35) !important;
+}
+
+/* Text Hierarchy in Dark Mode */
+.dark .text-slate-900 {
+  color: #F8FAFC !important;
+}
+.dark .text-slate-800 {
+  color: #F1F5F9 !important;
+}
+.dark .text-slate-700 {
+  color: #CBD5E1 !important;
+}
+.dark .text-slate-600 {
+  color: #94A3B8 !important;
+}
+.dark .text-slate-500 {
+  color: #64748B !important;
+}
+
+/* Neutral Surfaces, Containers & Dividers */
+.dark .bg-white {
+  background-color: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #0B0F19 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1E293B !important;
+  color: #E2E8F0 !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: #334155 !important;
+}
+
+.dark .border-slate-200 {
+  border-color: #1E293B !important;
+}
+
+.dark .border-slate-100 {
+  border-color: #1E293B !important;
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1E293B !important;
+}
+
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #334155 !important;
+}
+
+/* Hover States in Dark Mode */
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1E293B !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #334155 !important;
+}
+
+.dark .hover\:bg-slate-200:hover {
+  background-color: #475569 !important;
+}
+
+/* Inputs, Textareas & Select Elements */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border-color: #334155 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748B !important;
+}
+
+/* Tables in Dark Mode */
+.dark table thead tr {
+  background-color: #1E293B !important;
+}
+
+.dark table thead th {
+  color: #94A3B8 !important;
+  border-bottom-color: #334155 !important;
+}
+
+.dark table tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.6) !important;
+}
+
+/* Dark Mode Navigation & Layout Overrides */
+.dark header {
+  background-color: rgba(11, 15, 25, 0.88) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark aside {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-right-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+

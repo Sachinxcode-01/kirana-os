@@ -15,6 +15,7 @@ import { LanguageSelector } from "@/components/layout/LanguageSelector";
 import { VoiceSearchButton } from "@/components/pos/VoiceSearchButton";
 import { usePosHotkeys } from "@/hooks/usePosHotkeys";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { posAudio } from "@/utils/audioFeedback";
 import { KiranaAiCopilotDrawer } from "@/components/ai/KiranaAiCopilotDrawer";
 import {
@@ -62,34 +63,18 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [zReportOpen, setZReportOpen] = useState(false);
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const { isDark, toggleTheme: handleToggleTheme } = useTheme();
   const [isMuted, setIsMuted] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMuted(posAudio.isAudioMuted());
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("kirana_theme") === "dark";
-      setIsDarkMode(saved);
-      if (saved) {
-        document.documentElement.classList.add("dark");
-      }
-    }
   }, []);
 
   const toggleTheme = () => {
-    const next = !isDarkMode;
-    setIsDarkMode(next);
     posAudio.playBarcodeBeep();
-    if (typeof window !== "undefined") {
-      localStorage.setItem("kirana_theme", next ? "dark" : "light");
-      if (next) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
+    handleToggleTheme();
   };
 
   const toggleMute = () => {
@@ -354,20 +339,20 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </motion.button>
 
-          {/* Glare-Free High-Contrast / Dark Counter Mode Toggle */}
+          {/* Real-Time Theme Mode Toggle */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="button"
             onClick={toggleTheme}
-            className={`p-2 rounded-xl border transition-colors cursor-pointer ${
-              isDarkMode
-                ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+            className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              isDark
+                ? "bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25"
                 : "bg-slate-100 hover:bg-slate-200/80 border-slate-200/70 text-slate-600 hover:text-slate-900"
             }`}
-            title={isDarkMode ? "Switch to Standard Light Mode" : "Switch to Glare-Free High-Contrast Mode"}
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
           </motion.button>
 
           {/* Clock IST */}
