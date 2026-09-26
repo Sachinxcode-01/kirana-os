@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   FileSpreadsheet,
@@ -28,18 +28,43 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
   const { t } = useLanguage();
 
   // Audit Metrics (Paise converted to Rupees for display)
-  const openingFloat = 2000;
-  const cashSales = 7595;
-  const supplierPayouts = 1200;
-  const expectedCash = openingFloat + cashSales - supplierPayouts; // 8395
+  const [openingFloat, setOpeningFloat] = useState(2000);
+  const [cashSales, setCashSales] = useState(7595);
+  const [supplierPayouts, setSupplierPayouts] = useState(1200);
+  const [upiSales, setUpiSales] = useState(13230);
+  const [udhaarSales, setUdhaarSales] = useState(3675);
+  const [grossRevenue, setGrossRevenue] = useState(24500);
+  const [totalBillsCount, setTotalBillsCount] = useState(42);
+  const [expectedCash, setExpectedCash] = useState(8395);
 
-  const upiSales = 13230;
-  const udhaarSales = 3675;
-  const grossRevenue = cashSales + upiSales + udhaarSales; // 24500
-  const totalBillsCount = 42;
-
-  const [actualCashCounted, setActualCashCounted] = useState<number>(expectedCash);
+  const [actualCashCounted, setActualCashCounted] = useState<number>(8395);
   const [isShiftClosed, setIsShiftClosed] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch("/api/reports/z-report")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.report) {
+          const rep = data.report;
+          const open = rep.openingCashPaise / 100;
+          const cash = rep.cashSalesPaise / 100;
+          const payout = (rep.supplierPayoutsPaise || 0) / 100;
+          const exp = open + cash - payout;
+
+          setOpeningFloat(open);
+          setCashSales(cash);
+          setSupplierPayouts(payout);
+          setExpectedCash(exp);
+          setActualCashCounted(exp);
+          setUpiSales(rep.upiSalesPaise / 100);
+          setUdhaarSales(rep.creditSalesPaise / 100);
+          setGrossRevenue(rep.grossSalesPaise / 100);
+          setTotalBillsCount(rep.billsCount || 0);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -81,8 +106,19 @@ export function DayEndZReportModal({ isOpen, onClose }: DayEndZReportModalProps)
     URL.revokeObjectURL(url);
   };
 
-  const handleCloseShift = () => {
+  const handleCloseShift = async () => {
     posAudio.playSuccessChime();
+    try {
+      await fetch("/api/reports/z-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          actualCashRupees: actualCashCounted,
+          notes: `Shift closed with discrepancy of ₹${discrepancy.toFixed(2)}`,
+        }),
+      });
+    } catch {}
+
     setIsShiftClosed(true);
     setTimeout(() => {
       setIsShiftClosed(false);

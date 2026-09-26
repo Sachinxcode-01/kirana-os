@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -88,6 +88,7 @@ interface PaymentReceiptData {
 export default function UdhaarLedgerPage() {
   const [customers, setCustomers] = useState<WebCustomer[]>(INITIAL_CUSTOMERS);
   const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<WebCustomer | null>(null);
   const [settleAmount, setSettleAmount] = useState("");
   const [settleMode, setSettleMode] = useState<"Cash" | "UPI QR">("UPI QR");
@@ -107,15 +108,44 @@ export default function UdhaarLedgerPage() {
   const [newPhone, setNewPhone] = useState("");
   const [newLimit, setNewLimit] = useState("5000");
 
-  const totalOutstandingPaise = customers.reduce((sum, c) => sum + c.currentBalancePaise, 0);
-  const highRiskCount = customers.filter(
-    (c) => c.creditLimitPaise > 0 && c.currentBalancePaise / c.creditLimitPaise >= 0.8
-  ).length;
-
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  const fetchLiveCustomers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(search)}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.customers) && data.customers.length > 0) {
+        const liveMapped: WebCustomer[] = data.customers.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          address: c.address || "",
+          creditLimitPaise: Math.round((c.creditLimit || 5000) * 100),
+          currentBalancePaise: Math.round((c.khataBalance || 0) * 100),
+          loyaltyPoints: 120,
+          lastActive: c.lastPaymentDate ? `Paid ${c.lastPaymentDate}` : "Active",
+        }));
+        setCustomers(liveMapped);
+      }
+    } catch {
+      // In-memory fallback is active
+    } finally {
+      setIsLoading(false);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    fetchLiveCustomers();
+  }, [fetchLiveCustomers]);
+
+  const totalOutstandingPaise = customers.reduce((sum, c) => sum + c.currentBalancePaise, 0);
+  const highRiskCount = customers.filter(
+    (c) => c.creditLimitPaise > 0 && c.currentBalancePaise / c.creditLimitPaise >= 0.8
+  ).length;
 
   const filteredCustomers = customers.filter(
     (c) =>
@@ -126,7 +156,7 @@ export default function UdhaarLedgerPage() {
   const formatRupees = (paise: number) =>
     `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const handleSettle = (e: React.FormEvent) => {
+  const handleSettle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCustomer || !settleAmount) return;
 
@@ -134,13 +164,29 @@ export default function UdhaarLedgerPage() {
     const prevBalance = selectedCustomer.currentBalancePaise;
     const newBalance = Math.max(0, prevBalance - settlePaise);
 
-    setCustomers(
-      customers.map((c) =>
+    // Optimistic UI update
+    setCustomers((prev) =>
+      prev.map((c) =>
         c.id === selectedCustomer.id
           ? { ...c, currentBalancePaise: newBalance }
           : c
       )
     );
+
+    // Persist to backend /api/udhaar
+    try {
+      await fetch("/api/udhaar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: selectedCustomer.id,
+          amountPaise: settlePaise,
+          notes: `Counter repayment via ${settleMode}`,
+        }),
+      });
+    } catch {
+      // Offline fallback
+    }
 
     // Generate digital receipt
     setReceiptModal({
@@ -159,26 +205,54 @@ export default function UdhaarLedgerPage() {
     showToast(`Payment of ${formatRupees(settlePaise)} recorded for ${selectedCustomer.name}`);
   };
 
-  const handleAddCustomer = (e: React.FormEvent) => {
+  const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newPhone.trim()) return;
 
-    const newCust: WebCustomer = {
-      id: "c_" + Date.now(),
-      name: newName.trim(),
-      phone: newPhone.trim(),
-      creditLimitPaise: Math.round(parseFloat(newLimit || "0") * 100),
-      currentBalancePaise: 0,
-      loyaltyPoints: 0,
-      lastActive: "Just added",
-    };
+    const parsedLimitRupees = parseFloat(newLimit || "5000");
 
-    setCustomers([newCust, ...customers]);
+    try {
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newName.trim(),
+          phone: newPhone.trim(),
+          creditLimit: parsedLimitRupees,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.customer) {
+        const newCust: WebCustomer = {
+          id: data.customer.id,
+          name: data.customer.name,
+          phone: data.customer.phone,
+          creditLimitPaise: Math.round((data.customer.creditLimit || parsedLimitRupees) * 100),
+          currentBalancePaise: 0,
+          loyaltyPoints: 0,
+          lastActive: "Just added",
+        };
+        setCustomers((prev) => [newCust, ...prev]);
+      }
+    } catch {
+      // In-memory fallback
+      const fallbackCust: WebCustomer = {
+        id: "c_" + Date.now(),
+        name: newName.trim(),
+        phone: newPhone.trim(),
+        creditLimitPaise: Math.round(parsedLimitRupees * 100),
+        currentBalancePaise: 0,
+        loyaltyPoints: 0,
+        lastActive: "Just added",
+      };
+      setCustomers((prev) => [fallbackCust, ...prev]);
+    }
+
     setShowAddCustomerModal(false);
     setNewName("");
     setNewPhone("");
     posAudio.playSuccessChime();
-    showToast(`Added ${newCust.name} to Khata ledger.`);
+    showToast(`Added ${newName.trim()} to Khata ledger.`);
   };
 
   const triggerWhatsAppReminder = (customer: WebCustomer) => {

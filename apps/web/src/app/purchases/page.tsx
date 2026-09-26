@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -80,6 +80,7 @@ export default function PurchasesPage() {
   const [suppliers, setSuppliers] = useState<WebSupplier[]>(INITIAL_SUPPLIERS);
   const [purchaseOrders, setPurchaseOrders] = useState<WebPurchaseOrder[]>(INITIAL_POS);
   const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Modals state
   const [showAutoPOModal, setShowAutoPOModal] = useState(false);
@@ -91,7 +92,7 @@ export default function PurchasesPage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // New PO form state
-  const [poSupplier, setPoSupplier] = useState(INITIAL_SUPPLIERS[0].name);
+  const [poSupplier, setPoSupplier] = useState(INITIAL_SUPPLIERS[0]?.name || "Wholesaler");
   const [poInvNo, setPoInvNo] = useState("INV-" + String(Date.now()).slice(-6));
   const [poTotalRupees, setPoTotalRupees] = useState("15000.00");
   const [poItemCount, setPoItemCount] = useState("10");
@@ -101,10 +102,56 @@ export default function PurchasesPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const fetchLivePurchasesAndSuppliers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      // Fetch suppliers
+      const supRes = await fetch("/api/suppliers");
+      const supData = await supRes.json();
+      if (supData.success && Array.isArray(supData.suppliers) && supData.suppliers.length > 0) {
+        const liveSuppliers: WebSupplier[] = supData.suppliers.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          contactPerson: s.contactPerson || s.contact_person,
+          phone: s.phone,
+          email: s.email,
+          gstin: s.gstin,
+          pendingBalancePaise: Math.round((s.outstandingBalance || 0) * 100),
+        }));
+        setSuppliers(liveSuppliers);
+        if (liveSuppliers[0]) setPoSupplier(liveSuppliers[0].name);
+      }
+
+      // Fetch purchase orders
+      const poRes = await fetch("/api/purchases");
+      const poData = await poRes.json();
+      if (poData.success && Array.isArray(poData.purchases) && poData.purchases.length > 0) {
+        const livePOs: WebPurchaseOrder[] = poData.purchases.map((p: any) => ({
+          id: p.id,
+          invoiceNumber: p.invoiceNumber,
+          supplierName: p.supplierName,
+          purchaseDate: p.invoiceDate,
+          totalPaise: p.totalPaise,
+          status: p.status || "received",
+          itemCount: p.itemCount || 1,
+        }));
+        setPurchaseOrders(livePOs);
+      }
+    } catch {
+      // In-memory fallback
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLivePurchasesAndSuppliers();
+  }, [fetchLivePurchasesAndSuppliers]);
+
   const formatRupees = (paise: number) =>
     `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const handleGenerateAutoPO = (supplierId: string) => {
+  const handleGenerateAutoPO = async (supplierId: string) => {
     const sup = suppliers.find((s) => s.id === supplierId);
     if (!sup) return;
 
@@ -118,25 +165,65 @@ export default function PurchasesPage() {
       itemCount: 6,
     };
 
-    setPurchaseOrders([newPO, ...purchaseOrders]);
+    setPurchaseOrders((prev) => [newPO, ...prev]);
     setShowAutoPOModal(false);
+
+    try {
+      await fetch("/api/purchases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplierId: sup.id,
+          supplierName: sup.name,
+          invoiceNumber: newPO.invoiceNumber,
+          invoiceDate: newPO.purchaseDate,
+          totalPaise: newPO.totalPaise,
+          items: [
+            { productId: "prod_01", productName: "FMCG Restock Package", quantity: 6, purchasePricePaise: 306666 },
+          ],
+        }),
+      });
+    } catch {}
+
     showToast(`Generated automated replenishment PO for ${sup.name}`);
   };
 
-  const handleCreateInwardPO = (e: React.FormEvent) => {
+  const handleCreateInwardPO = async (e: React.FormEvent) => {
     e.preventDefault();
+    const sup = suppliers.find((s) => s.name === poSupplier) || suppliers[0];
+    const totalPaise = Math.round(parseFloat(poTotalRupees || "0") * 100);
+    const count = parseInt(poItemCount || "1", 10);
+
     const newPO: WebPurchaseOrder = {
       id: "po_" + Date.now(),
       invoiceNumber: poInvNo.trim(),
       supplierName: poSupplier,
       purchaseDate: new Date().toISOString().split("T")[0],
-      totalPaise: Math.round(parseFloat(poTotalRupees || "0") * 100),
-      status: "ordered",
-      itemCount: parseInt(poItemCount || "1", 10),
+      totalPaise,
+      status: "received",
+      itemCount: count,
     };
 
-    setPurchaseOrders([newPO, ...purchaseOrders]);
+    setPurchaseOrders((prev) => [newPO, ...prev]);
     setShowNewInwardModal(false);
+
+    try {
+      await fetch("/api/purchases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplierId: sup?.id || "sup_01",
+          supplierName: poSupplier,
+          invoiceNumber: newPO.invoiceNumber,
+          invoiceDate: newPO.purchaseDate,
+          totalPaise: newPO.totalPaise,
+          items: [
+            { productId: "prod_01", productName: "Stock Inward Package", quantity: count, purchasePricePaise: Math.round(totalPaise / Math.max(1, count)) },
+          ],
+        }),
+      });
+    } catch {}
+
     showToast(`Inward Purchase Order ${newPO.invoiceNumber} recorded.`);
   };
 

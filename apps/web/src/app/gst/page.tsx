@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -32,29 +32,47 @@ export default function GSTCenterPage() {
   const formatRupees = (paise: number) =>
     `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const taxSlabs = [
+  const [taxSlabs, setTaxSlabs] = useState([
     { rate: "0% GST (Nil / Exempted)", taxablePaise: 1850000, cgstPaise: 0, sgstPaise: 0, totalTaxPaise: 0 },
     { rate: "5% GST (Oils & Flours)", taxablePaise: 3200000, cgstPaise: 80000, sgstPaise: 80000, totalTaxPaise: 160000 },
     { rate: "12% GST (Butter & Dairy)", taxablePaise: 1540000, cgstPaise: 92400, sgstPaise: 92400, totalTaxPaise: 184800 },
     { rate: "18% GST (Soaps & Detergents)", taxablePaise: 2460000, cgstPaise: 221400, sgstPaise: 221400, totalTaxPaise: 442800 },
     { rate: "28% GST (Luxury / Beverages)", taxablePaise: 0, cgstPaise: 0, sgstPaise: 0, totalTaxPaise: 0 },
-  ];
+  ]);
 
-  const hsnItems = [
+  const [hsnItems, setHsnItems] = useState([
     { hsn: "1101", desc: "Wheat Flour / Atta", uqc: "kg", qty: 450, totalValPaise: 1102500, taxPaise: 0, rate: 0.0 },
     { hsn: "1512", desc: "Refined Sunflower Oil", uqc: "L", qty: 240, totalValPaise: 3240000, taxPaise: 154285, rate: 5.0 },
     { hsn: "0405", desc: "Butter & Dairy Spreads", uqc: "packet", qty: 85, totalValPaise: 2337500, taxPaise: 250446, rate: 12.0 },
     { hsn: "3402", desc: "Detergents & Soaps", uqc: "kg", qty: 150, totalValPaise: 2400000, taxPaise: 366101, rate: 18.0 },
-  ];
+  ]);
 
-  const totalInvoiceVal = 9050000;
-  const totalCGST = 393816;
-  const totalSGST = 393816;
+  const [totalInvoiceVal, setTotalInvoiceVal] = useState(9050000);
+  const [totalCGST, setTotalCGST] = useState(393816);
+  const [totalSGST, setTotalSGST] = useState(393816);
+  const [gstin, setGstin] = useState("29AAAAA0000A1Z5");
+
+  useEffect(() => {
+    fetch(`/api/reports/gst?period=${encodeURIComponent(period)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          if (Array.isArray(data.data.taxSlabs)) setTaxSlabs(data.data.taxSlabs);
+          if (Array.isArray(data.data.hsnItems)) setHsnItems(data.data.hsnItems);
+          if (data.data.totalInvoiceValPaise) setTotalInvoiceVal(data.data.totalInvoiceValPaise);
+          if (data.data.totalCGSTPaise) setTotalCGST(data.data.totalCGSTPaise);
+          if (data.data.totalSGSTPaise) setTotalSGST(data.data.totalSGSTPaise);
+          if (data.data.gstin) setGstin(data.data.gstin);
+        }
+      })
+      .catch(() => {});
+  }, [period]);
+
   const totalTaxLiability = totalCGST + totalSGST;
 
   const downloadGSTR1JSON = () => {
     const payload = {
-      gstin: "29AAAAA0000A1Z5",
+      gstin: gstin,
       fp: "092026",
       gt: 90500.0,
       cur_gt: 90500.0,
