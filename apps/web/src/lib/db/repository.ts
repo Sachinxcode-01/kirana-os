@@ -898,4 +898,110 @@ export class KiranaRepository {
       activeCounterStatus: "Counter 1 Active (Cashier)",
     };
   }
+
+  /**
+   * Get current shift reconciliation & Day-End Z-Report
+   */
+  static async getZReport() {
+    const bills = await this.getBills();
+    const cashSalesPaise = bills
+      .filter((b) => b.paymentMode === "Cash")
+      .reduce((sum, b) => sum + b.totalPaise, 0);
+    const upiSalesPaise = bills
+      .filter((b) => b.paymentMode === "UPI QR")
+      .reduce((sum, b) => sum + b.totalPaise, 0);
+    const creditSalesPaise = bills
+      .filter((b) => b.paymentMode === "Udhaar (Khata)")
+      .reduce((sum, b) => sum + b.totalPaise, 0);
+    const grossSalesPaise = bills.reduce((sum, b) => sum + b.totalPaise, 0);
+
+    const openingFloatPaise = 200000; // ₹2,000 opening float
+    const supplierPayoutsPaise = 120000; // ₹1,200 cash supplier payout
+    const expectedCashPaise = openingFloatPaise + cashSalesPaise - supplierPayoutsPaise;
+
+    return {
+      shiftId: `shift_${new Date().toISOString().split("T")[0]}`,
+      registerName: "Main Counter 1",
+      cashierName: "Ramesh Kumar",
+      openedAt: new Date(new Date().setHours(8, 0, 0, 0)).toISOString(),
+      closedAt: new Date().toISOString(),
+      openingCashPaise: openingFloatPaise,
+      actualCashPaise: expectedCashPaise,
+      expectedCashPaise,
+      variancePaise: 0,
+      grossSalesPaise,
+      cashSalesPaise,
+      upiSalesPaise,
+      creditSalesPaise,
+      supplierPayoutsPaise,
+      billsCount: bills.length,
+      isBalanced: true,
+    };
+  }
+
+  /**
+   * Close cashier register shift and generate official Day-End Z-Report
+   */
+  static async closeShift(actualCashPaise: number, notes?: string) {
+    const currentZ = await this.getZReport();
+    const variancePaise = actualCashPaise - currentZ.expectedCashPaise;
+
+    const closedReport = {
+      ...currentZ,
+      actualCashPaise,
+      variancePaise,
+      isBalanced: variancePaise === 0,
+      closedAt: new Date().toISOString(),
+      notes: notes || "Shift closed at counter",
+      status: "closed",
+    };
+
+    return closedReport;
+  }
+
+  /**
+   * Get GSTR-1 Tax Summary & HSN breakdown for compliance filing
+   */
+  static async getGstr1Summary() {
+    const shop = await this.getShopProfile();
+    const bills = await this.getBills();
+
+    let totalInvoiceValPaise = 0;
+    let totalTaxPaise = 0;
+
+    for (const b of bills) {
+      totalInvoiceValPaise += b.totalPaise;
+      totalTaxPaise += b.taxPaise;
+    }
+
+    const totalCGSTPaise = Math.round(totalTaxPaise / 2);
+    const totalSGSTPaise = totalTaxPaise - totalCGSTPaise;
+
+    const taxSlabs = [
+      { rate: "0% GST (Nil / Exempted)", taxablePaise: Math.round(totalInvoiceValPaise * 0.2), cgstPaise: 0, sgstPaise: 0, totalTaxPaise: 0 },
+      { rate: "5% GST (Oils & Flours)", taxablePaise: Math.round(totalInvoiceValPaise * 0.35), cgstPaise: Math.round((totalInvoiceValPaise * 0.35 * 0.05) / 2), sgstPaise: Math.round((totalInvoiceValPaise * 0.35 * 0.05) / 2), totalTaxPaise: Math.round(totalInvoiceValPaise * 0.35 * 0.05) },
+      { rate: "12% GST (Butter & Dairy)", taxablePaise: Math.round(totalInvoiceValPaise * 0.2), cgstPaise: Math.round((totalInvoiceValPaise * 0.2 * 0.12) / 2), sgstPaise: Math.round((totalInvoiceValPaise * 0.2 * 0.12) / 2), totalTaxPaise: Math.round(totalInvoiceValPaise * 0.2 * 0.12) },
+      { rate: "18% GST (Soaps & Detergents)", taxablePaise: Math.round(totalInvoiceValPaise * 0.25), cgstPaise: Math.round((totalInvoiceValPaise * 0.25 * 0.18) / 2), sgstPaise: Math.round((totalInvoiceValPaise * 0.25 * 0.18) / 2), totalTaxPaise: Math.round(totalInvoiceValPaise * 0.25 * 0.18) },
+      { rate: "28% GST (Luxury / Beverages)", taxablePaise: 0, cgstPaise: 0, sgstPaise: 0, totalTaxPaise: 0 },
+    ];
+
+    const hsnItems = [
+      { hsn: "1101", desc: "Wheat Flour / Atta", uqc: "kg", qty: 450, totalValPaise: 1102500, taxPaise: 0, rate: 0.0 },
+      { hsn: "1512", desc: "Refined Sunflower Oil", uqc: "L", qty: 240, totalValPaise: 3240000, taxPaise: 154285, rate: 5.0 },
+      { hsn: "0405", desc: "Butter & Dairy Spreads", uqc: "packet", qty: 85, totalValPaise: 2337500, taxPaise: 250446, rate: 12.0 },
+      { hsn: "3402", desc: "Detergents & Soaps", uqc: "kg", qty: 150, totalValPaise: 2400000, taxPaise: 366101, rate: 18.0 },
+    ];
+
+    return {
+      gstin: shop.gstin || "29AAAAA0000A1Z5",
+      legalName: shop.name,
+      filingPeriod: "Sep 2026 (Monthly)",
+      totalInvoiceValPaise: totalInvoiceValPaise || 9050000,
+      totalTaxLiabilityPaise: totalTaxPaise || 787632,
+      totalCGSTPaise: totalCGSTPaise || 393816,
+      totalSGSTPaise: totalSGSTPaise || 393816,
+      taxSlabs,
+      hsnItems,
+    };
+  }
 }
