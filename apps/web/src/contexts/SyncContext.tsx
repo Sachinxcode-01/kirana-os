@@ -45,32 +45,51 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
       let syncedCount = 0;
 
-      for (const item of queue) {
-        await offlineSyncDb.markItemStatus(item.id, "SYNCING");
+      // Map queue to standard SyncOperationContract format
+      const operations = queue.map((item) => ({
+        operation_id: item.idempotencyKey || item.id,
+        shop_id: "00000000-0000-0000-0000-000000000001",
+        entity_type: item.type === "CREATE_BILL" ? "bill" : item.type === "RECORD_PAYMENT" ? "payment" : "customer",
+        operation_type: "CREATE",
+        client_timestamp: new Date(item.timestamp).toISOString(),
+        payload: item.payload,
+      }));
 
-        try {
-          if (item.type === "CREATE_BILL") {
-            const res = await fetch("/api/bills", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-idempotency-key": item.idempotencyKey,
-              },
-              body: JSON.stringify(item.payload),
-            });
+      try {
+        const res = await fetch("/api/sync/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ operations }),
+        });
 
-            if (res.ok) {
-              await offlineSyncDb.removeQueueItem(item.id);
-              syncedCount += 1;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.results)) {
+          for (const result of data.results) {
+            if (result.status === "SYNCED") {
+              const matchedItem = queue.find(
+                (q) => (q.idempotencyKey || q.id) === result.operation_id
+              );
+              if (matchedItem) {
+                await offlineSyncDb.removeQueueItem(matchedItem.id);
+                syncedCount += 1;
+              }
             } else {
-              await offlineSyncDb.markItemStatus(item.id, "FAILED", true);
+              const failedItem = queue.find(
+                (q) => (q.idempotencyKey || q.id) === result.operation_id
+              );
+              if (failedItem) {
+                await offlineSyncDb.markItemStatus(failedItem.id, "FAILED", true);
+              }
             }
-          } else {
-            // General mutation fallback
-            await offlineSyncDb.removeQueueItem(item.id);
-            syncedCount += 1;
           }
-        } catch {
+        } else {
+          // Mark all as failed for retry
+          for (const item of queue) {
+            await offlineSyncDb.markItemStatus(item.id, "FAILED", true);
+          }
+        }
+      } catch {
+        for (const item of queue) {
           await offlineSyncDb.markItemStatus(item.id, "FAILED", true);
         }
       }
